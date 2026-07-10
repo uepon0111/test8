@@ -1,0 +1,60 @@
+/* ===================================================================
+   settings.css
+   The Settings modal: device profile list + the visual region editor
+   (draggable/resizable rectangles over a sample image, paired with
+   numeric X/Y/W/H% fields).
+   =================================================================== */
+
+.settings-body { display: flex; flex: 1; overflow: hidden; }
+
+.settings-sidebar { width: 260px; border-right: 1px solid #eee; background: #f8f9fa; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.settings-sidebar-header { padding: 10px; border-bottom: 1px solid #ddd; background: #fff; }
+.btn-new-profile { width: 100%; padding: 8px; background: #17a2b8; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.btn-new-profile:hover { background: #138496; }
+
+.profile-row { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+.profile-row:hover { background: #eee; }
+.profile-row.active { background: var(--active-color); border-left: 4px solid #007bff; }
+.profile-row-thumb { width: 44px; height: 44px; border-radius: 6px; background: #ddd; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #888; }
+.profile-row-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.profile-row-info { flex: 1; overflow: hidden; }
+.profile-row-name { font-weight: bold; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-row-res { font-size: 0.7rem; color: #888; }
+.profile-row-del { border: none; background: none; color: #bbb; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.profile-row-del:hover { color: #dc3545; }
+
+.settings-main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.settings-name-row { display: flex; gap: 10px; align-items: center; }
+.settings-name-row input[type="text"] { flex: 1; }
+.settings-name-row label { font-weight: bold; font-size: 0.85rem; color: #555; white-space: nowrap; }
+
+.settings-sample-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn-upload-sample { background: #007bff; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; }
+.btn-upload-sample:hover { background: #0056b3; }
+#settings-sample-info { font-size: 0.8rem; color: #666; }
+
+.settings-hint { font-size: 0.78rem; color: #888; line-height: 1.5; background: #f8f9fa; border-radius: 8px; padding: 8px 12px; }
+
+#settings-sample-wrap { position: relative; width: 100%; max-width: 520px; margin: 0 auto; background: #eee; border-radius: 8px; overflow: hidden; }
+#settings-sample-img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+#settings-sample-placeholder {
+  display: none; align-items: center; justify-content: center; text-align: center; width: 100%; height: 100%;
+  position: absolute; inset: 0; color: #888; font-size: 0.85rem; padding: 20px; box-sizing: border-box;
+  background: repeating-linear-gradient(45deg, #eee, #eee 10px, #e4e4e4 10px, #e4e4e4 20px);
+}
+
+#settings-regions-overlay { position: absolute; inset: 0; pointer-events: none; }
+.region-rect { position: absolute; border: 2px solid; box-sizing: border-box; pointer-events: auto; cursor: move; touch-action: none; }
+.region-label { position: absolute; top: -20px; left: -2px; color: #fff; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px 4px 0 0; white-space: nowrap; }
+.resize-handle { position: absolute; right: -7px; bottom: -7px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: nwse-resize; touch-action: none; }
+
+.settings-region-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.region-input-group { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; }
+.region-input-title { font-weight: bold; font-size: 0.8rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; color: #444; }
+.region-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+.region-input-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.region-input-row label { font-size: 0.7rem; color: #777; display: flex; flex-direction: column; gap: 3px; }
+.region-input-row input { width: 100%; box-sizing: border-box; padding: 6px 4px; text-align: center; font-size: 0.8rem; }
+
+.settings-footer { padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fff; flex-shrink: 0; }
+.settings-footer-note { font-size: 0.75rem; color: #888; }
