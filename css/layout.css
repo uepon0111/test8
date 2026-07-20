@@ -1,0 +1,99 @@
+/*
+  layout.css
+  App shell shared by index.html (list) and song.html (detail): header, wordmark,
+  page container, and generic responsive helpers.
+*/
+
+body {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--header-h);
+  background: rgba(250, 250, 250, 0.86);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid var(--line);
+}
+
+.app-header-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-shrink: 0;
+  font-weight: 900;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.wordmark .wm-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-s);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.wordmark .wm-mark svg { width: 17px; height: 17px; color: #fff; }
+.wordmark .wm-text { color: var(--ink); }
+.wordmark .wm-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  display: none;
+}
+@media (min-width: 560px) {
+  .wordmark .wm-sub { display: inline; }
+}
+
+.header-spacer { flex: 1; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.page-container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 var(--sp-4);
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 40px;
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  border-radius: var(--r-full);
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 14px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+.back-btn:hover { background: var(--surface-sunken); color: var(--ink); }
+.back-btn svg { width: 20px; height: 20px; }
+
+/* Reserve room at the bottom of scrollable content when the mini player is docked */
+.has-player-padding {
+  padding-bottom: calc(var(--player-h) + env(safe-area-inset-bottom, 0) + var(--sp-4));
+}
+@media (min-width: 960px) {
+  .has-player-padding { padding-bottom: var(--sp-6); }
+}

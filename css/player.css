@@ -1,0 +1,170 @@
+/*
+  player.css
+  The transport UI: seek bar with -5s/+5s, play/pause, time readout.
+  Rendered inline inside .player-block (see detail.css) and also mirrored into a
+  slim bar docked to the viewport bottom so playback stays reachable while the
+  person scrolls through the info list / difficulty spectrum (a lightweight stand‑in
+  for "background playback" chrome — the actual continuation + lock-screen artwork
+  is handled by the Media Session API in player.js).
+*/
+
+.transport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.seek-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.seek-track-wrap {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.seek-track {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  border-radius: var(--r-full);
+  background: var(--surface-sunken);
+  overflow: visible;
+}
+.seek-fill {
+  position: absolute;
+  top: 0; left: 0; height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  width: 0%;
+}
+.seek-thumb {
+  position: absolute;
+  top: 50%;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25), 0 0 0 3px rgba(255,255,255,0.9);
+  transform: translate(-50%, -50%);
+  left: 0%;
+  transition: transform var(--transition-fast);
+}
+.seek-track-wrap:active .seek-thumb { transform: translate(-50%, -50%) scale(1.2); }
+
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-6);
+  padding-top: var(--sp-1);
+}
+.transport-controls .skip-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-soft);
+  position: relative;
+}
+.transport-controls .skip-btn:hover { background: var(--surface-sunken); color: var(--ink); }
+.transport-controls .skip-btn svg { width: 24px; height: 24px; }
+.transport-controls .skip-btn .skip-num {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 800;
+  bottom: 9px;
+}
+
+.play-btn {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px rgba(255,59,99,0.34);
+  transition: transform var(--transition-fast), background var(--transition-fast);
+  flex-shrink: 0;
+}
+.play-btn:hover { background: var(--accent-dark); }
+.play-btn:active { transform: scale(0.95); }
+.play-btn svg { width: 26px; height: 26px; }
+.play-btn.is-loading svg { animation: spin 0.9s linear infinite; }
+.play-btn:disabled { opacity: 0.5; box-shadow: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Docked mini player (mirrors state; appears once a vocal is chosen) ---------- */
+.mini-player {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 45;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgba(23,23,31,0.08);
+  padding: 9px var(--sp-4);
+  padding-bottom: calc(9px + env(safe-area-inset-bottom, 0));
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  transform: translateY(110%);
+  transition: transform var(--transition-med);
+}
+.mini-player.is-visible { transform: translateY(0); }
+
+.mini-thumb {
+  width: 42px; height: 42px;
+  border-radius: var(--r-s);
+  overflow: hidden;
+  background: var(--surface-sunken);
+  flex-shrink: 0;
+  position: relative;
+}
+.mini-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.mini-eq { position: absolute; inset: 0; background: rgba(23,23,31,0.35); display: none; align-items: flex-end; justify-content: center; gap: 2px; padding: 8px; }
+.mini-thumb.is-playing .mini-eq { display: flex; }
+.mini-eq span { width: 3px; background: #fff; border-radius: 2px; animation: eq 0.9s ease-in-out infinite; }
+.mini-eq span:nth-child(1) { height: 40%; animation-delay: -0.6s; }
+.mini-eq span:nth-child(2) { height: 90%; animation-delay: -0.2s; }
+.mini-eq span:nth-child(3) { height: 60%; animation-delay: -0.9s; }
+@keyframes eq { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+.mini-info { flex: 1; min-width: 0; }
+.mini-title { font-size: 12.5px; font-weight: 700; }
+.mini-sub { font-size: 10.5px; color: var(--ink-faint); margin-top: 1px; }
+
+.mini-controls { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
+.mini-controls .icon-btn { width: 34px; height: 34px; }
+.mini-controls .icon-btn svg { width: 17px; height: 17px; }
+.mini-play {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.mini-play svg { width: 17px; height: 17px; }
+
+.mini-seek {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2.5px;
+  background: var(--line);
+}
+.mini-seek-fill { height: 100%; background: var(--accent); width: 0%; }
+
+@media (min-width: 960px) {
+  .mini-player { display: none; }
+}
