@@ -3,3 +3,4 @@
 .eq-sliders-container { display: flex; justify-content: space-between; margin: 20px 0; height: 150px; }
 .eq-slider-col { display: flex; flex-direction: column; align-items: center; font-size: 10px; }
 .eq-slider-col input[type=range] { writing-mode: bt-lr; -webkit-appearance: slider-vertical; height: 100px; }
+
