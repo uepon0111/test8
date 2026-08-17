@@ -312,3 +312,4 @@ window.deleteTrack = async (trackId) => {
   
   renderPlaylistTracks();
 };
+
