@@ -39,3 +39,4 @@ export const clearAll = async () => {
     req.onsuccess = r;
   })));
 };
+
