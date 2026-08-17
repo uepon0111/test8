@@ -29,3 +29,4 @@ export const extractMetadata = file => new Promise(resolve => {
     }
   });
 });
+
