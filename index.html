@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Player Web App</title>
+  
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/player.css">
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/log.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+  
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- (1) ナビゲーションタブ -->
+    <nav id="nav-tabs">
+      <button class="tab-btn active" data-target="player-view" title="プレイヤー"><i data-lucide="music"></i></button>
+      <button class="tab-btn" data-target="editor-view" title="情報編集"><i data-lucide="edit"></i></button>
+      <button class="tab-btn" data-target="log-view" title="ログ"><i data-lucide="bar-chart-2"></i></button>
+      <button class="tab-btn" data-target="settings-view" title="設定"><i data-lucide="settings"></i></button>
+    </nav>
+
+    <main id="main-content">
+      <!-- プレイヤー画面 -->
+      <section id="player-view" class="view-section active">
+        <!-- (2) プレイヤーウィジェット -->
+        <aside id="player-widget" class="widget">
+          <button id="btn-close-widget" class="mobile-only"><i data-lucide="chevron-down"></i></button>
+          <img id="pw-thumbnail" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23eee'/></svg>" alt="thumbnail">
+          <h2 id="pw-title">タイトル未設定</h2>
+          <p id="pw-artist">アーティスト未設定</p>
+          <input type="range" id="pw-seekbar" min="0" max="100" value="0">
+          <div class="time-display"><span id="pw-time-current">0:00</span> / <span id="pw-time-total">0:00</span></div>
+          <div class="controls row">
+            <button id="pw-btn-random"><i data-lucide="shuffle"></i></button>
+            <button id="pw-btn-prev"><i data-lucide="skip-back"></i></button>
+            <button id="pw-btn-play"><i data-lucide="play"></i></button>
+            <button id="pw-btn-next"><i data-lucide="skip-forward"></i></button>
+            <button id="pw-btn-loop"><i data-lucide="repeat"></i></button>
+          </div>
+          <div class="controls row speed-control">
+            <i data-lucide="fast-forward"></i>
+            <select id="pw-speed">
+              <option value="0.5">0.5x</option>
+              <option value="1.0" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2.0">2.0x</option>
+            </select>
+          </div>
+        </aside>
+
+        <!-- (3) 再生リスト一覧 -->
+        <div id="playlist-container">
+          <div class="top-bar">
+            <input type="text" id="search-bar-player" placeholder="検索 (タイトル, アーティスト, タグ...)">
+            <button id="btn-create-playlist" title="リスト作成"><i data-lucide="folder-plus"></i></button>
+            <button id="btn-add-file" title="ファイル追加"><i data-lucide="file-plus"></i></button>
+          </div>
+          <div class="mid-bar">
+            <div id="playlist-tabs"></div>
+            <button id="btn-multi-select" title="複数選択"><i data-lucide="check-square"></i></button>
+          </div>
+          <div class="sort-bar">
+            <select id="select-sort-player">
+              <option value="manual">手動順</option>
+              <option value="addedAt">追加日順</option>
+              <option value="title">タイトル順</option>
+              <option value="date">投稿日順</option>
+            </select>
+            <button id="btn-sort-order-player" data-order="asc"><i data-lucide="arrow-up"></i></button>
+          </div>
+          <!-- (11) ファイル一覧 (仮想スクロール) -->
+          <div id="track-list" class="virtual-scroll-container">
+            <div class="vs-content"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 情報編集画面 -->
+      <section id="editor-view" class="view-section">
+        <div id="editor-container">
+          <div class="editor-header">
+            <button id="btn-edit-tracks" class="active">曲一覧</button>
+            <button id="btn-edit-tags">タグ管理</button>
+            <button id="btn-edit-artists">アーティスト管理</button>
+          </div>
+          
+          <div id="edit-tracks-sec" class="editor-sub-sec active">
+            <input type="text" id="search-bar-editor" placeholder="検索...">
+            <div class="sort-bar">
+              <select id="select-sort-editor">
+                <option value="addedAt">追加日順</option>
+                <option value="title">タイトル順</option>
+                <option value="date">投稿日順</option>
+              </select>
+              <button id="btn-sort-order-editor" data-order="asc"><i data-lucide="arrow-up"></i></button>
+              <button id="btn-columns-editor" title="列数変更"><i data-lucide="grid"></i></button>
+            </div>
+            <div id="edit-track-list" class="grid-list grid-cols-4 virtual-scroll-container">
+              <div class="vs-content"></div>
+            </div>
+          </div>
+
+          <div id="edit-tags-sec" class="editor-sub-sec hidden">
+            <button id="btn-create-tag"><i data-lucide="plus"></i> 新規タグ作成</button>
+            <div id="tag-list" class="list-container"></div>
+          </div>
+
+          <div id="edit-artists-sec" class="editor-sub-sec hidden">
+            <button id="btn-create-artist"><i data-lucide="plus"></i> 新規アーティスト作成</button>
+            <div id="artist-list" class="list-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ログ画面 -->
+      <section id="log-view" class="view-section">
+        <div class="log-header">
+          <h2>再生ログ・統計情報</h2>
+          <select id="log-period">
+            <option value="today">本日</option>
+            <option value="week">今週</option>
+            <option value="month">今月</option>
+            <option value="year">今年</option>
+            <option value="all" selected>全期間</option>
+          </select>
+        </div>
+        <div id="anniversary-banner" class="hidden"></div>
+        <div class="charts-grid">
+          <div class="chart-card"><canvas id="chart-artists"></canvas></div>
+          <div class="chart-card"><canvas id="chart-tags"></canvas></div>
+        </div>
+        <div class="highlight-list">
+          <h3>よく聴いた曲</h3>
+          <div id="log-top-tracks"></div>
+        </div>
+      </section>
+
+      <!-- 設定画面 -->
+      <section id="settings-view" class="view-section">
+        <h2>設定</h2>
+        
+        <div class="setting-card">
+          <h3>イコライザ</h3>
+          <select id="eq-preset">
+            <option value="flat">ノーマル (フラット)</option>
+            <option value="pop">ポップ</option>
+            <option value="rock">ロック</option>
+            <option value="classic">クラシック</option>
+            <option value="jazz">ジャズ</option>
+            <option value="bass">低音強調</option>
+            <option value="treble">高音強調</option>
+            <option value="voice">ボイス</option>
+            <option value="custom">カスタム</option>
+          </select>
+          <div id="eq-sliders" class="eq-sliders-container"></div>
+          <div class="eq-sample">
+            <p>サンプル音源で聴き比べ:</p>
+            <audio id="sample-audio" src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=jazzy-abstract-beat-11254.mp3" controls loop crossorigin="anonymous"></audio>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <h3>ストレージ管理</h3>
+          <p id="storage-usage">計算中...</p>
+          <div class="progress-bar"><div id="storage-progress" style="width: 0%"></div></div>
+          <p id="storage-warning" class="warning hidden">容量が逼迫しています！不要な曲を削除してください。</p>
+          <button id="btn-clear-cache" class="danger-btn"><i data-lucide="trash-2"></i> すべてのデータを削除 (初期化)</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- (12) 簡易プレイヤーウィジェット -->
+    <div id="mini-player-widget">
+      <img id="mp-thumbnail" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23eee'/></svg>" alt="thumbnail">
+      <div class="mp-info">
+        <h4 id="mp-title">未設定</h4>
+        <p id="mp-artist">未設定</p>
+      </div>
+      <div class="mp-controls">
+        <button id="mp-btn-prev"><i data-lucide="skip-back"></i></button>
+        <button id="mp-btn-play"><i data-lucide="play"></i></button>
+        <button id="mp-btn-next"><i data-lucide="skip-forward"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル群 (ファイル追加・編集など) -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-content"></div>
+  </div>
+
+  <audio id="core-audio"></audio>
+</body>
+</html>
