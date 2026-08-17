@@ -132,3 +132,4 @@ const showArtistModal = () => {
     save('artists', a).then(() => { state.artists.push(a); renderArtists(); });
   }
 };
+
