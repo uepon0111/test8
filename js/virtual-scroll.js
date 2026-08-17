@@ -37,3 +37,4 @@ export class VirtualScroll {
     if (window.lucide) window.lucide.createIcons();
   }
 }
+
