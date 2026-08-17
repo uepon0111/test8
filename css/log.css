@@ -1,0 +1,6 @@
+#log-view { flex-direction: column; padding: 20px; overflow-y: auto; gap: 20px; }
+.log-header { display: flex; justify-content: space-between; align-items: center; }
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.chart-card { background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 15px; }
+#anniversary-banner { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); color: #fff; padding: 15px; border-radius: var(--radius); font-weight: bold; }
+.highlight-list { background: var(--bg-secondary); padding: 15px; border-radius: var(--radius); }
