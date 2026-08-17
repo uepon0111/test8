@@ -53,3 +53,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     alert("データの読み込みに失敗しました。シークレットモード等の制限を確認してください。");
   }
 });
+
