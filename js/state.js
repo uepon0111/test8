@@ -34,3 +34,4 @@ export const loadData = async () => {
   state.artists = await getAll('artists');
   state.logs = await getAll('logs');
 };
+
