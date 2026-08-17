@@ -1,0 +1,7 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg-color); color: var(--text-color); overflow: hidden; }
+button { background: none; border: none; cursor: pointer; color: inherit; font: inherit; }
+button:hover { opacity: 0.8; }
+button i { stroke-width: 2; width: 20px; height: 20px; }
+input, select { border: 1px solid var(--border-color); border-radius: var(--radius); padding: 8px; font: inherit; }
+.hidden { display: none !important; }
