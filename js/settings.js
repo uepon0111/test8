@@ -27,3 +27,4 @@ export const initSettings = async () => {
     $('storage-usage').textContent = "お使いのブラウザでは容量取得がサポートされていません";
   }
 };
+
