@@ -5,3 +5,4 @@
 .progress-bar { width: 100%; background: #ddd; height: 10px; border-radius: 5px; margin-top: 10px; }
 #storage-progress { height: 100%; background: var(--accent-color); border-radius: 5px; transition: 0.3s; }
 .tag-chip { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; color: #fff; margin-right: 5px; }
+
