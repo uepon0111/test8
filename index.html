@@ -49,8 +49,7 @@ button.tg.more{background:var(--sb);color:var(--mu)}.tg.ok{background:#E3F6EF;co
 .libtd{display:flex;align-items:center;gap:6px;min-width:0}.libtd i{display:block;width:9px;height:9px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(32,36,43,.08)}
 .card{background:var(--cd);border:1px solid var(--ln);border-radius:16px;box-shadow:var(--sh)}
 .th{--s:64px;width:var(--s);height:var(--s);border-radius:12px;position:relative;overflow:hidden;flex:none}
-.th::after{content:attr(data-c);position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:calc(var(--s)*.42);color:rgba(255,255,255,.8)}
-.th.fl{width:100%;height:auto;aspect-ratio:1;border-radius:20px}.th.rd{border-radius:50%}
+.th::after{content:attr(data-c);position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:calc(var(--s)*.42);color:rgba(255,255,255,.8);pointer-events:none}.th .thi{display:block;width:100%;height:100%;object-fit:cover;object-position:center;position:relative;z-index:1}.th.fl{width:100%;height:auto;aspect-ratio:1;border-radius:20px}.th.rd{border-radius:50%}
 .sec{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:32px 0 14px}.sec:first-child{margin-top:8px}.sec h2{font-size:20px;font-weight:700}
 .lk{color:var(--ac);font-weight:600;font-size:13px}
 .hero{position:relative;border-radius:24px;overflow:hidden;height:clamp(280px,min(44vw,60svh),420px);background:#20242B;box-shadow:var(--sh)}
@@ -442,7 +441,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const fileExt=n=>(String(n).match(/\.([^.]+)$/)?.[1]||'').toLowerCase();
 const hashHue=v=>{let h=0;for(const ch of String(v||'')){h=((h<<5)-h+ch.codePointAt(0))|0}return ((h%360)+360)%360};
 const bgStyle=s=>s?.coverUrl?`background-image:url('${String(s.coverUrl).replace(/'/g,'%27')}');background-size:cover;background-position:center`:`background:${g(s?.h??hashHue(s?.t||''))}`;
-const th=(s,px,c='')=>`<div class="th ${c}" style="--s:${px}px;${bgStyle(s)}" data-c="${s?.coverUrl?'':esc((s?.t||'?')[0])}"></div>`;
+const th=(s,px,c='')=>{const cover=s?.coverUrl?`<img class="thi" src="${esc(String(s.coverUrl))}" alt="" aria-hidden="true" onerror="this.remove()">`:'';return `<div class="th ${c}" style="--s:${px}px;${bgStyle(s)}" data-c="${esc((s?.t||'?')[0])}">${cover}</div>`};
 const av=(n,h,px)=>`<div class="th rd" style="--s:${px}px;background:${g(h)}" data-c="${esc((n||'?')[0])}"></div>`;
 /* ---- 実データ・ファイル読込 ---- */
 const KEYS=['C','Cm','D','Dm','E','Em','F','G','Gm','A','Am','B♭'];
@@ -816,7 +815,7 @@ const EQF=['60','250','1k','4k','8k','16k'],PRE=[['フラット',[0,0,0,0,0,0]],
 const sr=(b,d,c)=>`<div class="sr"><div><b>${b}</b>${d?`<p class="mu sm">${d}</p>`:''}</div>${c}</div>`;
 const settingSw=(key,on)=>`<button class="swt${on?' on':''}" role="switch" aria-checked="${!!on}" data-setting="${key}"></button>`;
 function renderSettings(){const st=appState.settings;$('#stg').innerHTML=`<div class="card sx" id="s1"><h3>再生</h3>${sr('自動再生','追加後や起動時に再生を始めます',settingSw('autoPlay',st.autoPlay))}${sr('再生速度','',`<select data-setting="speed">${[.5,.75,1,1.25,1.5,2].map(v=>`<option value="${v}"${Number(st.speed)===v?' selected':''}>${v.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}x</option>`).join('')}</select>`)}</div><div class="card sx" id="s2"><h3>オーディオ</h3>${sr('イコライザ','',settingSw('eqEnabled',st.eqEnabled))}<div class="eqdet ${st.eqEnabled?'on':''}" id="eqdet"><div class="chips">${PRE.map((p,k)=>`<button class="chp${Number(st.eqPreset)===k?' on':''}" data-a="pre" data-i="${k}">${p[0]}</button>`).join('')}</div><div class="eq" id="eq">${EQF.map((f,i)=>`<label><input type="range" min="-12" max="12" step="1" value="${Number(st.eqValues?.[i])||0}" data-eq-index="${i}" aria-label="${f}Hz"><span>${f}</span></label>`).join('')}</div></div>${sr('音量補正','簡易ダイナミック補正を適用します',settingSw('normalizeVolume',st.normalizeVolume))}</div><div class="card sx" id="s3"><h3>キャッシュ・データ</h3><div class="sr cl"><div id="storageStats"></div></div>${sr('キャッシュを削除','再生履歴と曲情報は残ります','<button class="btn" data-a="cc">キャッシュを削除</button>')}${sr('すべてのローカルデータを削除','曲・プレイリスト・履歴もすべて削除されます','<button class="btn dgo" data-a="ca">すべて削除</button>')}</div><div class="card sx" id="s4"><h3>アプリ</h3>${[['Space','再生／一時停止'],['←','5秒戻る'],['→','5秒進む'],['N','次へ'],['P','前へ'],['R','ループ'],['S','シャッフル']].map(([k,l])=>sr(l,'',`<kbd>${k}</kbd>`)).join('')}</div>`;$('#sn').innerHTML=[['s1','再生'],['s2','オーディオ'],['s3','キャッシュ・データ'],['s4','アプリ']].map(([id,t])=>`<button data-a="scr" data-t="${id}">${t}</button>`).join('');updateStorageStats()}
-const setEqPreset=k=>{const idx=Math.max(0,Math.min(PRE.length-1,Number(k)||0));appState.settings.eqPreset=idx;appState.settings.eqValues=PRE[idx][1].slice();applyAudioSettings();scheduleStateSave();renderSettings()};
+const setEqPreset=k=>{const idx=Math.max(0,Math.min(PRE.length-1,Number(k)||0));appState.settings.eqPreset=idx;appState.settings.eqValues=PRE[idx][1].slice();if(audioGraphNeeded())ensureAudioGraph();applyAudioSettings();scheduleStateSave();renderSettings()};
 /* ---- プレイヤー（読み込んだ曲をUIへ接続） ---- */
 const SP=[.5,.75,1,1.25,1.5,2],sl=v=>(Number.isInteger(v)?v.toFixed(1):v)+'x';
 let spi=2,sh=false,lp=false,playing=false,t=0,base=[],order=[],pos=0,playKey=KEYS[0];
@@ -843,6 +842,7 @@ function applyAudioSettings(){
  if(normalizeNode){if(appState.settings.normalizeVolume){normalizeNode.threshold.value=-24;normalizeNode.knee.value=18;normalizeNode.ratio.value=3.5;normalizeNode.attack.value=.003;normalizeNode.release.value=.25}else{normalizeNode.threshold.value=0;normalizeNode.knee.value=0;normalizeNode.ratio.value=1;normalizeNode.attack.value=.003;normalizeNode.release.value=.25}}
 }
 async function resumeAudioContext(){if(!audioCtx)return;try{if(audioCtx.state==='suspended')await audioCtx.resume()}catch{}}
+const audioGraphNeeded=()=>!!(appState.settings.normalizeVolume||(appState.settings.eqEnabled&&Array.isArray(appState.settings.eqValues)&&appState.settings.eqValues.some(v=>Number(v)!==0)));
 function beginHistorySession(s,countPlay=false){if(!s)return;if(historySession&&historySession.trackId===s.id){historyFlushAt=performance.now();return}flushHistorySession(false);const entry={trackId:s.id,startedAt:Date.now(),seconds:0};appState.history.push(entry);if(countPlay)s.p=Number(s.p||0)+1;historySession={trackId:s.id,entry,lastClock:performance.now()};historyFlushAt=historySession.lastClock;rebuildDerivedStats();scheduleStateSave();if(countPlay){saveTrack(s).catch(()=>{});home();kpis('30日');line('30日');statp('曲')}}
 function flushHistorySession(keep=true){if(!historySession)return;const nowp=performance.now();const delta=Math.max(0,(nowp-historySession.lastClock)/1000);if(delta>0)historySession.entry.seconds+=delta*Math.max(.1,media.playbackRate||1);historySession.lastClock=nowp;if(!keep)historySession=null;scheduleStateSave();if(!keep){home();kpis('30日');line('30日');statp('曲')}}
 function updateMediaSourceAfterCacheClear(){const s=cur();if(!s)return;const wasPlaying=!media.paused;if(mediaTrackId===s.id){media.pause();media.removeAttribute('src');media.load();mediaTrackId=null;setMediaSource(s,true);if(wasPlaying)startMedia(s,true,false).catch(()=>{})}}
@@ -863,7 +863,9 @@ const setMediaSource=(s,reset=true)=>{
 };
 const startMedia=async(s,reset=false,recordPlay=false)=>{
  if(!setMediaSource(s,reset))return false;
- ensureAudioGraph();
+ /* Web Audio は音質補正が必要な時だけ使用し、通常再生はネイティブAudio要素を維持する。
+    iOS/Safariでバックグラウンド時にAudioContextが停止して無音になる経路を避ける。 */
+ if(audioGraphNeeded())ensureAudioGraph();
  const token=mediaLoadToken;
  try{
   const playPromise=media.play();
@@ -1036,8 +1038,8 @@ $('#add').onclick=()=>{if(cv==='library'){toggleAdd();return}if(cv==='playlists'
 document.addEventListener('input',e=>{const o=e.target;if(o.classList.contains('cp')){const r=o.closest('.tr'),t1=TAGS[+r.dataset.t];if(t1){t1.c=o.value;$('.pv',r).innerHTML=chip(t1);appState.tags=TAGS.map(t=>({i:t.i,n:t.n,c:t.c}));scheduleStateSave()}}});
 document.addEventListener('change',e=>{const o=e.target;if(o.id==='spb'||o.id==='fpSp')setPlaySpeed(o.value);else if(o.id==='pkb'||o.id==='fpKey')setPlayKey(o.value);else if(o.id==='fa2'||o.id==='fpl'||o.closest('#flt'))applyLibraryView();else if(o.closest('#cust')){const per='カスタム';kpis(per);line(per);statp($('.seg[data-g="pv"] .on')?.dataset.k||'曲',per)}});
 document.addEventListener('input',e=>{if(e.target.id==='q'){const v=e.target.value.trim(),b=$('#sg');libSearch=v;if(!v){b.classList.remove('on');applyLibraryView();return}const low=v.toLocaleLowerCase('ja'),r=[];S.forEach(s=>{if(s.t.toLocaleLowerCase('ja').includes(low))r.push(['タイトル',s.t]);if(an(s).toLocaleLowerCase('ja').includes(low))r.push(['アーティスト',an(s)])});TAGS.forEach(t=>{if(t.n.toLocaleLowerCase('ja').includes(low))r.push(['タグ',t.n])});b.innerHTML=r.slice(0,6).map(([k,x])=>`<button><em>${esc(k)}</em><span>${esc(x)}</span></button>`).join('')||'<p class="mu">該当する項目がありません</p>';b.classList.add('on');applyLibraryView()}});
-document.addEventListener('click',e=>{const swb=e.target.closest('.swt');if(!swb)return;const key=swb.dataset.setting;if(!(key in appState.settings))return;appState.settings[key]=!appState.settings[key];if(key==='eqEnabled')$('#eqdet')?.classList.toggle('on',appState.settings.eqEnabled);applyAudioSettings();scheduleStateSave();renderSettings();});
-document.addEventListener('input',e=>{const o=e.target;if(o.dataset.eqIndex!=null){const i=Number(o.dataset.eqIndex);if(Number.isInteger(i)){appState.settings.eqValues[i]=Number(o.value)||0;appState.settings.eqPreset=-1;applyAudioSettings();scheduleStateSave()}}});
+document.addEventListener('click',e=>{const swb=e.target.closest('.swt');if(!swb)return;const key=swb.dataset.setting;if(!(key in appState.settings))return;appState.settings[key]=!appState.settings[key];if(key==='eqEnabled')$('#eqdet')?.classList.toggle('on',appState.settings.eqEnabled);if(audioGraphNeeded())ensureAudioGraph();applyAudioSettings();scheduleStateSave();renderSettings();});
+document.addEventListener('input',e=>{const o=e.target;if(o.dataset.eqIndex!=null){const i=Number(o.dataset.eqIndex);if(Number.isInteger(i)){appState.settings.eqValues[i]=Number(o.value)||0;appState.settings.eqPreset=-1;if(audioGraphNeeded())ensureAudioGraph();applyAudioSettings();scheduleStateSave()}}});
 $('#vs').addEventListener('scroll',vs,{passive:true});addEventListener('resize',()=>{vs();syncSide()});
 ['dragenter','dragover'].forEach(n=>addEventListener(n,e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){e.preventDefault();$('#dz').classList.add('over')}}));addEventListener('dragleave',e=>{if(!e.relatedTarget)$('#dz').classList.remove('over')});addEventListener('drop',e=>{const d=e.target.closest('#dz');if(!d||cv!=='library')return;e.preventDefault();d.classList.remove('over');upload(e.dataTransfer.files)});$('#audioPicker').addEventListener('change',e=>{const files=e.target.files;upload(files);e.target.value=''});
 addEventListener('visibilitychange',()=>{if(document.hidden)flushHistorySession(true)});addEventListener('beforeunload',()=>{flushHistorySession(false);saveStateSync()});
