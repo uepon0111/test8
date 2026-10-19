@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://asset3.pjsekai.moe" crossorigin>
 <title>Project SEKAI Chart Player</title>
 <style>
   :root {
@@ -36,34 +37,14 @@
   .panel { background:linear-gradient(180deg,rgba(27,33,58,.96),rgba(19,24,43,.98)); border:1px solid var(--line); border-radius:20px; box-shadow:0 18px 55px #0005; overflow:hidden; }
   .player-panel { padding:14px; }
   .stage-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 4px 12px; }
-  .stage-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-  .mode-btn { border:1px solid #70d9ef66; color:#dffaff; background:linear-gradient(180deg,#1a5870,#123b53); padding:7px 10px; border-radius:9px; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 0 14px #26c8ef1c; }
-  .mode-btn[aria-pressed="true"] { color:#102633; background:linear-gradient(180deg,#b5f1ff,#55c8e9); border-color:#d9fbff; }
   .song-info { min-width:0; }
   .song-info .eyebrow { color:#b6a7ff; text-transform:uppercase; letter-spacing:.16em; font-size:9px; font-weight:800; }
   .song-info h2 { margin:4px 0 2px; font-size:16px; line-height:1.25; overflow-wrap:anywhere; }
   .song-info p { color:var(--muted); margin:0; font-size:11px; }
   .diff { padding:6px 9px; border-radius:9px; background:#ff6bb01b; border:1px solid #ff83bf55; color:#ffb0d4; font-size:10px; font-weight:800; letter-spacing:.08em; white-space:nowrap; }
-  .screen { position:relative; border-radius:15px; overflow:hidden; background:#080d18; border:1px solid rgba(178,221,238,.32); box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 10px 34px #0007; }
-  #gameCanvas { display:block; width:100%; height:560px; touch-action:pan-y; }
-  .screen-overlay { position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; }
-  .hud-top { padding:10px 13px 0; background:linear-gradient(180deg,rgba(4,9,18,.82),rgba(4,9,18,.25),transparent); }
-  .screen-topline { display:flex; justify-content:space-between; align-items:center; color:#effaff; font-size:10px; font-weight:800; text-shadow:0 2px 6px #000; }
-  .live-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:99px; border:1px solid #6be3ff55; color:#c6f6ff; background:#12354cae; font-size:8px; letter-spacing:.12em; }
-  .live-chip i { width:5px; height:5px; border-radius:50%; background:#63e5ff; box-shadow:0 0 8px #63e5ff; }
-  .play-hud { display:flex; align-items:end; justify-content:space-between; gap:14px; margin-top:7px; }
-  .score-hud small,.life-hud small { display:block; color:#a7c0d2; font-size:7px; font-weight:800; letter-spacing:.18em; }
-  .score-hud strong { display:block; margin-top:1px; color:#f8fdff; font-size:16px; line-height:1; letter-spacing:.08em; text-shadow:0 1px 5px #000; }
-  .score-hud em { color:#83d9ed; font-size:7px; font-style:normal; margin-left:5px; letter-spacing:.1em; }
-  .life-hud { width:min(39%,220px); }
-  .life-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-  .life-top strong { color:#f6fdff; font-size:9px; text-shadow:0 1px 4px #000; }
-  .life-track { height:6px; overflow:hidden; border:1px solid #d9f5ff66; border-radius:8px; background:#152433d9; box-shadow:0 1px 6px #0009; }
-  .life-track i { display:block; height:100%; width:100%; border-radius:8px; background:linear-gradient(90deg,#48d4ad,#a9f4d7); box-shadow:0 0 9px #68e7c9; }
-  .combo { align-self:center; text-align:center; margin-top:auto; margin-bottom:98px; font-weight:900; font-size:23px; letter-spacing:.06em; color:#fff; text-shadow:0 0 13px #b6eaff,0 2px 5px #000; opacity:.94; }
-  .combo small { display:block; color:#e2f5ff; font-size:8px; letter-spacing:.25em; }
-  .screen-bottomline { display:flex; justify-content:space-between; align-items:center; padding:0 12px 8px; color:#a9c3d3; font-size:7px; font-weight:800; letter-spacing:.14em; text-shadow:0 1px 4px #000; }
-  .judgement-label { position:absolute; bottom:49px; left:0; right:0; text-align:center; color:#f7fdff; font-size:9px; letter-spacing:.35em; font-weight:900; text-shadow:0 0 9px #53dfff,0 2px 5px #000; }
+  .screen { position:relative; aspect-ratio:2.15 / 1; width:100%; border-radius:10px; overflow:hidden; background:#11162b; border:1px solid rgba(185,194,255,.22); box-shadow:inset 0 0 0 1px #ffffff12,0 8px 24px #0008; }
+  #gameCanvas { position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:pan-y; }
+  .screen-overlay,.judgement-label { display:none; }
   .transport { padding:13px 3px 2px; }
   .transport-main { display:flex; align-items:center; gap:8px; }
   .play-btn { flex:0 0 47px; width:47px; height:43px; border:0; border-radius:13px; color:#15142a; background:linear-gradient(135deg,#c4b5fd,#67e8f9); font-size:17px; box-shadow:0 6px 20px #8b5cf633; }
@@ -96,15 +77,13 @@
   .stat strong { font-size:17px; font-variant-numeric:tabular-nums; }
   .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; }
   .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:#c6cce2; }
-  /* Gameplay note families: cyan tap, green slide/trace, red flick,
-     yellow critical, purple damage. Trace is intentionally slim/translucent. */
-  .swatch { width:27px; height:10px; border-radius:5px; background:#39c4e8; color:#39c4e8; border:1px solid #e6fbff; box-shadow:0 0 0 1px #062230,0 0 8px currentColor; }
-  .swatch.critical { background:#ffd64d; color:#ffd64d; }
-  .swatch.flick { background:#fa5968; color:#fa5968; }
-  .swatch.slide { background:#35c980; color:#35c980; height:8px; border-width:1.5px; }
-  .swatch.trace { position:relative; height:5px; background:#79efa9; color:#79efa9; border-color:#f0fff5; box-shadow:0 0 0 1px #123b2a,0 0 10px #79efa9; }
-  .swatch.trace::after { content:""; position:absolute; left:50%; top:50%; width:7px; height:7px; transform:translate(-50%,-50%) rotate(45deg); background:#eafff2; border:1px solid #27a45d; box-shadow:0 0 4px #79efa9; }
-  .swatch.damage { height:7px; background:#a982ed; color:#a982ed; border-color:#f1e5ff; }
+  /* Project SEKAI note palette: tap=cyan, slide/trace=green, flick=pink/red,
+     critical=yellow; TapType::Damage uses the normal tap sprite. */
+  .swatch { width:26px; height:9px; border-radius:6px; background:linear-gradient(180deg,#ffffff,#74c9ef 55%,#278abf); color:#76d7fb; box-shadow:0 0 8px currentColor; }
+  .swatch.critical { background:linear-gradient(180deg,#fffde4,#ffe277 55%,#e6a92c); color:#ffd66d; }
+  .swatch.flick { background:linear-gradient(180deg,#fff,#d6d5ff 48%,#7f8de8); color:#aab6ff; }
+  .swatch.slide { background:#c9fce2; color:#9ff3c7; height:7px; box-shadow:0 0 8px currentColor; }
+  .swatch.trace { background:linear-gradient(90deg,#c9fce2,#75e5b5); color:#a9ffd0; height:7px; }
   .ref-card { display:flex; align-items:center; gap:12px; background:#10162a; border:1px solid var(--line); padding:10px; border-radius:12px; }
   .ref-card img { width:78px; height:48px; object-fit:cover; object-position:center; border-radius:7px; background:#8e60aa; }
   .ref-card div { min-width:0; flex:1; }
@@ -115,18 +94,8 @@
   details img { width:100%; margin-top:10px; border-radius:9px; border:1px solid var(--line); }
   .foot { margin:17px 4px 0; color:#7f8aaa; font-size:9px; line-height:1.6; }
   .file-hidden { display:none; }
-  /* Dedicated game-screen view: widen the playfield and remove the settings rail. */
-  .app.game-screen-mode { max-width:1160px; }
-  .app.game-screen-mode .layout { display:block; max-width:1080px; margin:0 auto; }
-  .app.game-screen-mode .player-panel { padding:18px; }
-  .app.game-screen-mode .side-panel { display:none; }
-  .app.game-screen-mode .stage-head { max-width:100%; }
-  .app.game-screen-mode .screen { border-radius:12px; border-color:#b7eaff66; box-shadow:0 0 0 1px #07121f,0 14px 45px #0009,0 0 34px #25c9ef1c; }
-  .app.game-screen-mode #gameCanvas { height:min(72vh,780px); min-height:520px; }
-  .app.game-screen-mode .transport { max-width:900px; margin:0 auto; }
-  .app.game-screen-mode .help-line { text-align:center; }
-  @media (max-width: 900px) { .layout { grid-template-columns:1fr; max-width:560px; margin:auto; } .side-panel { order:2; } .app.game-screen-mode .layout { max-width:100%; } }
-  @media (max-width: 520px) { .app { padding:13px 10px 25px; } .topbar { margin-bottom:14px; } .brand h1 { font-size:15px; } .top-pill { display:none; } .player-panel { padding:10px; } #gameCanvas { height:500px; } .side-panel { padding:15px; } .stage-actions { gap:5px; } .mode-btn { padding:7px 8px; font-size:9px; } .app.game-screen-mode { padding:8px 6px 18px; } .app.game-screen-mode .player-panel { padding:8px; } .app.game-screen-mode #gameCanvas { height:calc(100svh - 240px); min-height:390px; } .app.game-screen-mode .stage-head { padding:3px 2px 9px; } .app.game-screen-mode .combo { margin-bottom:88px; } }
+  @media (max-width: 900px) { .layout { grid-template-columns:1fr; max-width:560px; margin:auto; } .side-panel { order:2; } }
+  @media (max-width: 520px) { .app { padding:13px 10px 25px; } .topbar { margin-bottom:14px; } .brand h1 { font-size:15px; } .top-pill { display:none; } .player-panel { padding:8px; } .side-panel { padding:15px; } .song-info h2 {font-size:13px;} }
 </style>
 </head>
 <body>
@@ -136,36 +105,22 @@
       <div class="brand-mark">♪</div>
       <div><h1>Project SEKAI Chart Player</h1><p>Interactive chart preview</p></div>
     </div>
-    <div class="top-pill">EXACT SUS SLOT · SVG SEGMENT LINK</div>
+    <div class="top-pill">12-LANE PERSPECTIVE · GAME VIEW</div>
   </header>
 
   <main class="layout">
     <section class="panel player-panel" aria-label="譜面プレイヤー">
       <div class="stage-head">
         <div class="song-info">
-          <div class="eyebrow">Now Previewing</div>
+          <div class="eyebrow">Now Previewing · GAME VIEW</div>
           <h2 id="songTitle">SUSデモ譜面</h2>
           <p id="songArtist">内蔵テストデータ · BPM変化・フリック・スライド</p>
         </div>
-        <div class="stage-actions">
-          <div class="diff" id="difficulty">EXPERT</div>
-          <button class="mode-btn" id="gameViewButton" type="button" aria-pressed="false">ゲーム画面モード</button>
-        </div>
+        <div class="diff" id="difficulty">EXPERT</div>
       </div>
-      <div class="screen">
-        <canvas id="gameCanvas" aria-label="ゲーム画面風の流れる譜面"></canvas>
-        <div class="screen-overlay">
-          <div class="hud-top">
-            <div class="screen-topline"><span id="bpmHud">BPM 170</span><span class="live-chip"><i></i><span id="chartStatus">AUTO PREVIEW</span></span></div>
-            <div class="play-hud">
-              <div class="score-hud"><small>LIVE CHART</small><strong>PREVIEW<em>MODE</em></strong></div>
-              <div class="life-hud"><div class="life-top"><small>LIFE (DISPLAY)</small><strong>100%</strong></div><div class="life-track"><i></i></div></div>
-            </div>
-          </div>
-          <div class="combo"><span id="comboNumber">0</span><small>COMBO ESTIMATE</small></div>
-          <div class="screen-bottomline"><span>PROJECT SEKAI STYLE</span><span>VISUAL PREVIEW · NO JUDGEMENT</span></div>
-        </div>
-        <div class="judgement-label">J U D G E M E N T</div>
+      <div class="screen" aria-label="プロセカ風ゲームプレイ画面">
+        <canvas id="gameCanvas" aria-label="遠近法で流れるプロジェクトセカイ譜面"></canvas>
+        <div hidden><span id="bpmHud"></span><span id="chartStatus"></span><span id="comboNumber"></span></div>
       </div>
       <div class="transport">
         <div class="transport-main">
@@ -215,12 +170,10 @@
       <section class="section">
         <h3>ノーツの種類</h3>
         <div class="legend">
-          <div class="legend-item"><i class="swatch"></i>タップ（シアン）</div>
-          <div class="legend-item"><i class="swatch slide"></i>スライド（緑）</div>
-          <div class="legend-item"><i class="swatch flick"></i>フリック（赤）</div>
-          <div class="legend-item"><i class="swatch critical"></i>クリティカル（黄）</div>
-          <div class="legend-item"><i class="swatch trace"></i>トレース（細身・菱形マーカー）</div>
-          <div class="legend-item"><i class="swatch damage"></i>ダメージ（紫）</div>
+          <div class="legend-item"><i class="swatch"></i>通常タップ</div>
+          <div class="legend-item"><i class="swatch trace"></i>トレース（専用素材）</div>
+          <div class="legend-item"><i class="swatch flick"></i>フリック（矢印付き）</div>
+          <div class="legend-item"><i class="swatch critical"></i>クリティカル</div>
         </div>
       </section>
 
@@ -234,7 +187,7 @@
         <details><summary>参照PNGをページ内で表示</summary><img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewer generated chart for music 0304 append"></details>
       </section>
 
-      <p class="foot">本ツールはブラウザ内で動作する非公式プレビューです。SUSの拍位置は分数として厳密に照合し、レーン・幅・ノーツ種別を保持します。方向ノーツは同じ位置・レーン・幅のタップだけに結合します。SVGはセクション単位でスライド経路と矢印画像を照合し、描画元が矢印を出力しない方向は矢印を補完しません。ゲーム本体の判定・演出・スキンを完全再現するものではありません。</p>
+      <p class="foot">通常ノーツは asset3.pjsekai.moe のゲーム用ノーツ画像（notes_0～6.png）を直接使用します。トレースの中継点とフリック矢印も専用画像を読み込みます。素材が取得できない場合のみ色分けした代替描画に切り替わります。背景・遠近法・HUDはプレイ画面を参考にした非公式プレビューです。</p>
     </aside>
   </main>
 </div>
@@ -248,10 +201,36 @@
   const canvas = $('gameCanvas');
   const ctx = canvas.getContext('2d');
   const state = {
-    chart: null, playing: false, time: -0.6, duration: 30, speed: 1,
+    chart: null, playing: false, time: -2.35, duration: 30, speed: 1,
     lastFrame: 0, raf: 0, width: 0, height: 0, dpr: 1,
     glow: true, activeSource: 'demo',
   };
+  // Reuse the same note sprites used by the public Project SEKAI chart renderer.
+  // Images are drawn directly into the canvas; no pixel readback is performed.
+  const NOTE_ASSET_BASE = 'https://asset3.pjsekai.moe/live/note/custom01/';
+  const spriteCache = new Map();
+  function spriteImage(file) {
+    if (!file) return null;
+    if (spriteCache.has(file)) return spriteCache.get(file);
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => { if (state.chart) render(); };
+    img.onerror = () => { img.dataset.failed = '1'; if (state.chart) render(); };
+    img.src = /^https?:\/\//i.test(file) ? file : NOTE_ASSET_BASE + file;
+    spriteCache.set(file, img);
+    return img;
+  }
+  for (let i=0; i<=6; i++) spriteImage(`notes_${i}.png`);
+  ['notes_long_among.png','notes_long_among_crtcl.png',
+   'notes_friction_among_long.png','notes_friction_among_flick.png',
+   'notes_friction_among_crtcl.png'].forEach(spriteImage);
+  let stageJacketImage = null;
+  let stageJacketUrl = '';
+  function setStageJacket(url) {
+    if (!url || url === stageJacketUrl) return;
+    stageJacketUrl = url;
+    stageJacketImage = spriteImage(url);
+  }
 
   const BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const b36 = (c) => {
@@ -409,8 +388,8 @@
       target.tapType = tap.noteType;
       target.critical = [2, 6, 8].includes(tap.noteType);
       target.trend = [5, 6].includes(tap.noteType);
-      target.damage = tap.noteType === 4;
-      target.skillActivation = false;
+      target.damage = false;
+      target.skillActivation = tap.noteType === 4;
       target.cancelled = [7, 8].includes(tap.noteType);
     };
 
@@ -476,9 +455,10 @@
       tapType: tap?.noteType ?? null,
       critical: !!tap && [2, 6, 8].includes(tap.noteType),
       trend: !!tap && [5, 6].includes(tap.noteType),
-      // TapType::Damage (4) is a distinct purple, slim gameplay note.
-      damage: !!tap && tap.noteType === 4,
-      skillActivation: false,
+      // TapType::Damage (4) is rendered by pjsekai-scores-rs with the
+      // ordinary tap sprite; keep its semantic flag without purple styling.
+      damage: false,
+      skillActivation: !!tap && tap.noteType === 4,
       cancelled: !!tap && [7, 8].includes(tap.noteType),
     });
     const directionalMeta = (directional) => tapMeta(directional?.attachedTap);
@@ -494,7 +474,6 @@
         // Directional. Unlike critical, trend is NOT inherited from the head.
         trend: own.trend,
         cancelled: !!slide.attachedTap && own.cancelled,
-        damage: own.damage || headFlags.damage,
       };
     };
 
@@ -569,8 +548,6 @@
           direction: current.attachedDirectional?.noteType || 0,
           decoration: current.decoration,
           critical: slideMeta(current).critical,
-          damage: slideMeta(current).damage,
-          trend: slideMeta(current).trend,
         });
         current = next;
       }
@@ -861,12 +838,14 @@
     if (!notes.length) throw new Error('SVG内に譜面ノーツがありません。');
     const titleEl = root.querySelector('text.title');
     const subtitleEl = root.querySelector('text.subtitle');
+    const jacketEl = [...root.children].find(el => el.localName.toLowerCase() === 'image');
     const title = titleEl ? titleEl.textContent.trim() : '読み込んだSVG譜面';
     const subtitle = subtitleEl ? subtitleEl.textContent.trim() : '';
+    const jacket = jacketEl ? (jacketEl.getAttribute('href') || jacketEl.getAttributeNS('http://www.w3.org/1999/xlink','href') || '') : '';
     const duration = Math.max(segmentStart, ...notes.map(n => n.time + 1));
     const unsupportedSymbols = notes.filter(n => ![0,1,2,3,4,5,6].includes(n.symbolType)).length;
     return {
-      meta:{ title, artist:subtitle, difficulty:'SVG', level:'' }, notes,
+      meta:{ title, artist:subtitle, difficulty:'SVG', level:'', jacket }, notes,
       timing:[], marks, slideLinks:[], slidePaths, markers, duration,
       bpm:'—', format:'SVG', rawNoteCount:notes.length,
       parserVersion:'3.6-scores-rs-svg-geometry-and-overlay-fidelity', unsupportedSymbols,
@@ -915,11 +894,12 @@
   function setChart(chart, sourceLabel) {
     state.chart = chart;
     state.duration = chart.duration;
-    state.time = -0.6;
+    state.time = -2.35;
     state.playing = false;
     state.activeSource = sourceLabel;
     $('songTitle').textContent = chart.meta.title || '読み込んだ譜面';
     $('songArtist').textContent = chart.meta.artist || `${chart.format} chart data`;
+    setStageJacket(chart.meta.jacket || '');
     $('difficulty').textContent = [chart.meta.difficulty, chart.meta.level].filter(Boolean).join(' ') || chart.format;
     $('noteCount').textContent = chart.notes.length.toLocaleString('ja-JP');
     $('durationStat').textContent = fmtTime(chart.duration);
@@ -948,8 +928,8 @@
   }
   function startPlayback() {
     if (!state.chart) return;
-    if (state.time >= state.duration) state.time = -0.6;
-    if (state.time === -0.6 && !state.playing) { /* pre-roll for the first notes */ }
+    if (state.time >= state.duration) state.time = -2.35;
+    if (state.time === -2.35 && !state.playing) { /* pre-roll for the first notes */ }
     state.playing = true;
     state.lastFrame = performance.now();
     $('playButton').textContent = 'Ⅱ';
@@ -975,7 +955,6 @@
     }
     const passed = state.chart?.notes?.filter(n => n.time < shown).length || 0;
     $('comboNumber').textContent = passed.toLocaleString('ja-JP');
-    $('chartStatus').textContent = state.playing ? 'AUTO PLAY' : 'AUTO PREVIEW';
   }
   function barAtTime(timeline, time) {
     let ev = timeline[0];
@@ -998,322 +977,323 @@
     canvas.height = Math.round(state.height*dpr);
     render();
   }
-  function noteGeometry(n, fieldLeft, halfW) {
-    const units = Math.max(1, Math.min(36, Number(n.widthUnits) || 1));
-    return { x: fieldLeft + (n.laneIndex - 0.5) * halfW, width: units * halfW, units };
+  function noteGeometry(n, field, unit) {
+    const units = Math.max(1, Math.min(12, Number(n.widthUnits) || 1));
+    // SUS lane is the anchor at the note's left half-lane; preserve that
+    // coordinate convention while leaving a slim gap between adjacent heads.
+    const nominalW = units * unit;
+    const width = Math.max(2, nominalW * 0.91);
+    const x = field.left + (Number(n.laneIndex) - 0.5) * unit + (nominalW - width) / 2;
+    return { x, width, units };
   }
 
-  // Project SEKAI gameplay color families (matching the base note-skin roles):
-  // Tap=Cyan, Slide=Green, Flick=Red, Critical=Yellow, Trace=slim variants,
-  // Damage=Purple. A critical note overrides its base action color.
-  const NOTE_PALETTES = {
-    tap: {
-      main:'#35c8ec', top:'#e9fcff', bottom:'#087da9', glow:'#54dcff',
-      edge:'#dffaff', dark:'#082c3b', ribbon:'rgba(50,194,228,.62)',
-      traceRibbon:'rgba(50,194,228,.20)'
-    },
-    slide: {
-      main:'#35c980', top:'#e4fff0', bottom:'#087c48', glow:'#50e99b',
-      edge:'#d9ffea', dark:'#092f25', ribbon:'rgba(71,214,143,.70)',
-      traceRibbon:'rgba(73,220,151,.22)'
-    },
-    flick: {
-      main:'#fa4657', top:'#ffe9eb', bottom:'#b51e39', glow:'#ff6573',
-      edge:'#ffe3e7', dark:'#3e111d', ribbon:'rgba(244,75,96,.68)',
-      traceRibbon:'rgba(244,75,96,.22)'
-    },
-    traceFlick: {
-      main:'#ff6573', top:'#fff0f1', bottom:'#bb2d43', glow:'#ff8992',
-      edge:'#ffe3e7', dark:'#3e111d', ribbon:'rgba(239,83,100,.58)',
-      traceRibbon:'rgba(239,83,100,.18)'
-    },
-    trace: {
-      main:'#79efa9', top:'#f0fff5', bottom:'#27a45d', glow:'#94ffc0',
-      edge:'#dbffeb', dark:'#123b2a', ribbon:'rgba(100,229,158,.36)',
-      traceRibbon:'rgba(100,229,158,.19)'
-    },
-    critical: {
-      main:'#ffda45', top:'#fffbe0', bottom:'#bd8500', glow:'#ffe978',
-      edge:'#fff9d6', dark:'#49340a', ribbon:'rgba(255,211,65,.78)',
-      traceRibbon:'rgba(255,216,85,.25)'
-    },
-    damage: {
-      main:'#b083ee', top:'#f7efff', bottom:'#6741a9', glow:'#cba7ff',
-      edge:'#f0e3ff', dark:'#2b174a', ribbon:'rgba(167,123,232,.55)',
-      traceRibbon:'rgba(167,123,232,.20)'
-    },
+  const FALLBACK_PALETTES = {
+    tap: { top:'#ffffff', main:'#8bd9f7', bottom:'#349acb', glow:'#77d9ff' },
+    trace: { top:'#f4fff9', main:'#c9fce2', bottom:'#72dca9', glow:'#aaffd0' },
+    flick: { top:'#ffffff', main:'#d7ddff', bottom:'#8697e7', glow:'#b4c0ff' },
+    critical: { top:'#fffde8', main:'#ffe58c', bottom:'#eab747', glow:'#ffe58c' },
   };
-
-  function paletteForNote(n) {
-    // Critical color takes precedence over the action family in the game skin.
-    if (n.critical) return NOTE_PALETTES.critical;
-    if (n.damage) return NOTE_PALETTES.damage;
-    const flick = n.kind === 'flick' || n.isFlick === true;
-    if (n.trend && flick) return NOTE_PALETTES.traceFlick;
-    if (flick) return NOTE_PALETTES.flick;
-    if (n.trend) return NOTE_PALETTES.trace;
-    if (n.kind === 'slide') return NOTE_PALETTES.slide;
-    return NOTE_PALETTES.tap;
+  function spriteNumberForNote(n) {
+    if (Number.isFinite(n.symbolType)) return Math.max(0,Math.min(6,Number(n.symbolType)));
+    const directional = n.channelType === 5 || (n.kind === 'slide' && n.isFlick);
+    if (n.trend) return n.critical ? 5 : (directional ? 6 : 4);
+    if (n.critical) return 0;
+    if (directional) return 3;
+    if (n.kind === 'slide') return 1;
+    // A regular TapType::Flick has a tap body (sprite 2) with a separate arrow.
+    return 2;
   }
-
-  function paletteForSlidePath(className='') {
-    const cls = String(className).toLowerCase();
-    if (cls.includes('critical')) return NOTE_PALETTES.critical;
-    if (cls.includes('damage')) return NOTE_PALETTES.damage;
-    if (cls.includes('trace') && cls.includes('flick')) return NOTE_PALETTES.traceFlick;
-    if (cls.includes('flick')) return NOTE_PALETTES.flick;
-    if (cls.includes('trace')) return NOTE_PALETTES.trace;
-    return NOTE_PALETTES.slide;
+  function paletteForFallback(n) {
+    if (n.critical) return FALLBACK_PALETTES.critical;
+    if (n.trend || n.kind === 'slide') return FALLBACK_PALETTES.trace;
+    if (n.kind === 'flick' || n.isFlick) return FALLBACK_PALETTES.flick;
+    return FALLBACK_PALETTES.tap;
   }
-
-  // The reference renderer emits only Up / UpperLeft / UpperRight arrow
-  // images. Down / lower-diagonal direction values are valid note metadata,
-  // but must not be turned into invented visible arrows.
+  function flickAssetForNote(n) {
+    if (n.arrowAsset) return n.arrowAsset;
+    if (!shouldDrawFlickArrow(n)) return '';
+    const width = Math.min(6,Math.max(0,Number(n.widthRaw)||0));
+    const diagonal = [3,4].includes(Number(n.direction));
+    return `notes_flick_arrow${n.critical?'_crtcl':''}_${String(width).padStart(2,'0')}${diagonal?'_diagonal':''}.png`;
+  }
   function shouldDrawFlickArrow(n) {
     return !!n && (n.kind === 'flick' || n.isFlick === true) && [1,3,4].includes(Number(n.direction));
+  }
+  function clamp(v,a,b) { return Math.max(a,Math.min(b,v)); }
+  function makePerspective(w,h) {
+    const cx=w/2, horizonY=h*0.205, hitY=h*0.805;
+    const halfBottom=w*0.405, topRatio=0.20;
+    const fieldAt=(y)=>{
+      const t=clamp((y-horizonY)/(hitY-horizonY),0,1);
+      const scale=topRatio+(1-topRatio)*Math.pow(t,0.92);
+      const half=halfBottom*scale;
+      return { left:cx-half, right:cx+half, width:half*2, unit:half*2/12, scale, t };
+    };
+    const approach=3.65;
+    const yAtTime=(noteTime,now)=>{
+      const d=noteTime-now;
+      return hitY-clamp(d/approach,-0.35,1.25)*(hitY-horizonY);
+    };
+    return {cx,horizonY,hitY,halfBottom,fieldAt,approach,yAtTime};
+  }
+  function drawPoly(points, fill, stroke=null, lineWidth=1) {
+    ctx.beginPath();
+    points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+    ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill();}
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lineWidth;ctx.stroke();}
+  }
+  function drawStageArtwork(w,h,p) {
+    const bg=ctx.createLinearGradient(0,0,0,h);
+    bg.addColorStop(0,'#11162e');bg.addColorStop(.36,'#252449');bg.addColorStop(.72,'#131a31');bg.addColorStop(1,'#080d20');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+    // Concert beams and distant side screens.
+    ctx.save();
+    const beams=[[-.04,.04,.30,.80,'rgba(104,167,255,.13)'],[.10,.03,.42,.81,'rgba(202,146,255,.10)'],[1.04,.02,.69,.80,'rgba(83,193,255,.12)'],[.88,.02,.55,.81,'rgba(205,151,255,.10)']];
+    for(const b of beams){
+      const grad=ctx.createLinearGradient(b[0]*w,b[1]*h,b[2]*w,b[3]*h);
+      grad.addColorStop(0,b[4]);grad.addColorStop(1,'rgba(115,126,255,0)');
+      drawPoly([[b[0]*w,b[1]*h],[b[0]*w+14,h*.02],[b[2]*w+34,h*.87],[b[2]*w-45,h*.87]],grad);
+    }
+    ctx.restore();
+    // Distant wall with side display panels.
+    const panels=[{x:.055,y:.26,w:.19,h:.25,r:-.10},{x:.755,y:.18,w:.19,h:.24,r:.08},{x:.10,y:.52,w:.14,h:.17,r:-.08},{x:.78,y:.48,w:.15,h:.18,r:.10}];
+    for(const q of panels){
+      ctx.save();ctx.translate(q.x*w,q.y*h);ctx.rotate(q.r);
+      ctx.fillStyle='#080c1e';ctx.fillRect(-2,-2,q.w*w+4,q.h*h+4);
+      const g=ctx.createLinearGradient(0,0,q.w*w,q.h*h);g.addColorStop(0,'#45366f');g.addColorStop(.5,'#27788f');g.addColorStop(1,'#b15187');
+      ctx.fillStyle=g;ctx.fillRect(0,0,q.w*w,q.h*h);
+      ctx.globalAlpha=.38;
+      for(let k=0;k<7;k++){ctx.beginPath();ctx.moveTo(k*q.w*w/7,0);ctx.lineTo(q.w*w*(.2+k/9),q.h*h);ctx.lineTo(q.w*w*(.1+k/8),q.h*h);ctx.fillStyle=k%2?'#f7a5da':'#9ceeff';ctx.fill();}
+      ctx.globalAlpha=1;ctx.strokeStyle='rgba(229,225,255,.55)';ctx.lineWidth=1;ctx.strokeRect(0,0,q.w*w,q.h*h);ctx.restore();
+    }
+    // Main center monitor / jacket frame. Use the chart jacket if the SVG contains it.
+    const cx=w/2, cardW=w*.31, cardH=h*.48, cardX=cx-cardW/2, cardY=h*.035;
+    ctx.save();ctx.shadowColor='#9faaff';ctx.shadowBlur=15;
+    ctx.fillStyle='#070b19';ctx.fillRect(cardX-5,cardY-4,cardW+10,cardH+11);
+    ctx.strokeStyle='rgba(226,226,255,.78)';ctx.lineWidth=1.4;ctx.strokeRect(cardX-2,cardY-1,cardW+4,cardH+4);
+    ctx.restore();
+    if(stageJacketImage && stageJacketImage.complete && stageJacketImage.naturalWidth>0){
+      ctx.save();ctx.beginPath();ctx.rect(cardX,cardY,cardW,cardH);ctx.clip();ctx.drawImage(stageJacketImage,cardX,cardY,cardW,cardH);ctx.restore();
+    } else {
+      const g=ctx.createLinearGradient(cardX,cardY,cardX+cardW,cardY+cardH);g.addColorStop(0,'#245e83');g.addColorStop(.35,'#a24f92');g.addColorStop(.68,'#315f9d');g.addColorStop(1,'#30274d');
+      ctx.fillStyle=g;ctx.fillRect(cardX,cardY,cardW,cardH);
+      ctx.save();ctx.beginPath();ctx.rect(cardX,cardY,cardW,cardH);ctx.clip();
+      for(let i=0;i<22;i++){
+        const x=cardX+((i*37)%Math.max(1,cardW));const y=cardY+((i*23)%Math.max(1,cardH));
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+cardW*.13,y-cardH*.08);ctx.lineTo(x+cardW*.18,y+cardH*.13);ctx.closePath();
+        ctx.fillStyle=['rgba(255,214,239,.32)','rgba(128,236,255,.28)','rgba(255,242,161,.24)','rgba(181,158,255,.3)'][i%4];ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Stage floor reflection.
+    const floor=ctx.createLinearGradient(0,h*.47,0,h);floor.addColorStop(0,'rgba(61,72,126,.08)');floor.addColorStop(.45,'rgba(49,58,100,.30)');floor.addColorStop(1,'rgba(7,12,30,.72)');
+    ctx.fillStyle=floor;ctx.fillRect(0,h*.48,w,h*.52);
+  }
+  function drawGameHud(w,h,p) {
+    // Score plate on upper left.
+    const left=w*.035, top=h*.055;
+    ctx.save();ctx.shadowColor='#b9aaff';ctx.shadowBlur=7;
+    drawPoly([[left+7,top],[left+18,top+10],[left+7,top+20],[left-4,top+10]],'#d8d4ff','#ffffff',1);
+    ctx.restore();
+    ctx.fillStyle='#dce6ff';ctx.font=`bold ${Math.max(7,h*.046)}px Arial,sans-serif`;ctx.textAlign='left';ctx.fillText('SCORE',left+24,top+6);
+    ctx.fillStyle='#fff';ctx.font=`700 ${Math.max(10,h*.074)}px Arial,sans-serif`;ctx.fillText('0000000',left+24,top+19);
+    const barX=left+24,barY=top+22,barW=w*.27,barH=Math.max(3,h*.025);
+    ctx.fillStyle='rgba(14,19,41,.9)';ctx.fillRect(barX,barY,barW,barH);
+    ctx.strokeStyle='rgba(241,235,255,.9)';ctx.lineWidth=1.1;ctx.strokeRect(barX,barY,barW,barH);
+    ctx.fillStyle='rgba(223,220,255,.75)';ctx.fillRect(barX+2,barY+1,barW*.28,barH-2);
+    // Life / skill gauge upper right and pause icon.
+    const pauseX=w*.905,pauseW=w*.055,pauseY=h*.045,pauseH=h*.19;
+    const gaugeX=w*.68,gaugeY=h*.06,gaugeW=w*.20,gaugeH=Math.max(5,h*.055);
+    ctx.fillStyle='#e9f4ff';ctx.font=`bold ${Math.max(7,h*.047)}px Arial,sans-serif`;ctx.textAlign='right';ctx.fillText('LIFE',gaugeX+gaugeW,gaugeY-2);
+    ctx.fillStyle='#101a2a';ctx.fillRect(gaugeX,gaugeY,gaugeW,gaugeH);
+    const life=ctx.createLinearGradient(gaugeX,0,gaugeX+gaugeW,0);life.addColorStop(0,'#7dffc0');life.addColorStop(.72,'#caffb4');life.addColorStop(1,'#ffffff');
+    ctx.fillStyle=life;ctx.fillRect(gaugeX+1,gaugeY+1,gaugeW*.88,gaugeH-2);
+    ctx.strokeStyle='rgba(240,255,255,.86)';ctx.lineWidth=1;ctx.strokeRect(gaugeX,gaugeY,gaugeW,gaugeH);
+    ctx.fillStyle='#f5f7ff';roundedRect(ctx,pauseX,pauseY,pauseW,pauseH,4);ctx.fill();
+    ctx.fillStyle='#1d2440';const pw=Math.max(2,pauseW*.16);ctx.fillRect(pauseX+pauseW*.29,pauseY+pauseH*.25,pw,pauseH*.5);ctx.fillRect(pauseX+pauseW*.58,pauseY+pauseH*.25,pw,pauseH*.5);
+  }
+  function drawFallbackNote(n,x,y,noteW,noteH) {
+    const pal=paletteForFallback(n),g=ctx.createLinearGradient(x,y-noteH/2,x,y+noteH/2);
+    g.addColorStop(0,pal.top);g.addColorStop(.48,pal.main);g.addColorStop(1,pal.bottom);
+    if(state.glow){ctx.shadowColor=pal.glow;ctx.shadowBlur=7;}
+    roundedRect(ctx,x,y-noteH/2,noteW,noteH,Math.min(noteH/2,5));ctx.fillStyle=g;ctx.fill();
+    ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=.7;ctx.stroke();
+  }
+  function drawFlickArrow(n,field,y,noteW) {
+    if(!shouldDrawFlickArrow(n)) return;
+    const file=flickAssetForNote(n), img=spriteImage(file);
+    const unit=field.unit, w=Math.min(unit*1.45,unit*.92*1.5), h=w/1.5;
+    const center=field.left+(n.laneIndex)*unit + (n.direction===3?-unit*.10:n.direction===4?unit*.10:0);
+    const cy=y-noteW*.10;
+    if(img && img.complete && img.naturalWidth>0){
+      ctx.save();
+      if(Number(n.direction)===4){ctx.translate(center*2,0);ctx.scale(-1,1);ctx.drawImage(img,center-w/2,cy-h/2,w,h);}
+      else ctx.drawImage(img,center-w/2,cy-h/2,w,h);
+      ctx.restore();
+    }else{
+      ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1.2,unit*.055);ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.beginPath();
+      if(n.direction===3){ctx.moveTo(center+w*.22,cy+h*.24);ctx.lineTo(center-w*.22,cy-h*.24);ctx.lineTo(center-w*.22,cy+h*.02);ctx.moveTo(center-w*.22,cy-h*.24);ctx.lineTo(center+w*.02,cy-h*.24);}
+      else if(n.direction===4){ctx.moveTo(center-w*.22,cy+h*.24);ctx.lineTo(center+w*.22,cy-h*.24);ctx.lineTo(center+w*.22,cy+h*.02);ctx.moveTo(center+w*.22,cy-h*.24);ctx.lineTo(center-w*.02,cy-h*.24);}
+      else {ctx.moveTo(center,cy+h*.25);ctx.lineTo(center,cy-h*.25);ctx.lineTo(center-w*.25,cy-h*.02);ctx.moveTo(center,cy-h*.25);ctx.lineTo(center+w*.25,cy-h*.02);}
+      ctx.stroke();ctx.restore();
+    }
+  }
+  function drawAmongMarker(kind,x,y,unit) {
+    const file=kind==='long-critical'?'notes_long_among_crtcl.png':
+      kind==='friction-critical'?'notes_friction_among_crtcl.png':
+      kind==='friction-flick'?'notes_friction_among_flick.png':
+      kind==='long'?'notes_long_among.png':'notes_friction_among_long.png';
+    const img=spriteImage(file),size=unit*.68;
+    if(img && img.complete && img.naturalWidth>0) ctx.drawImage(img,x-size/2,y-size/2,size,size);
+    else {ctx.beginPath();ctx.arc(x,y,Math.max(2,size*.28),0,Math.PI*2);ctx.fillStyle=kind.includes('critical')?'#fff1ba':'#d8ffea';ctx.fill();}
+  }
+  function transformSvgPathForGame(d, sp, perspective, w, h, pps) {
+    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);
+    if(!tokens) return null;
+    const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
+    const point=(x,y)=>{
+      const noteTime=sp.segmentStart+sp.segmentDuration-(y-32)/360;
+      const py=perspective.yAtTime(noteTime,state.time);
+      const f=perspective.fieldAt(py);
+      const px=f.left+((x-40)/16)*f.unit;
+      return [px,py];
+    };
+    try{
+      while(i<tokens.length){
+        if(/^[A-Za-z]$/.test(tokens[i])) cmd=tokens[i++];
+        if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}
+        const rel=cmd===cmd.toLowerCase();
+        if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){
+          const x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx=rel?cx+x:x,ny=rel?cy+y:y;const q=point(nx,ny);
+          if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}
+          else path.lineTo(q[0],q[1]);cx=nx;cy=ny;
+        }else if(cmd==='C'||cmd==='c'){
+          const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y;
+          const q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;
+        }else{ return null; }
+      }
+    }catch(_){return null;}
+    return path;
   }
 
   function render() {
     if (!ctx || !state.chart || !state.width) return;
-    const w=state.width, h=state.height, dpr=state.dpr;
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,w,h);
-    const fieldLeft = Math.max(24,w*0.065), fieldRight = w-Math.max(24,w*0.065);
-    const fieldW = fieldRight-fieldLeft;
-    const halfW=fieldW/12;
-    const pps = Math.min(360, Math.max(180, h*0.47)) * state.speed;
-    const hitY = h-82;
-    const approach = hitY / pps;
+    const w=state.width,h=state.height,dpr=state.dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const p=makePerspective(w,h),{cx,horizonY,hitY,fieldAt,yAtTime,approach}=p;
+    drawStageArtwork(w,h,p);
 
-    // Base playfield and six main lanes, each split into two note positions.
-    const bg = ctx.createLinearGradient(0,0,0,h);
-    bg.addColorStop(0,'#141a31'); bg.addColorStop(.68,'#1a2040'); bg.addColorStop(1,'#24244a');
-    ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
-    const side=ctx.createLinearGradient(0,0,w,0);
-    side.addColorStop(0,'rgba(18,22,43,.95)'); side.addColorStop(.14,'rgba(84,91,153,.10)'); side.addColorStop(.86,'rgba(84,91,153,.10)'); side.addColorStop(1,'rgba(18,22,43,.95)');
-    ctx.fillStyle=side; ctx.fillRect(fieldLeft,0,fieldW,h);
-    for(let lane=0;lane<6;lane++) {
-      ctx.fillStyle=lane%2===0?'rgba(123,133,205,.035)':'rgba(63,211,213,.025)';
-      ctx.fillRect(fieldLeft+lane*2*halfW,0,2*halfW,h);
+    // 3D play field clipped to its perspective trapezoid.
+    const topF=fieldAt(horizonY),bottomF=fieldAt(hitY);
+    const fieldPoly=[[topF.left,horizonY],[topF.right,horizonY],[bottomF.right,hitY],[bottomF.left,hitY]];
+    ctx.save();drawPoly(fieldPoly,'rgba(6,11,29,.70)','rgba(214,205,255,.18)',.8);
+    ctx.beginPath();fieldPoly.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.clip();
+    // Soft alternating lanes, split into 12 actual note columns.
+    for(let lane=0;lane<12;lane++){
+      const f0=fieldAt(horizonY),f1=fieldAt(hitY);
+      const x0a=f0.left+lane*f0.unit,x0b=x0a+f0.unit;
+      const x1a=f1.left+lane*f1.unit,x1b=x1a+f1.unit;
+      drawPoly([[x0a,horizonY],[x0b,horizonY],[x1b,hitY],[x1a,hitY]],lane%2?'rgba(97,128,207,.045)':'rgba(142,130,224,.065)');
     }
-    // Scrolling beat lines.
-    if (state.chart.marks?.length) {
-      for(const m of state.chart.marks) {
-        const y=hitY-(m.time-state.time)*pps;
-        if(y < -3 || y > h+3) continue;
-        ctx.beginPath(); ctx.moveTo(fieldLeft,y); ctx.lineTo(fieldRight,y);
-        ctx.strokeStyle=m.bar?'rgba(192,178,255,.34)':(m.major?'rgba(189,201,255,.18)':'rgba(186,196,255,.075)');
-        ctx.lineWidth=m.bar?1.35:(m.major?.85:.55); ctx.stroke();
-      }
+    // Note lane rails.
+    for(let lane=0;lane<=12;lane++){
+      const xTop=topF.left+lane*topF.unit,xBottom=bottomF.left+lane*bottomF.unit;
+      ctx.beginPath();ctx.moveTo(xTop,horizonY);ctx.lineTo(xBottom,hitY);
+      ctx.strokeStyle=lane%2===0?'rgba(222,224,255,.30)':'rgba(186,202,255,.14)';ctx.lineWidth=lane%2===0?1.05:.55;ctx.stroke();
     }
-    for(let i=0;i<=12;i++) {
-      const x=fieldLeft+i*halfW;
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h);
-      const main=i%2===0;
-      ctx.strokeStyle=main?'rgba(203,218,255,.38)':'rgba(185,199,255,.14)';
-      ctx.lineWidth=main?1.35:.7; ctx.stroke();
+    // Moving beat / measure bars, each clipped to its depth-dependent width.
+    for(const m of (state.chart.marks||[])){
+      const y=yAtTime(m.time,state.time);if(y<horizonY-1||y>hitY+1)continue;
+      const f=fieldAt(y);ctx.beginPath();ctx.moveTo(f.left,y);ctx.lineTo(f.right,y);
+      ctx.strokeStyle=m.bar?'rgba(250,222,255,.38)':m.major?'rgba(206,222,255,.22)':'rgba(195,203,255,.085)';
+      ctx.lineWidth=m.bar?1.4:m.major?1:.55;ctx.stroke();
     }
-    // Thin outer rails and upper glow.
-    ctx.strokeStyle='rgba(171,157,255,.62)'; ctx.lineWidth=1.5;
-    ctx.strokeRect(fieldLeft,1,fieldW,h-2);
-    const glow=ctx.createLinearGradient(0,0,0,85);
-    glow.addColorStop(0,'rgba(145,111,255,.14)'); glow.addColorStop(1,'rgba(145,111,255,0)');
-    ctx.fillStyle=glow; ctx.fillRect(fieldLeft,0,fieldW,85);
 
-    // Notes and ribbons enter below the top HUD so they never obscure
-    // BPM / preview / life information, especially on narrow screens.
-    const noteClipTop = 76;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, noteClipTop, w, Math.max(0,h-noteClipTop));
-    ctx.clip();
-
-    // Slide ribbons from native SUS links.
-    for(const link of (state.chart.slideLinks||[])) {
-      const a=link.a, b=link.b;
-      const y1=hitY-(a.time-state.time)*pps, y2=hitY-(b.time-state.time)*pps;
-      if(Math.max(y1,y2)<-40 || Math.min(y1,y2)>h+40) continue;
-      const x1=fieldLeft+a.laneIndex*halfW;
-      const x2=fieldLeft+b.laneIndex*halfW;
-      const widthA=Math.max(0,Number(a.widthRaw))*halfW;
-      const widthB=Math.max(0,Number(b.widthRaw))*halfW;
-      // The reference renderer uses a 1-SVG-unit inset on standard slides
-      // (its default slide_path_padding is -1), and no inset on decorations.
-      const pathPad=link.decoration?0:(halfW/16);
-      const leftA=x1+pathPad, leftB=x2+pathPad;
-      const rightA=x1+widthA-pathPad, rightB=x2+widthB-pathPad;
-      const midY=(y1+y2)/2;
-      const easeIn=link.direction===2;
-      const easeOut=link.direction===5 || link.direction===6;
-      const leftC1Y=easeIn?midY:y1, leftC2Y=easeOut?midY:y2;
-      const rightC1Y=easeIn?midY:y1, rightC2Y=easeOut?midY:y2;
-      const slidePalette=link.critical?NOTE_PALETTES.critical:(link.damage?NOTE_PALETTES.damage:(link.trend?NOTE_PALETTES.trace:NOTE_PALETTES.slide));
-      ctx.save(); ctx.lineJoin='round';
-      if(state.glow){ctx.shadowColor=slidePalette.glow;ctx.shadowBlur=18;}
-      ctx.beginPath();
-      ctx.moveTo(leftA,y1);
-      ctx.bezierCurveTo(leftA,leftC1Y,leftB,leftC2Y,leftB,y2);
-      ctx.lineTo(rightB,y2);
-      ctx.bezierCurveTo(rightB,rightC2Y,rightA,rightC1Y,rightA,y1);
-      ctx.closePath();
-      ctx.fillStyle=link.decoration?'rgba(193,168,255,.30)':(link.trend?slidePalette.traceRibbon:slidePalette.ribbon);
-      ctx.fill();
-      // Dark outside contour + luminous inside edge keeps the lane visible
-      // against both light and dark note backgrounds, like the game ribbons.
-      ctx.shadowBlur=0; ctx.strokeStyle='rgba(3,20,24,.88)'; ctx.lineWidth=3.2; ctx.stroke();
-      ctx.strokeStyle=slidePalette.edge; ctx.lineWidth=1.25; ctx.stroke();
-      if(link.trend && !link.critical && !link.damage) {
-        // Trace ribbons receive a visible broken center guide, distinct from
-        // the continuous, filled normal slide ribbon.
-        ctx.beginPath();
-        ctx.moveTo((leftA+rightA)/2,y1);
-        ctx.bezierCurveTo((leftA+rightA)/2,leftC1Y,(leftB+rightB)/2,leftC2Y,(leftB+rightB)/2,y2);
-        ctx.setLineDash([Math.max(3,halfW*.10),Math.max(2,halfW*.075)]);
-        ctx.strokeStyle='rgba(239,255,246,.92)'; ctx.lineWidth=1.35; ctx.stroke(); ctx.setLineDash([]);
-      }
-      // Relay points with attached taps are rendered as small friction markers
-      // centered on the actual interpolated slide path.
-      for(const relay of (link.amongs||[])) {
-        const cy=hitY-(relay.time-state.time)*pps;
-        // Bezier parameter t is not linear in elapsed time when the path uses
-        // ease-in/ease-out. Solve B_y(t)=relayY, then sample each edge at t.
-        const bezier=(p0,p1,p2,p3,t)=>{const mt=1-t;return mt*mt*mt*p0+3*mt*mt*t*p1+3*mt*t*t*p2+t*t*t*p3;};
-        const solveT=(target,p0,p1,p2,p3)=>{
-          let lo=0,hi=1; const decreasing=p3<p0;
-          for(let k=0;k<32;k++){
-            const mid=(lo+hi)/2, value=bezier(p0,p1,p2,p3,mid);
-            if((decreasing && value>target)||(!decreasing && value<target)) lo=mid; else hi=mid;
-          }
-          return (lo+hi)/2;
-        };
-        const t=solveT(cy,y1,leftC1Y,leftC2Y,y2);
-        const lx=bezier(leftA,leftA,leftB,leftB,t), rx=bezier(rightA,rightA,rightB,rightB,t);
-        const cx=(lx+rx)/2;
-        const relayTap=relay.attachedTap || relay.attachedDirectional?.attachedTap || null;
-        const relayHeadTap=relay.head && (relay.head.attachedTap || relay.head.attachedDirectional?.attachedTap);
-        const relayCritical=!!(relayTap && [2,6,8].includes(relayTap.noteType)) ||
-          !!(relayHeadTap && [2,6,8].includes(relayHeadTap.noteType));
-        const relayPalette=relayCritical?NOTE_PALETTES.critical:NOTE_PALETTES.trace;
-        const rr=Math.max(4.0,Math.min(6.0,halfW*.22));
-        ctx.save(); ctx.translate(cx,cy); ctx.rotate(Math.PI/4);
-        ctx.fillStyle=relayPalette.dark; ctx.fillRect(-rr-1,-rr-1,(rr+1)*2,(rr+1)*2);
-        ctx.fillStyle=relayPalette.main; ctx.fillRect(-rr,-rr,rr*2,rr*2);
-        ctx.strokeStyle=relayPalette.edge; ctx.lineWidth=1; ctx.strokeRect(-rr,-rr,rr*2,rr*2);
-        ctx.restore();
+    // Draw connected SUS slide / trace ribbons as perspective quads.
+    for(const link of (state.chart.slideLinks||[])){
+      const a=link.a,b=link.b,y1=yAtTime(a.time,state.time),y2=yAtTime(b.time,state.time);
+      if(Math.max(y1,y2)<horizonY-24||Math.min(y1,y2)>hitY+24)continue;
+      const f1=fieldAt(y1),f2=fieldAt(y2);
+      const u1=f1.unit,u2=f2.unit;
+      const unitsA=Math.max(1,Number(a.widthRaw)+1),unitsB=Math.max(1,Number(b.widthRaw)+1);
+      const l1=f1.left+(a.laneIndex-.5)*u1,l2=f2.left+(b.laneIndex-.5)*u2;
+      const r1=l1+unitsA*u1,r2=l2+unitsB*u2;
+      const mid=(y1+y2)/2, easeIn=link.direction===2,easeOut=[5,6].includes(link.direction);
+      const lc1=easeIn?mid:y1,lc2=easeOut?mid:y2,rc1=lc1,rc2=lc2;
+      ctx.save();ctx.beginPath();ctx.moveTo(l1,y1);ctx.bezierCurveTo(l1,lc1,l2,lc2,l2,y2);ctx.lineTo(r2,y2);ctx.bezierCurveTo(r2,rc2,r1,rc1,r1,y1);ctx.closePath();
+      const critical=!!link.critical;
+      ctx.fillStyle=link.decoration?(critical?'rgba(252,241,195,.54)':'rgba(201,252,226,.43)'):(critical?'rgba(252,241,195,.82)':'rgba(201,252,226,.80)');
+      if(state.glow){ctx.shadowColor=critical?'#fff0bd':'#b7ffda';ctx.shadowBlur=6;}
+      ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='rgba(245,255,255,.58)';ctx.lineWidth=.75;ctx.stroke();
+      // Draw trace/flick/critical relay markers at their real curve time.
+      for(const relay of (link.amongs||[])){
+        const ry=yAtTime(relay.time,state.time);if(ry<y1-1||ry>y2+1)continue;
+        const t=clamp((ry-y1)/(y2-y1||1),0,1);
+        const left= l1+(l2-l1)*t, right=r1+(r2-r1)*t, rx=(left+right)/2;
+        const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
+        const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
+        drawAmongMarker(kind,rx,ry,fieldAt(ry).unit);
       }
       ctx.restore();
     }
-    // Exact vector slide paths when input is a renderer-generated SVG.
-    for(const sp of (state.chart.slidePaths||[])) {
-      const top=sp.segmentStart, bottom=top+sp.segmentDuration;
-      if(bottom < state.time-approach || top > state.time+approach) continue;
-      const sx=fieldW/192, sy=pps/360;
-      const tx=fieldLeft-40*sx;
-      const ty=hitY-(sp.segmentStart+sp.segmentDuration-state.time)*pps-32*sy;
-      const pathPalette=sp.critical ? NOTE_PALETTES.critical : paletteForSlidePath(sp.className);
-      ctx.save(); ctx.translate(tx,ty); ctx.scale(sx,sy);
-      if(state.glow){ctx.shadowColor=pathPalette.glow;ctx.shadowBlur=18/sx;}
-      ctx.fillStyle=sp.className.includes('decoration')?'rgba(188,157,255,.30)':pathPalette.ribbon;
-      ctx.fill(sp.path);
-      ctx.shadowBlur=0;
-      ctx.lineJoin='round'; ctx.strokeStyle='rgba(3,20,24,.82)'; ctx.lineWidth=2.4/sx; ctx.stroke(sp.path);
-      ctx.strokeStyle=pathPalette.edge; ctx.lineWidth=1.1/sx; ctx.stroke(sp.path);
-      ctx.restore();
+
+    // Renderer-generated SVG paths: map their original time/lane coordinates into the 3D field.
+    for(const sp of (state.chart.slidePaths||[])){
+      const bottom=sp.segmentStart+sp.segmentDuration;
+      if(bottom<state.time-.6||sp.segmentStart>state.time+approach+.6)continue;
+      const transformed=transformSvgPathForGame(sp.d,sp,p,w,h);
+      if(!transformed)continue;
+      const cls=String(sp.className||'').toLowerCase();
+      ctx.save();ctx.fillStyle=cls.includes('critical')?'rgba(252,241,195,.82)':cls.includes('decoration')?'rgba(201,252,226,.43)':'rgba(201,252,226,.80)';
+      if(state.glow){ctx.shadowColor=cls.includes('critical')?'#fff0bd':'#b7ffda';ctx.shadowBlur=7;}
+      ctx.fill(transformed);ctx.restore();
     }
 
-    // Relay / friction markers emitted as real image assets in chart SVGs.
-    for(const marker of (state.chart.markers||[])) {
-      const y=hitY-(marker.time-state.time)*pps;
-      if(y < -20 || y > h+20) continue;
-      const x=fieldLeft+(marker.x-40)*(fieldW/192);
-      const r=Math.max(2.2,Math.min(5.2,marker.w*(fieldW/192)*0.32));
-      let fill=NOTE_PALETTES.trace.main, edge=NOTE_PALETTES.trace.edge, dark=NOTE_PALETTES.trace.dark;
-      if(marker.kind.includes('critical')) { fill=NOTE_PALETTES.critical.main; edge=NOTE_PALETTES.critical.edge; dark=NOTE_PALETTES.critical.dark; }
-      else if(marker.kind==='friction-flick') { fill=NOTE_PALETTES.flick.main; edge=NOTE_PALETTES.flick.edge; dark=NOTE_PALETTES.flick.dark; }
-      ctx.save(); if(state.glow){ctx.shadowColor=fill;ctx.shadowBlur=8;}
-      ctx.translate(x,y);ctx.rotate(Math.PI/4);
-      ctx.fillStyle=dark;ctx.fillRect(-r-1,-r-1,(r+1)*2,(r+1)*2);
-      ctx.fillStyle=fill;ctx.fillRect(-r,-r,r*2,r*2);
-      ctx.strokeStyle=edge;ctx.lineWidth=1;ctx.strokeRect(-r,-r,r*2,r*2);
-      ctx.restore();
+    // SVG relay assets retain their individual kind and position.
+    for(const marker of (state.chart.markers||[])){
+      const y=yAtTime(marker.time,state.time);if(y<horizonY-8||y>hitY+8)continue;
+      const f=fieldAt(y),x=f.left+(marker.x-40)/16*f.unit;
+      const kind=marker.kind;drawAmongMarker(kind,x,y,f.unit);
     }
 
-    // Notes approach the fixed judgement line.
-    for(const n of state.chart.notes) {
-      const delta=n.time-state.time;
-      if(delta < -0.32 || delta > approach+0.3) continue;
-      const y=hitY-delta*pps;
-      const geometry=noteGeometry(n,fieldLeft,halfW);
-      const noteW=geometry.width;
-      const x=geometry.x;
-      if(n.kind==='slide' && n.source!=='svg' && n.noteType!==1 && n.noteType!==2 && n.noteType!==3) continue;
-      const isFlick=n.kind==='flick' || n.isFlick === true;
-      const isSlide=n.kind==='slide';
-      const isTrace=!!n.trend;
-      const isDamage=!!n.damage;
-      const palette=paletteForNote(n);
-      const hh=isTrace?12.5:(isDamage?12.5:(isSlide?16:20));
-      const radius=Math.min(8,hh/2);
-      const grad=ctx.createLinearGradient(x,y-hh/2,x,y+hh/2);
-      grad.addColorStop(0,palette.top);
-      grad.addColorStop(.40,palette.main);
-      grad.addColorStop(1,palette.bottom);
-      ctx.save();
-      ctx.lineJoin='round';
-      if(state.glow){ctx.shadowColor=palette.glow;ctx.shadowBlur=isTrace?9:(n.critical?20:15);}
-      // High-contrast dark contour first, then the bright skin-colored edge.
-      roundedRect(ctx,x,y-hh/2,noteW,hh,radius);
-      ctx.fillStyle=grad; ctx.fill();
-      ctx.shadowBlur=0;
-      ctx.strokeStyle=palette.dark; ctx.lineWidth=isTrace?3.2:3.5; ctx.stroke();
-      roundedRect(ctx,x+0.8,y-hh/2+0.8,Math.max(0,noteW-1.6),Math.max(0,hh-1.6),Math.max(1,radius-0.8));
-      ctx.strokeStyle=palette.edge; ctx.lineWidth=isTrace?1.5:1.45; ctx.stroke();
-      // A fine top sheen gives the familiar glossy note edge without hiding its fill.
-      ctx.beginPath();ctx.moveTo(x+radius,y-hh/2+1.8);ctx.lineTo(x+Math.max(radius+1,noteW-radius),y-hh/2+1.8);
-      ctx.strokeStyle='rgba(255,255,255,.86)';ctx.lineWidth=isTrace?1.0:1.1;ctx.stroke();
-      if(isTrace){
-        // Trace heads are slim, translucent guide notes with a centered diamond
-        // friction marker; this is deliberately distinct from full-size taps.
-        ctx.fillStyle=palette.dark;ctx.beginPath();ctx.moveTo(x+noteW/2,y-7);ctx.lineTo(x+noteW/2+6.3,y);ctx.lineTo(x+noteW/2,y+7);ctx.lineTo(x+noteW/2-6.3,y);ctx.closePath();ctx.fill();
-        ctx.fillStyle=palette.main;ctx.beginPath();ctx.moveTo(x+noteW/2,y-5.5);ctx.lineTo(x+noteW/2+4.8,y);ctx.lineTo(x+noteW/2,y+5.5);ctx.lineTo(x+noteW/2-4.8,y);ctx.closePath();ctx.fill();
-        ctx.strokeStyle=palette.edge;ctx.lineWidth=1.1;ctx.stroke();
-        ctx.fillStyle='rgba(246,255,249,.9)';ctx.beginPath();ctx.arc(x+noteW/2,y,1.15,0,Math.PI*2);ctx.fill();
+    // Accurate note sprites, scaled to depth so far-away notes are small and separated.
+    const passed=state.chart.notes.filter(n=>n.time<Math.max(0,state.time)).length;
+    for(const n of state.chart.notes){
+      const delta=n.time-state.time;if(delta<-.16||delta>approach+.24)continue;
+      const y=yAtTime(n.time,state.time);if(y<horizonY-12||y>hitY+20)continue;
+      const f=fieldAt(y),geom=noteGeometry(n,f,f.unit),x=geom.x,noteW=geom.width;
+      const noteH=Math.max(3,Math.min(f.unit*.52,noteW*.48));
+      const spriteNo=spriteNumberForNote(n),img=spriteImage(`notes_${spriteNo}.png`);
+      if(img && img.complete && img.naturalWidth>0)ctx.drawImage(img,x,y-noteH/2,noteW,noteH);
+      else drawFallbackNote(n,x,y,noteW,noteH);
+      if(n.trend){
+        const mk=n.critical?'friction-critical':(n.channelType===5 || n.isFlick?'friction-flick':'friction-long');
+        drawAmongMarker(mk,x+noteW/2,y,f.unit);
       }
-      if(n.critical && !isTrace){
-        const cx=x+Math.min(14,noteW*.22), cr=3.1;
-        ctx.beginPath();ctx.moveTo(cx,y-cr-1);ctx.lineTo(cx+cr+1,y);ctx.lineTo(cx,y+cr+1);ctx.lineTo(cx-cr-1,y);ctx.closePath();
-        ctx.fillStyle=palette.dark;ctx.fill();
-        ctx.beginPath();ctx.moveTo(cx,y-cr);ctx.lineTo(cx+cr,y);ctx.lineTo(cx,y+cr);ctx.lineTo(cx-cr,y);ctx.closePath();ctx.fillStyle='#fff9d7';ctx.fill();
-      }
-      if(shouldDrawFlickArrow(n)) {
-        const dir=Number(n.direction);
-        ctx.fillStyle='#fff'; ctx.strokeStyle='#fff'; ctx.lineWidth=Math.max(2.6,Math.min(3.6,noteW*.068)); ctx.lineCap='round'; ctx.lineJoin='round';
-        const diagonalBias = dir===3 ? -1 : dir===4 ? 1 : 0;
-        const mid=x+noteW/2 + diagonalBias*Math.min(5, noteW*.10);
-        const arrowScale=Math.pow((Math.min(6,Number(n.widthRaw)||0)+3)/3,.75);
-        const arrowHalf=Math.max(3.2,4.0*arrowScale);
-        ctx.beginPath();
-        if(dir===3){ctx.moveTo(mid+arrowHalf*.8,y+arrowHalf*.8);ctx.lineTo(mid-arrowHalf*.8,y-arrowHalf*.8);ctx.lineTo(mid-arrowHalf*.8,y+arrowHalf*.25);ctx.moveTo(mid-arrowHalf*.8,y-arrowHalf*.8);ctx.lineTo(mid-arrowHalf*.25,y-arrowHalf*.8);}
-        else if(dir===4){ctx.moveTo(mid-arrowHalf*.8,y+arrowHalf*.8);ctx.lineTo(mid+arrowHalf*.8,y-arrowHalf*.8);ctx.lineTo(mid+arrowHalf*.25,y-arrowHalf*.8);ctx.moveTo(mid+arrowHalf*.8,y-arrowHalf*.8);ctx.lineTo(mid+arrowHalf*.8,y+arrowHalf*.25);}
-        else {ctx.moveTo(mid,y+arrowHalf);ctx.lineTo(mid,y-arrowHalf);ctx.lineTo(mid-arrowHalf,y);ctx.moveTo(mid,y-arrowHalf);ctx.lineTo(mid+arrowHalf,y);}
-        ctx.stroke();
-      }
-      ctx.restore();
+      drawFlickArrow(n,f,y,noteW);
     }
-    ctx.restore(); // end note / ribbon clip below HUD
+    ctx.restore();
 
-    // Judgement line and small touch zones.
-    const lineGrad=ctx.createLinearGradient(fieldLeft,0,fieldRight,0);
-    lineGrad.addColorStop(0,'rgba(151,130,255,.2)');lineGrad.addColorStop(.5,'rgba(222,220,255,.95)');lineGrad.addColorStop(1,'rgba(91,230,230,.2)');
-    ctx.save();ctx.shadowColor='#b4a5ff';ctx.shadowBlur=16;ctx.strokeStyle=lineGrad;ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.moveTo(fieldLeft-5,hitY);ctx.lineTo(fieldRight+5,hitY);ctx.stroke();ctx.restore();
-    for(let i=0;i<6;i++) {
-      ctx.fillStyle='rgba(198,207,255,.12)';
-      ctx.fillRect(fieldLeft+i*2*halfW+3,hitY+10,2*halfW-6,2);
+    // Outer perspective rails and the broad judgement line.
+    ctx.save();ctx.shadowColor='#d5a6ff';ctx.shadowBlur=9;ctx.strokeStyle='rgba(211,172,255,.72)';ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(topF.left,horizonY);ctx.lineTo(bottomF.left,hitY);ctx.moveTo(topF.right,horizonY);ctx.lineTo(bottomF.right,hitY);ctx.stroke();ctx.restore();
+    ctx.save();ctx.shadowColor='#e2bdff';ctx.shadowBlur=9;ctx.strokeStyle='#e6d0ff';ctx.lineWidth=Math.max(2,h*.012);
+    ctx.beginPath();ctx.moveTo(bottomF.left-4,hitY);ctx.lineTo(bottomF.right+4,hitY);ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(bottomF.left+5,hitY-2);ctx.lineTo(bottomF.right-5,hitY-2);ctx.stroke();ctx.restore();
+    // Thin touch-zone divisions along the judgement line.
+    for(let i=1;i<12;i++){
+      const x=bottomF.left+i*bottomF.unit;ctx.beginPath();ctx.moveTo(x,hitY-2);ctx.lineTo(x,hitY+Math.max(3,h*.035));
+      ctx.strokeStyle='rgba(237,224,255,.28)';ctx.lineWidth=.6;ctx.stroke();
     }
-    // Fade at the top and bottom for the rhythm-game depth.
-    const topFade=ctx.createLinearGradient(0,0,0,75);topFade.addColorStop(0,'rgba(9,13,27,.50)');topFade.addColorStop(1,'rgba(9,13,27,0)');ctx.fillStyle=topFade;ctx.fillRect(fieldLeft,0,fieldW,75);
-    const bottomFade=ctx.createLinearGradient(0,h-100,0,h);bottomFade.addColorStop(0,'rgba(11,13,29,0)');bottomFade.addColorStop(1,'rgba(11,13,29,.58)');ctx.fillStyle=bottomFade;ctx.fillRect(fieldLeft,h-100,fieldW,100);
+    // Native-game inspired HUD is drawn last so it stays readable.
+    drawGameHud(w,h,p);
+    if(passed>0){
+      ctx.save();ctx.textAlign='center';ctx.font=`900 ${Math.max(11,h*.095)}px Arial,sans-serif`;ctx.fillStyle='rgba(255,255,255,.92)';ctx.shadowColor='#b7a8ff';ctx.shadowBlur=8;ctx.fillText(String(passed),cx,h*.68);ctx.font=`700 ${Math.max(5,h*.033)}px Arial,sans-serif`;ctx.fillStyle='rgba(227,231,255,.78)';ctx.shadowBlur=0;ctx.fillText('COMBO',cx,h*.72);ctx.restore();
+    }
   }
   function roundedRect(c,x,y,w,h,r) {
     r=Math.min(r,w/2,h/2); c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();
@@ -1331,19 +1311,8 @@
     }
   }
 
-  $('gameViewButton').addEventListener('click', () => {
-    const app=document.querySelector('.app');
-    const enabled=app.classList.toggle('game-screen-mode');
-    $('gameViewButton').setAttribute('aria-pressed',String(enabled));
-    $('gameViewButton').textContent=enabled?'通常表示に戻す':'ゲーム画面モード';
-    requestAnimationFrame(resize);
-  });
-  canvas.addEventListener('click', () => {
-    if (!document.querySelector('.app').classList.contains('game-screen-mode')) return;
-    state.playing ? stopPlayback() : startPlayback();
-  });
   $('playButton').addEventListener('click', () => state.playing ? stopPlayback() : startPlayback());
-  $('restartButton').addEventListener('click', () => { stopPlayback(); state.time=-0.6; updateHud(); render(); });
+  $('restartButton').addEventListener('click', () => { stopPlayback(); state.time=-2.35; updateHud(); render(); });
   $('seekBar').addEventListener('input', e => { stopPlayback(); state.time=Number(e.target.value); updateHud(); render(); });
   $('speedSelect').addEventListener('change', e => { state.speed=Number(e.target.value)||1; render(); });
   $('glowToggle').addEventListener('change', e => { state.glow=e.target.checked; render(); });
@@ -1370,7 +1339,7 @@
   $('demoButton').addEventListener('click', () => { stopPlayback(); setChart(makeDemoChart(),'demo'); });
   window.addEventListener('keydown', e => {
     if(e.code==='Space' && !['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)) {e.preventDefault();state.playing?stopPlayback():startPlayback();}
-    if(e.key.toLowerCase()==='r' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {stopPlayback();state.time=-0.6;updateHud();render();}
+    if(e.key.toLowerCase()==='r' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {stopPlayback();state.time=-2.35;updateHud();render();}
   });
   const screen=document.querySelector('.screen');
   screen.addEventListener('dragover',e=>{e.preventDefault();screen.style.outline='2px solid #a78bfa';});
@@ -1382,22 +1351,8 @@
   if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
 
   // Small public hooks used by the smoke tests; harmless for normal use.
-  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, paletteForNote, shouldDrawFlickArrow,
-    noteVisual:(n)=>({palette:paletteForNote(n),trace:!!n.trend,damage:!!n.damage,height:n.trend?12.5:(n.damage?12.5:(n.kind==='slide'?16:20))}), getState:()=>state };
-  state.chart=makeDemoChart();
-  state.duration=state.chart.duration;
-  resize();
-  $('songTitle').textContent=state.chart.meta.title;
-  $('songArtist').textContent=state.chart.meta.artist;
-  $('difficulty').textContent=`${state.chart.meta.difficulty} ${state.chart.meta.level}`;
-  $('noteCount').textContent=state.chart.notes.length.toLocaleString('ja-JP');
-  $('durationStat').textContent=fmtTime(state.chart.duration);
-  $('bpmStat').textContent=state.chart.bpm;
-  $('duration').textContent=fmtTime(state.chart.duration);
-  $('seekBar').max=state.chart.duration;
-  $('bpmHud').textContent=`BPM ${state.chart.bpm}`;
-  status('内蔵デモ譜面を表示中です。実際の譜面はSUS/TXTファイル、または上のSVG URLから読み込めます。','');
-  updateHud(); render();
+  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
+  setChart(makeDemoChart(),'demo');
 })();
 </script>
 </body>
