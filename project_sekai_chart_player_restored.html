@@ -1,0 +1,1702 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://asset3.pjsekai.moe" crossorigin>
+<title>Project SEKAI Chart Player</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c1020;
+    --panel: #171c32;
+    --panel2: #202744;
+    --ink: #f5f6ff;
+    --muted: #a6aecb;
+    --line: rgba(191,205,255,.15);
+    --purple: #a78bfa;
+    --cyan: #67e8f9;
+    --mint: #72f2d2;
+    --gold: #ffd36b;
+    --pink: #ff8bc4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans JP", sans-serif; }
+  body { background: radial-gradient(ellipse at 15% -10%, rgba(116,82,204,.28), transparent 42%), radial-gradient(ellipse at 100% 35%, rgba(45,170,190,.12), transparent 36%), var(--bg); }
+  button, input, select { font:inherit; }
+  button { cursor:pointer; }
+  a { color:#b9a4ff; }
+  .app { max-width:1300px; margin:0 auto; padding:22px 22px 36px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:22px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand-mark { width:42px; height:42px; display:grid; place-items:center; border-radius:14px; background:linear-gradient(135deg,#8b5cf6,#4f46e5 58%,#0891b2); box-shadow:0 10px 28px #5242a544; font-size:21px; font-weight:900; }
+  .brand h1 { margin:0; font-size:18px; letter-spacing:.02em; }
+  .brand p { margin:3px 0 0; color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+  .top-pill { color:#cfc5ff; font-size:11px; border:1px solid #9480e44d; padding:7px 11px; border-radius:100px; background:#8b5cf61c; white-space:nowrap; }
+  .layout { display:grid; grid-template-columns:minmax(380px, 520px) minmax(320px,1fr); gap:22px; align-items:start; }
+  .panel { background:linear-gradient(180deg,rgba(27,33,58,.96),rgba(19,24,43,.98)); border:1px solid var(--line); border-radius:20px; box-shadow:0 18px 55px #0005; overflow:hidden; }
+  .player-panel { padding:14px; }
+  .stage-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 4px 12px; }
+  .song-info { min-width:0; }
+  .song-info .eyebrow { color:#b6a7ff; text-transform:uppercase; letter-spacing:.16em; font-size:9px; font-weight:800; }
+  .song-info h2 { margin:4px 0 2px; font-size:16px; line-height:1.25; overflow-wrap:anywhere; }
+  .song-info p { color:var(--muted); margin:0; font-size:11px; }
+  .diff { padding:6px 9px; border-radius:9px; background:#ff6bb01b; border:1px solid #ff83bf55; color:#ffb0d4; font-size:10px; font-weight:800; letter-spacing:.08em; white-space:nowrap; }
+  .view-tabs { display:flex; align-items:center; gap:7px; margin:0 0 9px; padding:3px; border:1px solid var(--line); border-radius:11px; background:#0d1327; }
+  .view-tab { border:1px solid transparent; border-radius:8px; padding:7px 12px; background:transparent; color:#aeb8d5; font-size:10px; font-weight:800; }
+  .view-tab.active { color:#fff; border-color:#a99cff77; background:linear-gradient(135deg,#7164a7aa,#247e8a88); box-shadow:inset 0 0 0 1px #ffffff12; }
+  .view-hint { margin-left:auto; padding-right:5px; color:#8490b2; font-size:9px; white-space:nowrap; }
+  .screen { position:relative; aspect-ratio:4 / 5; width:100%; max-height:720px; border-radius:10px; overflow:hidden; background:#11162b; border:1px solid rgba(185,194,255,.22); box-shadow:inset 0 0 0 1px #ffffff12,0 8px 24px #0008; transition:aspect-ratio .18s ease; }
+  .screen.chart-mode { aspect-ratio:4 / 5; }
+  .screen.game-mode { aspect-ratio:398 / 185; }
+  #gameCanvas { position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:pan-y; }
+  .screen-overlay,.judgement-label { display:none; }
+  .transport { padding:13px 3px 2px; }
+  .transport-main { display:flex; align-items:center; gap:8px; }
+  .play-btn { flex:0 0 47px; width:47px; height:43px; border:0; border-radius:13px; color:#15142a; background:linear-gradient(135deg,#c4b5fd,#67e8f9); font-size:17px; box-shadow:0 6px 20px #8b5cf633; }
+  .sub-btn { flex:0 0 40px; width:40px; height:40px; border:1px solid var(--line); border-radius:12px; background:#252d4b; color:#e9ecff; }
+  .progress-wrap { flex:1; min-width:0; }
+  input[type=range] { width:100%; accent-color:#9b8aff; cursor:pointer; }
+  .time-row { display:flex; justify-content:space-between; margin-top:2px; color:var(--muted); font-variant-numeric:tabular-nums; font-size:10px; }
+  .speed-row { display:flex; align-items:center; justify-content:space-between; margin-top:11px; gap:12px; }
+  .speed-row label { font-size:11px; color:var(--muted); }
+  select, .url-input { background:#10162a; color:var(--ink); border:1px solid var(--line); border-radius:9px; padding:8px 10px; outline:none; }
+  select:focus, .url-input:focus { border-color:#9b8aff; }
+  .speed-select { padding:6px 9px; font-size:11px; }
+  .help-line { color:#8f9ab9; font-size:10px; margin:10px 3px 0; line-height:1.55; }
+  .side-panel { padding:20px; }
+  .section + .section { border-top:1px solid var(--line); margin-top:19px; padding-top:18px; }
+  .section h3 { margin:0 0 10px; font-size:13px; letter-spacing:.02em; }
+  .section-desc { margin:-3px 0 12px; color:var(--muted); font-size:11px; line-height:1.6; }
+  .source-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .action-btn { border:1px solid #8b83ba55; color:#e9e6ff; background:#38345d; padding:9px 12px; border-radius:10px; font-size:11px; font-weight:700; }
+  .action-btn.primary { color:#17142b; border:0; background:linear-gradient(135deg,#c4b5fd,#67e8f9); }
+  .action-btn.ghost { background:#10162a; border-color:var(--line); color:#c8d0e9; }
+  .url-row { display:flex; gap:8px; margin-top:11px; }
+  .url-input { flex:1; min-width:0; font-size:10px; }
+  .status { margin-top:12px; padding:10px 11px; border-radius:10px; background:#10162a; border:1px solid var(--line); color:#aab5d2; font-size:10px; line-height:1.55; overflow-wrap:anywhere; }
+  .status.ok { border-color:#54d9ba55; color:#9fead8; background:#1a4d4326; }
+  .status.warn { border-color:#e8b75b55; color:#f3d294; background:#62451b22; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat { border:1px solid var(--line); background:#11172b; border-radius:12px; padding:11px; min-width:0; }
+  .stat span { display:block; font-size:9px; color:var(--muted); margin-bottom:5px; }
+  .stat strong { font-size:17px; font-variant-numeric:tabular-nums; }
+  .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:#c6cce2; }
+  /* In-game body families: cyan tap, green slide, red flick, yellow critical.
+     Trace bodies use the slim green/red/yellow variants rather than pastel fill. */
+  .swatch { width:26px; height:9px; border-radius:6px; background:linear-gradient(180deg,#eaffff,#56d9f4 52%,#1684bd); color:#42c9f0; box-shadow:0 0 7px currentColor; }
+  .swatch.critical { background:linear-gradient(180deg,#fffde4,#ffe277 55%,#dca51b); color:#ffd64d; }
+  .swatch.flick { background:linear-gradient(180deg,#fff0f1,#ff626d 52%,#cb233c); color:#ff596b; }
+  .swatch.slide { background:linear-gradient(180deg,#eafff2,#5ae59b 55%,#1a9b63); color:#56e69a; height:7px; box-shadow:0 0 8px currentColor; }
+  .swatch.trace { height:6px; border-radius:6px; background:linear-gradient(180deg,#f1fff7,#b9f8d2 55%,#56c98f); color:#a8f2c8; border:1px solid #e8fff2; box-shadow:0 0 8px #62e6a766; }
+  .swatch.trace-flick { height:6px; background:linear-gradient(180deg,#fff6f7,#ff8794 55%,#d3314e); color:#ff8794; border:1px solid #fff0f2; box-shadow:0 0 8px #ff718466; }
+  .swatch.trace-critical { height:6px; background:linear-gradient(180deg,#fffef4,#ffe8a0 55%,#d9a72e); color:#ffe8a0; border:1px solid #fff8dc; box-shadow:0 0 8px #ffe58a66; }
+  .swatch.purple { background:#b17be8; color:#b17be8; }
+  .ref-card { display:flex; align-items:center; gap:12px; background:#10162a; border:1px solid var(--line); padding:10px; border-radius:12px; }
+  .ref-card img { width:78px; height:48px; object-fit:cover; object-position:center; border-radius:7px; background:#8e60aa; }
+  .ref-card div { min-width:0; flex:1; }
+  .ref-card strong { display:block; font-size:10px; }
+  .ref-card a { font-size:10px; }
+  details { margin-top:10px; }
+  details summary { cursor:pointer; color:#aeb7d1; font-size:10px; }
+  details img { width:100%; margin-top:10px; border-radius:9px; border:1px solid var(--line); }
+  .foot { margin:17px 4px 0; color:#7f8aaa; font-size:9px; line-height:1.6; }
+  .file-hidden { display:none; }
+  @media (max-width: 900px) { .layout { grid-template-columns:1fr; max-width:560px; margin:auto; } .side-panel { order:2; } }
+  @media (max-width: 520px) { .app { padding:13px 10px 25px; } .topbar { margin-bottom:14px; } .brand h1 { font-size:15px; } .top-pill { display:none; } .player-panel { padding:8px; } .side-panel { padding:15px; } .song-info h2 {font-size:13px;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">♪</div>
+      <div><h1>Project SEKAI Chart Player</h1><p>Chart view + game view</p></div>
+    </div>
+    <div class="top-pill">PROJECT SEKAI · 12 LANE CHART PLAYER</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel player-panel" aria-label="譜面プレイヤー">
+      <div class="stage-head">
+        <div class="song-info">
+          <div class="eyebrow">Now Previewing · CHART VIEW</div>
+          <h2 id="songTitle">SUSデモ譜面</h2>
+          <p id="songArtist">内蔵テストデータ · BPM変化・フリック・スライド</p>
+        </div>
+        <div class="diff" id="difficulty">EXPERT</div>
+      </div>
+      <div class="view-tabs" role="tablist" aria-label="譜面表示モード">
+        <button class="view-tab active" id="flatViewButton" type="button" role="tab" aria-selected="true">譜面ビュー（従来）</button>
+        <button class="view-tab" id="gameViewButton" type="button" role="tab" aria-selected="false">ゲーム画面</button>
+        <span class="view-hint" id="viewHint">12レーン・一定スクロール速度</span>
+      </div>
+      <div class="screen chart-mode" aria-label="譜面表示画面">
+        <canvas id="gameCanvas" aria-label="譜面の再生プレビュー"></canvas>
+        <div hidden><span id="bpmHud"></span><span id="chartStatus"></span><span id="comboNumber"></span></div>
+      </div>
+      <div class="transport">
+        <div class="transport-main">
+          <button class="play-btn" id="playButton" aria-label="再生">▶</button>
+          <button class="sub-btn" id="restartButton" aria-label="最初から">↺</button>
+          <div class="progress-wrap">
+            <input type="range" id="seekBar" min="0" max="100" value="0" step="0.01" aria-label="再生位置">
+            <div class="time-row"><span id="currentTime">00:00.0</span><span id="duration">00:00.0</span></div>
+          </div>
+        </div>
+        <div class="speed-row">
+          <label for="speedSelect">再生速度</label>
+          <select class="speed-select" id="speedSelect">
+            <option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0×</option>
+          </select>
+          <label><input type="checkbox" id="glowToggle" checked> ノーツ発光</label>
+        </div>
+      </div>
+      <p class="help-line">Space：再生 / 一時停止　 R：最初から　タイムバーをドラッグすると任意の位置へ移動できます。</p>
+    </section>
+
+    <aside class="panel side-panel">
+      <section class="section" style="padding-top:0;margin-top:0;border-top:0">
+        <h3>譜面データを読み込む</h3>
+        <p class="section-desc">ゲームアセットから取り出した SUS / TXT、または pjsekai.moe 形式の SVG を読み込めます。PNGは画像なので、動く譜面に変換するにはSUSかSVGを使用してください。</p>
+        <div class="source-actions">
+          <button class="action-btn primary" id="fileButton">ファイルを選択</button>
+          <button class="action-btn" id="demoButton">デモ譜面に戻す</button>
+          <input class="file-hidden" type="file" id="fileInput" accept=".sus,.txt,.svg,text/plain,image/svg+xml">
+        </div>
+        <div class="url-row">
+          <input class="url-input" id="sourceUrl" spellcheck="false" value="https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg" aria-label="譜面URL">
+          <button class="action-btn" id="urlButton">URL読込</button>
+        </div>
+        <div class="status" id="loadStatus" role="status">内蔵デモ譜面を表示中です。実際の譜面はSUS/TXTファイル、または上のSVG URLから読み込めます。</div>
+      </section>
+
+      <section class="section">
+        <h3>読み込み内容</h3>
+        <div class="stats">
+          <div class="stat"><span>ノーツ数</span><strong id="noteCount">—</strong></div>
+          <div class="stat"><span>譜面時間</span><strong id="durationStat">—</strong></div>
+          <div class="stat"><span>BPM</span><strong id="bpmStat">—</strong></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>ノーツの種類</h3>
+        <div class="legend">
+          <div class="legend-item"><i class="swatch"></i>通常タップ（シアン）</div>
+          <div class="legend-item"><i class="swatch slide"></i>スライド（グリーン）</div>
+          <div class="legend-item"><i class="swatch flick"></i>フリック（レッド）</div>
+          <div class="legend-item"><i class="swatch critical"></i>クリティカル（イエロー）</div>
+          <div class="legend-item"><i class="swatch trace"></i>トレース（明るいミント／白いハイライト）</div>
+          <div class="legend-item"><i class="swatch trace-flick"></i>トレースフリック（ピンクレッド）</div>
+          <div class="legend-item"><i class="swatch trace-critical"></i>クリティカルトレース（明るいゴールド）</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>参照元の譜面画像</h3>
+        <p class="section-desc">今回の例として指定された楽曲ID 0304 / APPEND のPNGです。静止画の見た目の比較に使えます。</p>
+        <div class="ref-card">
+          <img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewerの譜面画像" loading="lazy">
+          <div><strong>なんです。 / APPEND</strong><a href="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" target="_blank" rel="noopener">PNGを別タブで開く ↗</a><br><a href="https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg" target="_blank" rel="noopener">SVG譜面を開く ↗</a></div>
+        </div>
+        <details><summary>参照PNGをページ内で表示</summary><img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewer generated chart for music 0304 append"></details>
+      </section>
+
+      <p class="foot">ゲーム用ノーツ画像（notes_0～6.png）を優先使用し、通常タップ=シアン、スライド=グリーン、フリック=レッド、クリティカル=イエロー、トレース=細身のグリーン／レッド／イエローとして描画します。画像素材が取得できない場合は同じ色分類の代替描画を使います。トレースはゲーム用の細身スプライトを使用し、譜面上のレーン幅は変更しません。プレイ画面モードは添付の画面比率・レーン遠近を参考にした非公式プレビューです。</p>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const SVG_URL = 'https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg';
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const state = {
+    chart: null, playing: false, time: -0.35, duration: 30, speed: 1,
+    lastFrame: 0, raf: 0, width: 0, height: 0, dpr: 1,
+    glow: true, activeSource: 'demo', viewMode:'flat',
+  };
+  // Reuse the same note sprites used by the public Project SEKAI chart renderer.
+  // Images are drawn directly into the canvas; no pixel readback is performed.
+  const NOTE_ASSET_BASE = 'https://asset3.pjsekai.moe/live/note/custom01/';
+  const spriteCache = new Map();
+  function spriteImage(file) {
+    if (!file) return null;
+    if (spriteCache.has(file)) return spriteCache.get(file);
+    const img = new Image();
+    img.decoding = 'async';
+    img.onload = () => { if (state.chart) render(); };
+    img.onerror = () => { img.dataset.failed = '1'; if (state.chart) render(); };
+    img.src = /^https?:\/\//i.test(file) ? file : NOTE_ASSET_BASE + file;
+    spriteCache.set(file, img);
+    return img;
+  }
+  for (let i=0; i<=6; i++) spriteImage(`notes_${i}.png`);
+  ['notes_long_among.png','notes_long_among_crtcl.png',
+   'notes_friction_among_long.png','notes_friction_among_flick.png',
+   'notes_friction_among_crtcl.png'].forEach(spriteImage);
+  let stageJacketImage = null;
+  let stageJacketUrl = '';
+  function setStageJacket(url) {
+    if (!url || url === stageJacketUrl) return;
+    stageJacketUrl = url;
+    stageJacketImage = spriteImage(url);
+  }
+
+  const BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const b36 = (c) => {
+    const n = BASE36.indexOf(String(c || '0').toUpperCase());
+    return n < 0 ? 0 : n;
+  };
+  const parseBase36 = (s) => {
+    let n = 0;
+    for (const c of String(s || '0')) n = n * 36 + b36(c);
+    return n;
+  };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const fmtTime = (sec) => {
+    sec = Math.max(0, Number(sec) || 0);
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return `${pad2(m)}:${s.toFixed(1).padStart(4, '0')}`;
+  };
+
+  function parseSUS(source) {
+    // SUS reader aligned with pjsekai-scores-rs:
+    // parse raw channels first, then link Directional -> Tap and
+    // Slide -> Tap/Directional in separate passes. This matters because a
+    // flick channel can carry critical/trend metadata for a slide endpoint.
+    const meta = { title: '', artist: '', designer: '', difficulty: '', level: '' };
+    const bpmDefs = new Map();
+    const events = [];
+    const rawNotes = [];
+    const lines = String(source).replace(/^\uFEFF/, '').split(/\r?\n/);
+    let sourceOrder = 0;
+
+    function parsePairs(data, lineLabel='譜面行') {
+      const compact = String(data).replace(/\s+/g, '').toUpperCase();
+      if (compact.length % 2 !== 0) {
+        throw new Error(`${lineLabel}: データ桁数が偶数ではありません。`);
+      }
+      const result = [];
+      const pairCount = compact.length / 2;
+      for (let pairIndex = 0; pairIndex < pairCount; pairIndex++) {
+        const pair = compact.slice(pairIndex * 2, pairIndex * 2 + 2);
+        if (pair === '00') continue;
+        result.push({ frac: pairIndex / pairCount, numerator: pairIndex, denominator: pairCount, pair });
+      }
+      return result;
+    }
+
+    function addChannelNotes(bar, channelType, laneChar, channelChar, data, lineNo, header) {
+      const lane = b36(laneChar);
+      const channel = channelChar == null ? null : b36(channelChar);
+      if (lane < 2 || lane > 13) return;
+      parsePairs(data, `#${header}`).forEach(({ frac, numerator, denominator, pair }) => {
+        const noteType = b36(pair[0]);
+        const widthRaw = b36(pair[1]);
+        if (noteType === 0) return;
+        // Keep only note codes defined for the channel family. Unknown codes
+        // must not be mis-rendered as ordinary taps/slides.
+        const validType = channelType === 1 ? noteType >= 1 && noteType <= 8
+          : channelType === 3 || channelType === 9 ? noteType >= 1 && noteType <= 5
+          : channelType === 5 ? noteType >= 1 && noteType <= 6 : false;
+        if (!validType) return;
+        // Reduce the beat fraction so rows with different data resolution
+        // still match the exact same SUS slot (e.g. 1/4 === 2/8).
+        let a = numerator, b = denominator;
+        while (b) { const r = a % b; a = b; b = r; }
+        const divisor = Math.max(1, a);
+        const slotNumerator = numerator / divisor;
+        const slotDenominator = denominator / divisor;
+        rawNotes.push({
+          id: sourceOrder++, sourceOrder: sourceOrder - 1,
+          bar: bar + frac,
+          slotKey: `${bar}:${slotNumerator}/${slotDenominator}`,
+          slotNumerator, slotDenominator,
+          lane, laneIndex: lane - 2,
+          widthRaw, widthUnits: widthRaw + 1,
+          noteType, channelType, channel,
+          decoration: channelType === 9,
+          lineNo: lineNo + 1,
+        });
+      });
+    }
+
+    for (let lineNo = 0; lineNo < lines.length; lineNo++) {
+      const line = lines[lineNo].trim();
+      if (!line.startsWith('#')) continue;
+      const colon = line.indexOf(':');
+      let header = (colon >= 0 ? line.slice(1, colon) : line.slice(1)).trim();
+      let data = colon >= 0 ? line.slice(colon + 1).trim() : '';
+      if (colon < 0) {
+        const metaLine = line.match(/^#([A-Za-z0-9_]+)\s+(.*)$/);
+        if (metaLine) { header = metaLine[1]; data = metaLine[2].trim(); }
+      }
+
+      const metaMatch = header.match(/^(TITLE|ARTIST|DESIGNER|DIFFICULTY|PLAYLEVEL|LEVEL)$/i);
+      if (metaMatch) {
+        const val = data.replace(/^"([\s\S]*)"$/, '$1').replace(/^'(.*)'$/, '$1');
+        const key = metaMatch[1].toUpperCase();
+        if (key === 'TITLE') meta.title = val;
+        if (key === 'ARTIST') meta.artist = val;
+        if (key === 'DESIGNER') meta.designer = val;
+        if (key === 'DIFFICULTY') meta.difficulty = val;
+        if (key === 'PLAYLEVEL' || key === 'LEVEL') meta.level = val;
+        continue;
+      }
+
+      // BPM definition IDs are Base36 but, unlike lane/channel IDs, must be uppercase.
+      const bpmDef = header.match(/^BPM([0-9A-Z]{2})$/);
+      if (bpmDef) {
+        const bpm = Number(data);
+        if (Number.isFinite(bpm) && bpm > 0) bpmDefs.set(parseBase36(bpmDef[1]), bpm);
+        continue;
+      }
+      const lengthMatch = header.match(/^(\d{3})02$/);
+      if (lengthMatch) {
+        const length = Number(data);
+        if (Number.isFinite(length) && length > 0) events.push({ bar: Number(lengthMatch[1]), barLength: length });
+        continue;
+      }
+      const bpmRef = header.match(/^(\d{3})08$/);
+      if (bpmRef) {
+        const bar = Number(bpmRef[1]);
+        parsePairs(data, `#${header}`).forEach(({ frac, pair }) => {
+          const bpm = bpmDefs.get(parseBase36(pair));
+          if (bpm) events.push({ bar: bar + frac, bpm });
+        });
+        continue;
+      }
+
+      // Match the four channel layouts used by the reference parser.
+      let m;
+      if ((m = header.match(/^(\d{3})1([0-9A-Z])$/i))) {
+        addChannelNotes(Number(m[1]), 1, m[2], null, data, lineNo, header);
+      } else if ((m = header.match(/^(\d{3})3([0-9A-Z])([0-9A-Z])$/i))) {
+        addChannelNotes(Number(m[1]), 3, m[2], m[3], data, lineNo, header);
+      } else if ((m = header.match(/^(\d{3})5([0-9A-Z])$/i))) {
+        addChannelNotes(Number(m[1]), 5, m[2], null, data, lineNo, header);
+      } else if ((m = header.match(/^(\d{3})9([0-9A-Z])([0-9A-Z])$/i))) {
+        addChannelNotes(Number(m[1]), 9, m[2], m[3], data, lineNo, header);
+      }
+    }
+
+    if (!rawNotes.length) throw new Error('譜面ノーツを読み取れませんでした。SUS/TXTファイルかどうか確認してください。');
+    const timing = buildTiming(events);
+    rawNotes.forEach(n => { n.time = timeAt(timing, n.bar); });
+
+    // Match the reference implementation's slot identity exactly:
+    // measure fraction + leftmost lane + raw width (not rendered width).
+    const sameSlot = (a, b) => a.slotKey === b.slotKey && a.lane === b.lane && a.widthRaw === b.widthRaw;
+    const taps = rawNotes.filter(n => n.channelType === 1);
+    const directionals = rawNotes.filter(n => n.channelType === 5);
+    const slides = rawNotes.filter(n => n.channelType === 3 || n.channelType === 9);
+    const deleted = new Set();
+
+    const attachTapType = (target, tap) => {
+      if (!tap) return;
+      target.attachedTap = tap;
+      target.tapType = tap.noteType;
+      target.critical = [2, 6, 8].includes(tap.noteType);
+      target.trend = [5, 6].includes(tap.noteType);
+      target.damage = false;
+      target.skillActivation = tap.noteType === 4;
+      target.cancelled = [7, 8].includes(tap.noteType);
+    };
+
+    // Pass 1: directional notes absorb same-slot taps. Keep the directional
+    // object alive so the next pass can attach it to a slide endpoint.
+    for (const directional of directionals) {
+      const matches = taps.filter(t => !deleted.has(t.id) && sameSlot(t, directional));
+      if (matches.length) {
+        const tap = matches[matches.length - 1];
+        attachTapType(directional, tap);
+        matches.forEach(t => deleted.add(t.id));
+      }
+    }
+
+    // Pass 2: each slide point absorbs any still-unclaimed tap and then a
+    // directional overlay. This mirrors the reference parser's ordering.
+    for (const slide of slides) {
+      slide.head = slide;
+      const matchingTaps = taps.filter(t => !deleted.has(t.id) && sameSlot(t, slide));
+      if (matchingTaps.length) {
+        const tap = matchingTaps[matchingTaps.length - 1];
+        attachTapType(slide, tap);
+        matchingTaps.forEach(t => deleted.add(t.id));
+      }
+      const matchingDirections = directionals.filter(d => !deleted.has(d.id) && sameSlot(d, slide));
+      if (matchingDirections.length) {
+        const directional = matchingDirections[matchingDirections.length - 1];
+        slide.attachedDirectional = directional;
+        slide.direction = directional.noteType;
+        if (!slide.attachedTap && directional.attachedTap) attachTapType(slide, directional.attachedTap);
+        matchingDirections.forEach(d => deleted.add(d.id));
+      }
+    }
+
+    // Build the next-node pointers by channel + decoration flag, preserving
+    // source order for simultaneous nodes. Channel 3 and 9 are not mixed.
+    const slideGroups = new Map();
+    for (const slide of slides) {
+      const key = `${slide.channel}:${slide.decoration ? 1 : 0}`;
+      if (!slideGroups.has(key)) slideGroups.set(key, []);
+      slideGroups.get(key).push(slide);
+    }
+    for (const group of slideGroups.values()) {
+      // Reference Score sorts by exact bar position and retains source order for ties.
+      group.sort((a, b) => a.bar - b.bar || a.sourceOrder - b.sourceOrder);
+      for (let i = 0; i < group.length; i++) group[i].nextSlide = group[i + 1] || null;
+    }
+
+    // Propagate the start-node style down a connected slide chain, as the
+    // source renderer asks every segment node to inherit its head's flags.
+    for (const start of slides.filter(n => n.noteType === 1)) {
+      let current = start;
+      const seen = new Set();
+      while (current && !seen.has(current.id)) {
+        seen.add(current.id);
+        current.head = start;
+        if (current.noteType === 2) break;
+        current = current.nextSlide;
+      }
+    }
+
+    const tapMeta = (tap) => ({
+      tapType: tap?.noteType ?? null,
+      critical: !!tap && [2, 6, 8].includes(tap.noteType),
+      trend: !!tap && [5, 6].includes(tap.noteType),
+      // TapType::Damage (4) is rendered by pjsekai-scores-rs with the
+      // ordinary tap sprite; keep its semantic flag without purple styling.
+      damage: false,
+      skillActivation: !!tap && tap.noteType === 4,
+      cancelled: !!tap && [7, 8].includes(tap.noteType),
+    });
+    const directionalMeta = (directional) => tapMeta(directional?.attachedTap);
+    const slideMeta = (slide) => {
+      const ownTap = slide.attachedTap || slide.attachedDirectional?.attachedTap || null;
+      const head = slide.head || slide;
+      const headTap = head.attachedTap || head.attachedDirectional?.attachedTap || null;
+      const own = tapMeta(ownTap);
+      const headFlags = tapMeta(headTap);
+      return {
+        critical: own.critical || headFlags.critical,
+        // Slide::is_trend checks only the current point's attached Tap /
+        // Directional. Unlike critical, trend is NOT inherited from the head.
+        trend: own.trend,
+        cancelled: !!slide.attachedTap && own.cancelled,
+      };
+    };
+
+    const notes = [];
+    // Ordinary taps not consumed by a directional or slide note.
+    for (const tap of taps) {
+      if (deleted.has(tap.id) || [7, 8].includes(tap.noteType)) continue;
+      const flags = tapMeta(tap);
+      const kind = tap.noteType === 3 ? 'flick' : 'tap';
+      notes.push({ ...tap, ...flags, kind, isFlick: kind === 'flick', direction: 1, source: 'sus' });
+    }
+    // Directional notes remain as one visible head when they were not
+    // consumed by a slide. A matched tap supplies critical/trend styling.
+    for (const directional of directionals) {
+      if (deleted.has(directional.id)) continue;
+      const flags = directionalMeta(directional);
+      notes.push({ ...directional, ...flags, kind: 'flick', isFlick: true,
+        direction: directional.noteType, source: 'sus' });
+    }
+    // Standard slides show only Start/End heads. Relays are path control
+    // points (or friction dots), not extra rectangular note heads.
+    for (const slide of slides) {
+      if (deleted.has(slide.id)) continue;
+      if (slide.channelType === 3) {
+        if (slide.noteType !== 1 && slide.noteType !== 2) continue;
+        const flags = slideMeta(slide);
+        if (flags.cancelled) continue;
+        const hasDirection = slide.noteType === 2 && !!slide.attachedDirectional;
+        notes.push({ ...slide, ...flags, kind: 'slide',
+          isFlick: hasDirection, direction: slide.direction || 1,
+          source: 'sus', slideHead: true });
+      } else {
+        // Decoration slides are paths only. Their visible heads are their
+        // attached tap notes, when present.
+        if (!slide.attachedTap || [7, 8].includes(slide.attachedTap.noteType)) continue;
+        const flags = tapMeta(slide.attachedTap);
+        const hasDirection = !!slide.attachedDirectional;
+        const kind = slide.attachedTap.noteType === 3 ? 'flick' : 'tap';
+        notes.push({ ...slide, ...flags, kind, isFlick: kind === 'flick' || hasDirection,
+          direction: slide.direction || (kind === 'flick' ? 1 : 0), source: 'sus', decorationHead: true });
+      }
+    }
+    notes.sort((a, b) => a.bar - b.bar || a.sourceOrder - b.sourceOrder);
+
+    function isSlidePathNode(node) {
+      if (!node || node.noteType === 0) return false;
+      if (node.noteType !== 3) return true;
+      if (node.attachedDirectional) return true;
+      return !node.attachedTap && !node.attachedDirectional;
+    }
+
+    // Build ribbon segments just like collect_slide_edges(): relay nodes with
+    // an attached tap are skipped as path endpoints but retained as dots.
+    const slideLinks = [];
+    for (const start of slides.filter(n => !deleted.has(n.id) && n.noteType === 1)) {
+      let current = start;
+      const seen = new Set();
+      while (current && current.noteType !== 2 && current.nextSlide && !seen.has(current.id)) {
+        seen.add(current.id);
+        let next = current.nextSlide;
+        const amongs = [];
+        const innerSeen = new Set();
+        while (next && !innerSeen.has(next.id)) {
+          innerSeen.add(next.id);
+          if (next.noteType === 3) amongs.push(next);
+          if (isSlidePathNode(next) || !next.nextSlide) break;
+          next = next.nextSlide;
+        }
+        if (!next || next === current) break;
+        slideLinks.push({
+          a: current, b: next, amongs,
+          direction: current.attachedDirectional?.noteType || 0,
+          decoration: current.decoration,
+          critical: slideMeta(current).critical,
+          trend: slideMeta(current).trend,
+        });
+        current = next;
+      }
+    }
+
+    const maxBar = Math.max(...rawNotes.map(n => n.bar), 0);
+    const endBar = Math.ceil(maxBar) + 2;
+    const maxNoteTime = notes.length ? Math.max(...notes.map(n => n.time)) : 0;
+    const duration = Math.max(timeAt(timing, endBar), maxNoteTime + 1);
+    const marks = makeBeatMarks(timing, endBar);
+    const initialBpm = timeEventAt(timing, 0).bpm;
+    return {
+      meta, notes, timing, marks, slideLinks, duration,
+      bpm: initialBpm, format: 'SUS', rawNoteCount: rawNotes.length,
+      parserVersion: '3.7-rs-note-style-and-lane-geometry',
+    };
+  }
+
+  function buildTiming(rawEvents) {
+    const byBar = new Map();
+    for (const ev of rawEvents) {
+      const key = Number(ev.bar.toFixed(9));
+      const target = byBar.get(key) || { bar: key };
+      if (ev.bpm != null) target.bpm = ev.bpm;
+      if (ev.barLength != null) target.barLength = ev.barLength;
+      byBar.set(key, target);
+    }
+    const grouped = [...byBar.values()].sort((a,b) => a.bar - b.bar);
+    if (!byBar.has(0)) grouped.unshift({ bar:0, bpm:120, barLength:4 });
+    let bpm = 120, barLength = 4, prevBar = 0, seconds = 0;
+    const timeline = [];
+    for (const ev of grouped) {
+      if (ev.bar > prevBar) seconds += (ev.bar - prevBar) * barLength * 60 / bpm;
+      if (ev.bpm != null) bpm = ev.bpm;
+      if (ev.barLength != null) barLength = ev.barLength;
+      timeline.push({ bar:ev.bar, seconds, bpm, barLength });
+      prevBar = ev.bar;
+    }
+    if (!timeline.length) timeline.push({ bar:0, seconds:0, bpm:120, barLength:4 });
+    return timeline;
+  }
+  function timeEventAt(timeline, bar) {
+    let found = timeline[0];
+    for (const ev of timeline) { if (ev.bar <= bar + 1e-9) found = ev; else break; }
+    return found;
+  }
+  function timeAt(timeline, bar) {
+    const ev = timeEventAt(timeline, bar);
+    return ev.seconds + (bar - ev.bar) * ev.barLength * 60 / ev.bpm;
+  }
+  function makeBeatMarks(timeline, endBar) {
+    const marks = [];
+    for (let bar=0; bar<=endBar; bar++) {
+      const event = timeEventAt(timeline, bar);
+      const beats = Math.max(1, Math.min(12, Math.round(event.barLength || 4)));
+      for (let j=0; j<beats*4; j++) {
+        const pos = bar + j/(beats*4);
+        marks.push({ time:timeAt(timeline, pos), major:j%4===0, bar:j===0 });
+      }
+    }
+    return marks;
+  }
+  function makeSlideLinks(rawNotes) {
+    const groups = new Map();
+    for (const n of rawNotes) {
+      if (n.channelType !== 3 && n.channelType !== 9) continue;
+      const key = `${n.channelType}:${n.channel == null ? 'default' : n.channel}:${n.decoration ? 1 : 0}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(n);
+    }
+    const links = [];
+    for (const group of groups.values()) {
+      group.sort((a,b) => a.bar-b.bar || a.laneIndex-b.laneIndex || a.noteType-b.noteType);
+      let chain = [];
+      const flush = () => {
+        // Type 5 is an invisible relay: it remains part of the chain ordering,
+        // but the rendered path joins adjacent visible points around it.
+        const visible = chain.filter(n => n.noteType !== 5 && [1,2,3].includes(n.noteType));
+        for (let i=1; i<visible.length; i++) links.push([visible[i-1],visible[i]]);
+        chain = [];
+      };
+      for (const n of group) {
+        if (n.noteType === 1) {
+          if (chain.length) flush();
+          chain = [n];
+        } else if (chain.length) {
+          chain.push(n);
+          if (n.noteType === 2) flush();
+        }
+      }
+      if (chain.length) flush();
+    }
+    return links;
+  }
+
+  function parseSVGChart(source) {
+    const doc = new DOMParser().parseFromString(String(source), 'image/svg+xml');
+    if (doc.querySelector('parsererror')) throw new Error('SVGの解析に失敗しました。正しい譜面SVGか確認してください。');
+    const root = doc.documentElement;
+    if (!root || root.localName.toLowerCase() !== 'svg') throw new Error('SVGルート要素が見つかりません。');
+    const segments = [...root.children].filter(el => el.localName.toLowerCase() === 'svg' && el.hasAttribute('x') && el.hasAttribute('height'))
+      .sort((a,b) => Number(a.getAttribute('x')) - Number(b.getAttribute('x')));
+    if (!segments.length) throw new Error('譜面セクションが見つかりません。このSVGは対応する譜面出力形式ではない可能性があります。');
+    const notes = [], marks = [], slidePaths = [], markers = [];
+    let segmentStart = 0;
+
+    for (const seg of segments) {
+      const segHeight = Number(seg.getAttribute('height'));
+      const segDuration = Math.max(0, (segHeight - 64) / 360);
+      const segmentFlickOverlays = [];
+      // Ignore reusable sprite definitions. Only rendered <use>/<image>/<path>
+      // instances describe chart events; paths inside <defs> are note artwork.
+      const isInsideDefs = (el) => {
+        for (let parent=el.parentElement; parent && parent!==seg; parent=parent.parentElement) {
+          if (String(parent.localName || '').toLowerCase() === 'defs') return true;
+        }
+        return false;
+      };
+      const segmentImages = [...seg.querySelectorAll('image')].filter(image => !isInsideDefs(image));
+      for (const image of segmentImages) {
+        const href = image.getAttribute('href') || image.getAttributeNS('http://www.w3.org/1999/xlink','href') || '';
+        const file = href.split(/[?#]/)[0].split('/').pop() || '';
+        const ix = Number(image.getAttribute('x') || 0);
+        const iy = Number(image.getAttribute('y') || 0);
+        const iw = Number(image.getAttribute('width') || 0);
+        const ih = Number(image.getAttribute('height') || 0);
+        if (!(iw > 0 && ih > 0)) continue;
+        // pjsekai-scores-rs writes flick directions as external PNG <image>s,
+        // never as <use> symbols. Filename + horizontal flip encode direction.
+        if (/^notes_flick_arrow(?:_crtcl)?_\d{2}(?:_diagonal)?\.(?:png|webp|svg)$/i.test(file)) {
+          const diagonal = /_diagonal\./i.test(file);
+          const transform = String(image.getAttribute('transform') || '').replace(/\s+/g,'');
+          const direction = !diagonal ? 1 : (/scale\(-1(?:,1)?\)/i.test(transform) ? 4 : 3);
+          segmentFlickOverlays.push({ direction, x:ix, y:iy, w:iw, h:ih, href:file });
+          continue;
+        }
+        // Trace/slide relay markers are also <image>s. Preserve their actual
+        // coordinates rather than guessing a marker from the path centre.
+        let markerKind = null;
+        if (/^notes_long_among_crtcl\./i.test(file)) markerKind = 'long-critical';
+        else if (/^notes_long_among\./i.test(file)) markerKind = 'long';
+        else if (/^notes_friction_among_crtcl\./i.test(file)) markerKind = 'friction-critical';
+        else if (/^notes_friction_among_flick\./i.test(file)) markerKind = 'friction-flick';
+        else if (/^notes_friction_among_long\./i.test(file)) markerKind = 'friction-long';
+        if (markerKind) {
+          const cy = iy + ih/2;
+          markers.push({ x:ix+iw/2, y:cy, w:iw, h:ih, kind:markerKind,
+            time:segmentStart + segDuration - (cy - 32)/360, segmentStart, segmentDuration:segDuration });
+        }
+      }
+      const segmentUses = [...seg.querySelectorAll('use')].filter(use => !isInsideDefs(use)).map(use => {
+        const href = use.getAttribute('href') || use.getAttributeNS('http://www.w3.org/1999/xlink','href') || '';
+        const m = href.match(/^#notes-(\d+)(?:-(\d+))?$/);
+        if (!m) {
+          // Directional arrow symbols are emitted as a second SVG use over
+          // the note body. Accept the common flick/direction symbol prefixes.
+          const fm = href.match(/^#(?:flicks?|directions?|directionals?|arrows?)[_-]?(\d+)(?:[-_][\w-]+)?$/i);
+          if (fm) {
+            const direction = Number(fm[1]);
+            const fx = Number(use.getAttribute('x') || 0);
+            const fy = Number(use.getAttribute('y') || 0);
+            const fw = Number(use.getAttribute('width') || 0);
+            const fh = Number(use.getAttribute('height') || 0);
+            if (direction >= 1 && direction <= 6 && fw > 0 && fh > 0) {
+              segmentFlickOverlays.push({ direction, x:fx, y:fy, w:fw, h:fh });
+            }
+          }
+          return null;
+        }
+        const symbolType = Number(m[1]);
+        const x = Number(use.getAttribute('x') || 0);
+        const y = Number(use.getAttribute('y') || 0);
+        const w = Number(use.getAttribute('width') || 0);
+        const h = Number(use.getAttribute('height') || 0);
+        if (!(w > 0 && h > 0)) return null;
+        const laneCoord = (x - 40) / 16 + 0.5;
+        const laneIndex = Math.round(laneCoord);
+        const laneAlignmentError = Math.abs(laneCoord - laneIndex);
+        const widthFromId = m[2] == null ? null : Number(m[2]);
+        const widthUnitsFromId = widthFromId == null ? w/16 : widthFromId + 1;
+        const widthUnitsFromGeometry = w/16;
+        const widthUnits = Number.isFinite(widthUnitsFromId) && widthUnitsFromId > 0 ? widthUnitsFromId : widthUnitsFromGeometry;
+        const centerY = y + h/2;
+        const noteTime = segmentStart + segDuration - (centerY - 32)/360;
+        return { symbolType, x, y, w, h, laneIndex, laneAlignmentError,
+          widthUnits, widthUnitsFromGeometry, centerY, time:noteTime };
+      }).filter(Boolean);
+
+      const segmentPaths = [];
+      for (const path of seg.querySelectorAll('path')) {
+        if (isInsideDefs(path)) continue;
+        const cls = path.getAttribute('class') || '';
+        const d = path.getAttribute('d') || '';
+        if (!(cls.toLowerCase().includes('slide') || cls.toLowerCase().includes('decoration')) || !d) continue;
+        const mStart = d.match(/M\s*([-+\d.eE]+)[ ,]+([-+\d.eE]+)/i);
+        const mEnd = d.match(/L\s*([-+\d.eE]+)[ ,]+([-+\d.eE]+)/i);
+        let pathObject;
+        try { pathObject = new Path2D(d); } catch (_) { continue; }
+        const endpoint = {
+          start: mStart ? { x:Number(mStart[1]), y:Number(mStart[2]) } : null,
+          end: mEnd ? { x:Number(mEnd[1]), y:Number(mEnd[2]) } : null,
+        };
+        const entry = { path:pathObject, d, className:cls, segmentStart, segmentDuration:segDuration, endpoint };
+        segmentPaths.push(entry);
+        slidePaths.push(entry);
+      }
+
+      const segmentNoteStart = notes.length;
+      for (const raw of segmentUses) {
+        const {symbolType, x, y, w, h, laneIndex, laneAlignmentError, widthUnits, widthUnitsFromGeometry, centerY, time} = raw;
+        if (laneAlignmentError > 0.08 || laneIndex < 0 || laneIndex > 11) continue;
+        // The SVG use references #notes-{kind}-{width}; the suffix is the
+        // stored SUS width. The visible width is storedWidth + 1 lane units.
+        if (Math.abs(widthUnits - widthUnitsFromGeometry) > 0.08) continue;
+        const critical = symbolType === 0 || symbolType === 5;
+        const trend = symbolType === 4 || symbolType === 5 || symbolType === 6;
+        let kind = 'tap';
+        if (symbolType === 1) kind = 'slide';
+        else if (symbolType === 3 || symbolType === 6) kind = 'flick';
+        else if (![0,2,4,5].includes(symbolType)) continue;
+
+        const note = {
+          time, laneIndex, lane:laneIndex + 2, widthUnits, widthRaw:Math.max(0,Math.round(widthUnits)-1),
+          kind, critical, trend, isFlick:kind==='flick', direction:0,
+          source:'svg', symbolType, svgX:x, svgY:y, svgW:w, svgH:h,
+        };
+        notes.push(note);
+      }
+
+      // Match note sprites against the actual path boundaries. Sprite 1 is a
+      // normal slide endpoint; sprites 0/4/5/3/6 can also be slide endpoints
+      // when a tap/flick is attached to a decorative/critical slide.
+      const currentSegmentNotes = notes.slice(segmentNoteStart);
+      for (const overlay of segmentFlickOverlays) {
+        const ox0 = overlay.x, oy0 = overlay.y, ox1 = ox0 + overlay.w, oy1 = oy0 + overlay.h;
+        const arrowCx=(ox0+ox1)/2, arrowCy=(oy0+oy1)/2;
+        const candidates = currentSegmentNotes.map(n => {
+          const nx0=n.svgX, ny0=n.svgY, nx1=nx0+n.svgW, ny1=ny0+n.svgH;
+          const iw=Math.max(0,Math.min(ox1,nx1)-Math.max(ox0,nx0));
+          const ih=Math.max(0,Math.min(oy1,ny1)-Math.max(oy0,ny0));
+          const overlap=iw*ih;
+          const dx=Math.abs((nx0+nx1)/2-arrowCx);
+          const dy=Math.abs((ny0+ny1)/2-arrowCy);
+          // In the reference renderer the arrow's horizontal center is exactly
+          // the note's center. Prefer that invariant over overlap area: a wide
+          // adjacent note must not steal a flick arrow from its true note.
+          const centerTolerance=Math.max(2.5, Math.min(6, n.svgW*0.10));
+          return {n,overlap,dx,dy,score:dx*10 + dy*0.15 - overlap*0.0005,centerTolerance};
+        }).filter(x=>x.overlap>0 && x.dx<=x.centerTolerance).sort((a,b)=>a.score-b.score);
+        const target = candidates[0]?.n;
+        if (target) {
+          target.isFlick = true;
+          target.direction = overlay.direction;
+          target.arrowAsset = overlay.href;
+          target.kind = target.kind === 'slide' ? 'slide' : 'flick';
+        }
+      }
+      for (const note of currentSegmentNotes) {
+        for (const sp of segmentPaths) {
+          if (!sp.endpoint.start || !sp.endpoint.end) continue;
+          const inferredLaneWidth = note.svgW / Math.max(1, note.widthUnits);
+          const leftEdge = note.svgX + inferredLaneWidth/2;
+          const rightEdge = note.svgX + note.svgW - inferredLaneWidth/2;
+          const cy = note.svgY + note.svgH/2;
+          const edgeTolerance = Math.max(1.1, inferredLaneWidth*0.14);
+          const startMatch = Math.abs(leftEdge - sp.endpoint.start.x) <= edgeTolerance && Math.abs(cy - sp.endpoint.start.y) <= edgeTolerance;
+          const endMatch = Math.abs(rightEdge - sp.endpoint.end.x) <= edgeTolerance && Math.abs(cy - sp.endpoint.end.y) <= edgeTolerance;
+          if (startMatch || endMatch) {
+            note.kind = 'slide';
+            note.slideHead = true;
+            note.slideEndpoint = startMatch ? 'start' : 'end';
+            if (sp.className.toLowerCase().includes('critical')) note.critical = true;
+            if (startMatch && note.critical) sp.critical = true;
+            if (sp.className.toLowerCase().includes('decoration')) note.decoration = true;
+            break;
+          }
+        }
+      }
+
+      // Beat/event marks are horizontal chart lines.
+      for (const line of seg.querySelectorAll('line.bar-line, line.beat-line')) {
+        const y = Number(line.getAttribute('y1') || 0);
+        const t = segmentStart + segDuration - (y - 32)/360;
+        marks.push({ time:t, major:line.getAttribute('class') === 'bar-line', bar:line.getAttribute('class') === 'bar-line' });
+      }
+      segmentStart += segDuration;
+    }
+    if (!notes.length) throw new Error('SVG内に譜面ノーツがありません。');
+    const titleEl = root.querySelector('text.title');
+    const subtitleEl = root.querySelector('text.subtitle');
+    const jacketEl = [...root.children].find(el => el.localName.toLowerCase() === 'image');
+    const title = titleEl ? titleEl.textContent.trim() : '読み込んだSVG譜面';
+    const subtitle = subtitleEl ? subtitleEl.textContent.trim() : '';
+    const jacket = jacketEl ? (jacketEl.getAttribute('href') || jacketEl.getAttributeNS('http://www.w3.org/1999/xlink','href') || '') : '';
+    const duration = Math.max(segmentStart, ...notes.map(n => n.time + 1));
+    const unsupportedSymbols = notes.filter(n => ![0,1,2,3,4,5,6].includes(n.symbolType)).length;
+    return {
+      meta:{ title, artist:subtitle, difficulty:'SVG', level:'', jacket }, notes,
+      timing:[], marks, slideLinks:[], slidePaths, markers, duration,
+      bpm:'—', format:'SVG', rawNoteCount:notes.length,
+      parserVersion:'3.7-scores-rs-svg-geometry-style-and-overlay-fidelity', unsupportedSymbols,
+    };
+  }
+
+  function makeDemoChart() {
+    const lines = ['#TITLE "SUSデモ譜面"', '#ARTIST "内蔵テストデータ"', '#DIFFICULTY "EXPERT"', '#PLAYLEVEL 28', '#BPM01: 170', '#BPM02: 195', '#BPM03: 148', '#00002: 4', '#00008: 01', '#00808: 02', '#01208: 03'];
+    const buckets = new Map();
+    const put = (bar, type, lane, code, width=0, channel=null) => {
+      const key = `${bar}:${type}:${lane}:${channel == null ? '' : channel}`;
+      const bucket = buckets.get(key) || Array(32).fill('00');
+      const index = Math.max(0,Math.min(31,Math.round(code.frac*32)));
+      bucket[index] = BASE36[code.noteType || 1] + BASE36[width];
+      buckets.set(key,bucket);
+    };
+    const tap=(bar,step,lane,nt=1,w=0)=>put(bar,1,lane,{frac:step/32,noteType:nt},w);
+    const flick=(bar,step,lane,dir=1)=>put(bar,5,lane,{frac:step/32,noteType:dir},0);
+    const slide=(bar,step,lane,nt,ch=1,w=0)=>put(bar,3,lane,{frac:step/32,noteType:nt},w,ch);
+    // Put all in-game note families near the beginning so the built-in
+    // demonstration makes the actual sprite differences easy to inspect.
+    // TapType 5/6 are normal/critical trace overlays; the type-5/6 trace
+    // directional pairs below demonstrate red/yellow trace flick heads.
+    tap(0,4,4,5,0);                 // green trace
+    tap(0,20,8,6,0);                // yellow critical trace
+    flick(1,8,6,3); tap(1,8,6,5,0); // red trace flick (upper-left)
+    flick(1,24,9,4); tap(1,24,9,6,0); // yellow critical trace flick
+    // A short trace slide: start -> relay -> end, with trace applied to the
+    // start point only, matching the reference engine's per-point style.
+    slide(0,8,2,1,5,0); slide(0,24,4,3,5,0); slide(1,8,7,2,5,0);
+    tap(0,8,2,5,0);
+    // A few measures of mixed patterns and spread notes.
+    for (let b=0;b<4;b++) {
+      [0,8,16,24].forEach((s,i)=>tap(b,s,2+(i*3+b)%12,1,(i===2 && b%2===0)?1:0));
+      [4,12,20,28].forEach((s,i)=>tap(b,s,3+(i*2+b*2)%11,(i===1?2:1),i===0&&b===1?1:0));
+    }
+    for (let s=0;s<32;s+=4) tap(4,s,2+(s/4*2)%12,s%8===0?5:1,s===16?1:0);
+    for (let s=2;s<32;s+=6) flick(4,s,2+(s*3)%12,(s%12===2?3:4));
+    for (let b=5;b<8;b++) {
+      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4+b*2)%12),((s+b)%5===0?2:1),(s===0&&b===6)?1:0);
+      for(let s=2;s<32;s+=8) flick(b,s,2+((s*2+b)%12),s%16===2?5:6);
+    }
+    // Slide chains spanning multiple measures, one standard and one decorative.
+    slide(8,0,2,1,1,0); slide(8,24,6,3,1,1); slide(9,16,10,3,1,0); slide(10,8,7,2,1,0);
+    slide(8,8,13,1,2,0); slide(9,0,9,3,2,1); slide(9,24,5,2,2,0);
+    for(let b=11;b<16;b++) {
+      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4*3+b)%12), (s===0?2:1), (s===0&&b===12)?1:0);
+      if(b%2) for(let s=4;s<32;s+=8) flick(b,s,2+((s*5+b)%12),3+(b%4));
+    }
+    for (const [key, arr] of buckets) {
+      const [bar,type,lane,channel] = key.split(':');
+      const header = String(Number(bar)).padStart(3,'0') + type + BASE36[Number(lane)] + (channel === '' ? '' : BASE36[Number(channel)]);
+      lines.push(`#${header}: ${arr.join('')}`);
+    }
+    return parseSUS(lines.join('\n'));
+  }
+
+  function setChart(chart, sourceLabel) {
+    state.chart = chart;
+    state.duration = chart.duration;
+    state.time = -0.35;
+    state.playing = false;
+    state.activeSource = sourceLabel;
+    $('songTitle').textContent = chart.meta.title || '読み込んだ譜面';
+    $('songArtist').textContent = chart.meta.artist || `${chart.format} chart data`;
+    setStageJacket(chart.meta.jacket || '');
+    $('difficulty').textContent = [chart.meta.difficulty, chart.meta.level].filter(Boolean).join(' ') || chart.format;
+    $('noteCount').textContent = chart.notes.length.toLocaleString('ja-JP');
+    $('durationStat').textContent = fmtTime(chart.duration);
+    $('bpmStat').textContent = chart.bpm || (chart.timing?.[0]?.bpm ?? '—');
+    $('duration').textContent = fmtTime(chart.duration);
+    $('seekBar').max = chart.duration;
+    $('seekBar').value = 0;
+    $('bpmHud').textContent = chart.timing?.length ? `BPM ${chart.timing[0].bpm}` : `BPM ${chart.bpm || '—'}`;
+    $('chartStatus').textContent = chart.format === 'SVG' ? 'SVG IMPORT' : 'SUS IMPORT';
+    $('comboNumber').textContent = '0';
+    $('playButton').textContent = '▶';
+    status(`読み込み成功：${chart.format} / ${chart.notes.length.toLocaleString('ja-JP')} ノーツ / ${fmtTime(chart.duration)}`, 'ok');
+    updateHud();
+    render();
+  }
+  function status(message, kind='') {
+    const el = $('loadStatus');
+    el.textContent = message;
+    el.className = `status ${kind}`.trim();
+  }
+  function stopPlayback() {
+    state.playing = false;
+    if (state.raf) cancelAnimationFrame(state.raf);
+    state.raf = 0;
+    $('playButton').textContent = '▶';
+  }
+  function startPlayback() {
+    if (!state.chart) return;
+    if (state.time >= state.duration) state.time = -0.35;
+    if (state.time === -0.35 && !state.playing) { /* pre-roll for the first notes */ }
+    state.playing = true;
+    state.lastFrame = performance.now();
+    $('playButton').textContent = 'Ⅱ';
+    state.raf = requestAnimationFrame(tick);
+  }
+  function tick(now) {
+    if (!state.playing) return;
+    const dt = Math.min(0.05, (now - state.lastFrame) / 1000);
+    state.lastFrame = now;
+    state.time += dt * state.speed;
+    if (state.time >= state.duration) { state.time = state.duration; stopPlayback(); }
+    updateHud();
+    render();
+    if (state.playing) state.raf = requestAnimationFrame(tick);
+  }
+  function updateHud() {
+    const shown = Math.max(0, state.time);
+    $('currentTime').textContent = fmtTime(shown);
+    $('seekBar').value = Math.min(state.duration, shown);
+    if (state.chart?.timing?.length) {
+      const bar = barAtTime(state.chart.timing, shown);
+      $('bpmHud').textContent = `BPM ${timeEventAt(state.chart.timing,bar).bpm}`;
+    }
+    const passed = state.chart?.notes?.filter(n => n.time < shown).length || 0;
+    $('comboNumber').textContent = passed.toLocaleString('ja-JP');
+  }
+  function barAtTime(timeline, time) {
+    let ev = timeline[0];
+    for (let i=0;i<timeline.length;i++) {
+      const cur=timeline[i], next=timeline[i+1];
+      if (!next) { ev=cur; break; }
+      if (time < next.seconds) { ev=cur; break; }
+      ev=next;
+    }
+    return ev.bar + (time - ev.seconds) * ev.bpm / (ev.barLength * 60);
+  }
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    state.width = Math.max(1, rect.width);
+    state.height = Math.max(1, rect.height);
+    state.dpr = dpr;
+    canvas.width = Math.round(state.width*dpr);
+    canvas.height = Math.round(state.height*dpr);
+    render();
+  }
+  function isTraceNote(n) {
+    return !!n && (!!n.trend || [4,5,6].includes(Number(n.symbolType)));
+  }
+  function noteFamily(n) {
+    if (isTraceNote(n)) return n.critical ? 'traceCritical' : (n.isFlick || n.kind === 'flick' ? 'traceFlick' : 'trace');
+    if (n.critical) return 'critical';
+    if (n.kind === 'slide') return 'slide';
+    if (n.kind === 'flick' || n.isFlick) return 'flick';
+    return 'tap';
+  }
+  function noteGeometry(n, field, unit) {
+    const units = Math.max(1, Math.min(12, Number(n.widthUnits) || 1));
+    const family = noteFamily(n);
+    // Chart geometry remains exact: lane + width define the hit area and
+    // slide connection. Only the visible head sprite is inset by 7% per side
+    // so adjacent heads retain a clean gap after glow / antialiasing.
+    const nominalW = units * unit;
+    const visualScale = 0.86;
+    const width = Math.max(1.5, nominalW * visualScale);
+    // laneIndex is zero-based in both SUS and SVG parsers. Align the head's
+    // left edge to that lane's left boundary (do not shift it half a lane).
+    const chartLeft = field.left + Number(n.laneIndex) * unit;
+    const x = chartLeft + (nominalW - width) / 2;
+    return { x, width, units, family, scale:visualScale, nominalW, chartLeft };
+  }
+
+  const FALLBACK_PALETTES = {
+    tap: { top:'#f2ffff', main:'#50d7f2', bottom:'#137eb8', glow:'#40d5f7' },
+    slide: { top:'#effff5', main:'#5de6a0', bottom:'#168c5d', glow:'#47ef9b' },
+    flick: { top:'#fff0f1', main:'#ff596b', bottom:'#bd1d38', glow:'#ff435d' },
+    critical: { top:'#fffde9', main:'#ffda4c', bottom:'#d49a12', glow:'#ffe05a' },
+    trace: { top:'#f3fff8', main:'#a8f2c8', bottom:'#35ad75', glow:'#8bffc1' },
+    traceFlick: { top:'#fff7f7', main:'#ff8794', bottom:'#d3314e', glow:'#ff7184' },
+    traceCritical: { top:'#fffef4', main:'#ffe8a0', bottom:'#d9a72e', glow:'#ffe58a' },
+  };
+  function spriteNumberForNote(n) {
+    // pjsekai-scores-rs sprite families: 0 critical, 1 slide, 2 tap,
+    // 3 flick, 4 trace, 5 critical trace, 6 trace flick.
+    if (Number.isFinite(n.symbolType)) return Math.max(0,Math.min(6,Number(n.symbolType)));
+    const directional = n.channelType === 5 || n.kind === 'flick' || n.isFlick === true || (n.kind === 'slide' && n.isFlick);
+    if (n.trend) return n.critical ? 5 : (directional ? 6 : 4);
+    if (n.critical) return 0;
+    if (directional) return 3;
+    if (n.kind === 'slide') return 1;
+    return 2;
+  }
+  function paletteForFallback(n) {
+    return FALLBACK_PALETTES[noteFamily(n)] || FALLBACK_PALETTES.tap;
+  }
+  function flickAssetForNote(n) {
+    if (n.arrowAsset) return n.arrowAsset;
+    if (!shouldDrawFlickArrow(n)) return '';
+    const width = Math.min(6,Math.max(0,Number(n.widthRaw)||0));
+    const diagonal = [3,4].includes(Number(n.direction));
+    return `notes_flick_arrow${n.critical?'_crtcl':''}_${String(width).padStart(2,'0')}${diagonal?'_diagonal':''}.png`;
+  }
+  function shouldDrawFlickArrow(n) {
+    return !!n && (n.kind === 'flick' || n.isFlick === true) && [1,3,4].includes(Number(n.direction));
+  }
+  function clamp(v,a,b) { return Math.max(a,Math.min(b,v)); }
+  function makePerspective(w,h) {
+    // Measured from the supplied 398x185 gameplay reference:
+    // rear lane mouth ~= 20% screen width; judgement span ~= 67%;
+    // foreground runway ~= 90%; judgement band sits at ~= 75.5% screen height.
+    // The rear vanishing edge begins below the HUD / jacket area rather than
+    // at the very top of the canvas.
+    const cx=w/2, horizonY=h*0.345, hitY=h*0.755;
+    const halfTop=w*0.10, halfJudge=w*0.335, halfRunway=w*0.46;
+    const fieldAt=(y)=>{
+      let half, t;
+      if (y <= hitY) {
+        t=clamp((y-horizonY)/(hitY-horizonY),0,1);
+        half=halfTop+(halfJudge-halfTop)*Math.pow(t,0.92);
+      } else {
+        t=clamp((y-hitY)/(h-hitY),0,1);
+        half=halfJudge+(halfRunway-halfJudge)*Math.pow(t,0.88);
+      }
+      return { left:cx-half, right:cx+half, width:half*2, unit:half*2/12, scale:half/halfJudge, t };
+    };
+    // Keep only a practical in-game look-ahead window. The former 3.25 s
+    // window squeezed too many high-density notes into the short 398:185 field.
+    const approach=1.25;
+    const yAtTime=(noteTime,now)=>{
+      const d=clamp((noteTime-now)/approach,0,1);
+      // Concave depth mapping: spacing increases toward the judgement line,
+      // as projected note width also increases with perspective.
+      return hitY-Math.pow(d,0.70)*(hitY-horizonY);
+    };
+    return {cx,horizonY,hitY,halfBottom:halfJudge,halfRunway,fieldAt,approach,yAtTime};
+  }
+  function drawPoly(points, fill, stroke=null, lineWidth=1) {
+    ctx.beginPath();
+    points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+    ctx.closePath();
+    if(fill){ctx.fillStyle=fill;ctx.fill();}
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lineWidth;ctx.stroke();}
+  }
+  function drawStageArtwork(w,h,p) {
+    const bg=ctx.createLinearGradient(0,0,0,h);
+    bg.addColorStop(0,'#11162e');bg.addColorStop(.36,'#252449');bg.addColorStop(.72,'#131a31');bg.addColorStop(1,'#080d20');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+    // Concert beams and distant side screens.
+    ctx.save();
+    const beams=[[-.04,.04,.30,.80,'rgba(104,167,255,.13)'],[.10,.03,.42,.81,'rgba(202,146,255,.10)'],[1.04,.02,.69,.80,'rgba(83,193,255,.12)'],[.88,.02,.55,.81,'rgba(205,151,255,.10)']];
+    for(const b of beams){
+      const grad=ctx.createLinearGradient(b[0]*w,b[1]*h,b[2]*w,b[3]*h);
+      grad.addColorStop(0,b[4]);grad.addColorStop(1,'rgba(115,126,255,0)');
+      drawPoly([[b[0]*w,b[1]*h],[b[0]*w+14,h*.02],[b[2]*w+34,h*.87],[b[2]*w-45,h*.87]],grad);
+    }
+    ctx.restore();
+    // Distant wall with side display panels.
+    const panels=[{x:.215,y:.275,w:.132,h:.275,r:-.055},{x:.68,y:.17,w:.132,h:.205,r:.045},{x:.045,y:.23,w:.12,h:.20,r:-.10},{x:.835,y:.25,w:.115,h:.19,r:.09}];
+    for(const q of panels){
+      ctx.save();ctx.translate(q.x*w,q.y*h);ctx.rotate(q.r);
+      ctx.fillStyle='#080c1e';ctx.fillRect(-2,-2,q.w*w+4,q.h*h+4);
+      const g=ctx.createLinearGradient(0,0,q.w*w,q.h*h);g.addColorStop(0,'#45366f');g.addColorStop(.5,'#27788f');g.addColorStop(1,'#b15187');
+      ctx.fillStyle=g;ctx.fillRect(0,0,q.w*w,q.h*h);
+      ctx.globalAlpha=.38;
+      for(let k=0;k<7;k++){ctx.beginPath();ctx.moveTo(k*q.w*w/7,0);ctx.lineTo(q.w*w*(.2+k/9),q.h*h);ctx.lineTo(q.w*w*(.1+k/8),q.h*h);ctx.fillStyle=k%2?'#f7a5da':'#9ceeff';ctx.fill();}
+      ctx.globalAlpha=1;ctx.strokeStyle='rgba(229,225,255,.55)';ctx.lineWidth=1;ctx.strokeRect(0,0,q.w*w,q.h*h);ctx.restore();
+    }
+    // Main center monitor / jacket frame. Use the chart jacket if the SVG contains it.
+    const cx=w/2, cardW=w*.235, cardH=h*.47, cardX=cx-cardW/2, cardY=h*.035;
+    ctx.save();ctx.shadowColor='#9faaff';ctx.shadowBlur=15;
+    ctx.fillStyle='#070b19';ctx.fillRect(cardX-5,cardY-4,cardW+10,cardH+11);
+    ctx.strokeStyle='rgba(226,226,255,.78)';ctx.lineWidth=1.4;ctx.strokeRect(cardX-2,cardY-1,cardW+4,cardH+4);
+    ctx.restore();
+    if(stageJacketImage && stageJacketImage.complete && stageJacketImage.naturalWidth>0){
+      ctx.save();ctx.beginPath();ctx.rect(cardX,cardY,cardW,cardH);ctx.clip();ctx.drawImage(stageJacketImage,cardX,cardY,cardW,cardH);ctx.restore();
+    } else {
+      const g=ctx.createLinearGradient(cardX,cardY,cardX+cardW,cardY+cardH);g.addColorStop(0,'#245e83');g.addColorStop(.35,'#a24f92');g.addColorStop(.68,'#315f9d');g.addColorStop(1,'#30274d');
+      ctx.fillStyle=g;ctx.fillRect(cardX,cardY,cardW,cardH);
+      ctx.save();ctx.beginPath();ctx.rect(cardX,cardY,cardW,cardH);ctx.clip();
+      for(let i=0;i<22;i++){
+        const x=cardX+((i*37)%Math.max(1,cardW));const y=cardY+((i*23)%Math.max(1,cardH));
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+cardW*.13,y-cardH*.08);ctx.lineTo(x+cardW*.18,y+cardH*.13);ctx.closePath();
+        ctx.fillStyle=['rgba(255,214,239,.32)','rgba(128,236,255,.28)','rgba(255,242,161,.24)','rgba(181,158,255,.3)'][i%4];ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Stage floor reflection.
+    const floor=ctx.createLinearGradient(0,h*.47,0,h);floor.addColorStop(0,'rgba(61,72,126,.08)');floor.addColorStop(.45,'rgba(49,58,100,.30)');floor.addColorStop(1,'rgba(7,12,30,.72)');
+    ctx.fillStyle=floor;ctx.fillRect(0,h*.48,w,h*.52);
+  }
+  function drawJacketFront(w,h) {
+    // Re-paint the centre stage screen after drawing lane perspective. This
+    // masks rear lane rails behind the jacket, just like the supplied capture.
+    const cx=w/2, cardW=w*.235, cardH=h*.47, cardX=cx-cardW/2, cardY=h*.035;
+    ctx.save();
+    ctx.shadowColor='#9faaff';ctx.shadowBlur=12;
+    ctx.fillStyle='#070b19';ctx.fillRect(cardX-5,cardY-4,cardW+10,cardH+11);
+    ctx.strokeStyle='rgba(226,226,255,.82)';ctx.lineWidth=1.2;ctx.strokeRect(cardX-2,cardY-1,cardW+4,cardH+4);
+    ctx.restore();
+    if(stageJacketImage && stageJacketImage.complete && stageJacketImage.naturalWidth>0){
+      ctx.save();ctx.beginPath();ctx.rect(cardX,cardY,cardW,cardH);ctx.clip();
+      ctx.drawImage(stageJacketImage,cardX,cardY,cardW,cardH);ctx.restore();
+    } else {
+      const g=ctx.createLinearGradient(cardX,cardY,cardX+cardW,cardY+cardH);
+      g.addColorStop(0,'#245e83');g.addColorStop(.35,'#a24f92');g.addColorStop(.68,'#315f9d');g.addColorStop(1,'#30274d');
+      ctx.fillStyle=g;ctx.fillRect(cardX,cardY,cardW,cardH);
+      ctx.save();ctx.beginPath();ctx.rect(cardX,cardY,cardW,cardH);ctx.clip();
+      for(let i=0;i<22;i++){
+        const x=cardX+((i*37)%Math.max(1,cardW)), yy=cardY+((i*23)%Math.max(1,cardH));
+        ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+cardW*.13,yy-cardH*.08);ctx.lineTo(x+cardW*.18,yy+cardH*.13);
+        ctx.closePath();ctx.fillStyle=['rgba(255,214,239,.32)','rgba(128,236,255,.28)','rgba(255,242,161,.24)','rgba(181,158,255,.3)'][i%4];ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawGameHud(w,h,p) {
+    // Score plate on upper left.
+    const left=w*.035, top=h*.055;
+    ctx.save();ctx.shadowColor='#b9aaff';ctx.shadowBlur=7;
+    drawPoly([[left+7,top],[left+18,top+10],[left+7,top+20],[left-4,top+10]],'#d8d4ff','#ffffff',1);
+    ctx.restore();
+    ctx.fillStyle='#dce6ff';ctx.font=`bold ${Math.max(7,h*.046)}px Arial,sans-serif`;ctx.textAlign='left';ctx.fillText('SCORE',left+24,top+6);
+    ctx.fillStyle='#fff';ctx.font=`700 ${Math.max(10,h*.074)}px Arial,sans-serif`;ctx.fillText('0000000',left+24,top+19);
+    const barX=left+24,barY=top+22,barW=w*.27,barH=Math.max(3,h*.025);
+    ctx.fillStyle='rgba(14,19,41,.9)';ctx.fillRect(barX,barY,barW,barH);
+    ctx.strokeStyle='rgba(241,235,255,.9)';ctx.lineWidth=1.1;ctx.strokeRect(barX,barY,barW,barH);
+    ctx.fillStyle='rgba(223,220,255,.75)';ctx.fillRect(barX+2,barY+1,barW*.28,barH-2);
+    // Life / skill gauge upper right and pause icon.
+    const pauseX=w*.918,pauseW=w*.042,pauseY=h*.035,pauseH=h*.135;
+    const gaugeX=w*.68,gaugeY=h*.06,gaugeW=w*.20,gaugeH=Math.max(5,h*.055);
+    ctx.fillStyle='#e9f4ff';ctx.font=`bold ${Math.max(7,h*.047)}px Arial,sans-serif`;ctx.textAlign='right';ctx.fillText('LIFE',gaugeX+gaugeW,gaugeY-2);
+    ctx.fillStyle='#101a2a';ctx.fillRect(gaugeX,gaugeY,gaugeW,gaugeH);
+    const life=ctx.createLinearGradient(gaugeX,0,gaugeX+gaugeW,0);life.addColorStop(0,'#7dffc0');life.addColorStop(.72,'#caffb4');life.addColorStop(1,'#ffffff');
+    ctx.fillStyle=life;ctx.fillRect(gaugeX+1,gaugeY+1,gaugeW*.88,gaugeH-2);
+    ctx.strokeStyle='rgba(240,255,255,.86)';ctx.lineWidth=1;ctx.strokeRect(gaugeX,gaugeY,gaugeW,gaugeH);
+    ctx.fillStyle='#f5f7ff';roundedRect(ctx,pauseX,pauseY,pauseW,pauseH,4);ctx.fill();
+    ctx.fillStyle='#1d2440';const pw=Math.max(2,pauseW*.16);ctx.fillRect(pauseX+pauseW*.29,pauseY+pauseH*.25,pw,pauseH*.5);ctx.fillRect(pauseX+pauseW*.58,pauseY+pauseH*.25,pw,pauseH*.5);
+  }
+  function drawFallbackNote(n,x,y,noteW,noteH) {
+    const family=noteFamily(n),trace=family.startsWith('trace'),pal=paletteForFallback(n);
+    // noteW is already the 86%-inset visual head box. Keep the fallback
+    // sprite at that exact size so it matches the remote notes_0..6 assets.
+    // Trace identity is shown by its mint/gold artwork and inner highlight,
+    // not by secretly changing the note's chart width.
+    const bodyW=Math.max(2,noteW);
+    const bodyH=Math.max(2,noteH);
+    const inset=Math.min(noteH*.08,bodyW*.025);
+    const drawW=Math.max(2,bodyW-inset*2),drawX=x+(noteW-drawW)/2;
+    const drawY=y-bodyH/2;
+    const g=ctx.createLinearGradient(drawX,drawY,drawX,drawY+bodyH);
+    g.addColorStop(0,pal.top);g.addColorStop(.48,pal.main);g.addColorStop(1,pal.bottom);
+    if(state.glow){ctx.shadowColor=pal.glow;ctx.shadowBlur=trace?7:5;}
+    roundedRect(ctx,drawX,drawY,drawW,bodyH,Math.min(bodyH/2,5));ctx.fillStyle=g;ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.strokeStyle=trace?'rgba(17,118,75,.96)':'rgba(255,255,255,.84)';
+    ctx.lineWidth=trace?Math.max(1,bodyH*.12):.7;ctx.stroke();
+    if(trace){
+      ctx.beginPath();ctx.moveTo(drawX+bodyH*.24,drawY+bodyH*.28);ctx.lineTo(drawX+drawW-bodyH*.24,drawY+bodyH*.28);
+      ctx.strokeStyle='rgba(255,255,255,.96)';ctx.lineWidth=Math.max(.8,bodyH*.10);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(drawX+bodyH*.24,y);ctx.lineTo(drawX+drawW-bodyH*.24,y);
+      ctx.strokeStyle='rgba(21,128,81,.72)';ctx.lineWidth=Math.max(.8,bodyH*.08);ctx.stroke();
+    }
+  }
+  function drawFlickArrow(n,field,y,noteW) {
+    if(!shouldDrawFlickArrow(n)) return;
+    const file=flickAssetForNote(n), img=spriteImage(file);
+    const unit=field.unit, rawWidth=Math.max(0,Math.min(6,Number(n.widthRaw)||0));
+    // Match pjsekai-scores-rs: vertical arrow proportions scale with note width.
+    const h=unit*1.5*Math.pow((rawWidth+3)/3,0.75);
+    const w=unit*2.25*Math.pow((rawWidth+0.5)/3,0.75);
+    const bias=n.direction===3?-unit*.25:n.direction===4?unit*.25:0;
+    const center=field.left+(Number(n.laneIndex||0)+rawWidth/2)*unit+bias;
+    const cy=y+unit*.25-h/2;
+    if(img && img.complete && img.naturalWidth>0){
+      ctx.save();
+      if(Number(n.direction)===4){ctx.translate(center*2,0);ctx.scale(-1,1);ctx.drawImage(img,center-w/2,cy-h/2,w,h);}
+      else ctx.drawImage(img,center-w/2,cy-h/2,w,h);
+      ctx.restore();
+    }else{
+      ctx.save();ctx.strokeStyle=n.critical?'#fff3b1':'#fff';ctx.lineWidth=Math.max(1.2,unit*.07);ctx.lineCap='round';ctx.lineJoin='round';
+      const angle=n.direction===3?-Math.PI/4:n.direction===4?Math.PI/4:0;
+      const len=h*.34, head=w*.27, dx=Math.sin(angle)*len, dy=-Math.cos(angle)*len;
+      ctx.beginPath();ctx.moveTo(center-dx*.55,cy-dy*.55);ctx.lineTo(center+dx*.45,cy+dy*.45);
+      const tipX=center+dx*.45,tipY=cy+dy*.45;
+      const side=Math.atan2(dy,dx);
+      ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side-.72),tipY-head*Math.sin(side-.72));
+      ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side+.72),tipY-head*Math.sin(side+.72));
+      ctx.stroke();ctx.restore();
+    }
+  }
+  function drawAmongMarker(kind,x,y,unit) {
+    const file=kind==='long-critical'?'notes_long_among_crtcl.png':
+      kind==='friction-critical'?'notes_friction_among_crtcl.png':
+      kind==='friction-flick'?'notes_friction_among_flick.png':
+      kind==='long'?'notes_long_among.png':'notes_friction_among_long.png';
+    const img=spriteImage(file),size=unit*.78;
+    if(img && img.complete && img.naturalWidth>0) {
+      ctx.drawImage(img,x-size/2,y-size/2,size,size);
+    } else {
+      const flick=kind.includes('flick'),critical=kind.includes('critical');
+      const fill=critical?'#fff0b5':flick?'#ff7183':'#b9f8d2';
+      const edge=critical?'#b78a24':flick?'#ae2842':'#18774e';
+      ctx.save();ctx.translate(x,y);
+      ctx.shadowColor=fill;ctx.shadowBlur=Math.max(2,unit*.18);
+      ctx.rotate(Math.PI/4);
+      ctx.fillStyle=fill;ctx.strokeStyle=edge;ctx.lineWidth=Math.max(.8,unit*.055);
+      roundedRect(ctx,-size*.27,-size*.27,size*.54,size*.54,size*.08);ctx.fill();ctx.stroke();
+      ctx.shadowBlur=0;ctx.rotate(-Math.PI/4);
+      ctx.beginPath();ctx.arc(0,0,size*.105,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+      ctx.restore();
+    }
+  }
+  function transformSvgPathForGame(d, sp, perspective, w, h, pps) {
+    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);
+    if(!tokens) return null;
+    const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
+    const point=(x,y)=>{
+      const noteTime=sp.segmentStart+sp.segmentDuration-(y-32)/360;
+      const py=perspective.yAtTime(noteTime,state.time);
+      const f=perspective.fieldAt(py);
+      const px=f.left+((x-40)/16)*f.unit;
+      return [px,py];
+    };
+    try{
+      while(i<tokens.length){
+        if(/^[A-Za-z]$/.test(tokens[i])) cmd=tokens[i++];
+        if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}
+        const rel=cmd===cmd.toLowerCase();
+        if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){
+          const x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx=rel?cx+x:x,ny=rel?cy+y:y;const q=point(nx,ny);
+          if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}
+          else path.lineTo(q[0],q[1]);cx=nx;cy=ny;
+        }else if(cmd==='C'||cmd==='c'){
+          const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y;
+          const q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;
+        }else{ return null; }
+      }
+    }catch(_){return null;}
+    return path;
+  }
+
+  function renderGameplay() {
+    if (!ctx || !state.chart || !state.width) return;
+    const w=state.width,h=state.height,dpr=state.dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const p=makePerspective(w,h),{cx,horizonY,hitY,fieldAt,yAtTime,approach}=p;
+    drawStageArtwork(w,h,p);
+
+    // 3D play field clipped to its perspective trapezoid.
+    const topF=fieldAt(horizonY),bottomF=fieldAt(hitY);
+    const fieldPoly=[[topF.left,horizonY],[topF.right,horizonY],[bottomF.right,hitY],[bottomF.left,hitY]];
+    ctx.save();drawPoly(fieldPoly,'rgba(6,11,29,.70)','rgba(214,205,255,.18)',.8);
+    ctx.beginPath();fieldPoly.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.clip();
+    // Soft alternating lanes, split into 12 actual note columns.
+    for(let lane=0;lane<12;lane++){
+      const f0=fieldAt(horizonY),f1=fieldAt(hitY);
+      const x0a=f0.left+lane*f0.unit,x0b=x0a+f0.unit;
+      const x1a=f1.left+lane*f1.unit,x1b=x1a+f1.unit;
+      drawPoly([[x0a,horizonY],[x0b,horizonY],[x1b,hitY],[x1a,hitY]],lane%2?'rgba(97,128,207,.045)':'rgba(142,130,224,.065)');
+    }
+    // Note lane rails.
+    for(let lane=0;lane<=12;lane++){
+      const xTop=topF.left+lane*topF.unit,xBottom=bottomF.left+lane*bottomF.unit;
+      ctx.beginPath();ctx.moveTo(xTop,horizonY);ctx.lineTo(xBottom,hitY);
+      ctx.strokeStyle=lane%2===0?'rgba(222,224,255,.30)':'rgba(186,202,255,.14)';ctx.lineWidth=lane%2===0?1.05:.55;ctx.stroke();
+    }
+    // Moving beat / measure bars, each clipped to its depth-dependent width.
+    for(const m of (state.chart.marks||[])){
+      const y=yAtTime(m.time,state.time);if(y<horizonY-1||y>hitY+1)continue;
+      const f=fieldAt(y);ctx.beginPath();ctx.moveTo(f.left,y);ctx.lineTo(f.right,y);
+      ctx.strokeStyle=m.bar?'rgba(250,222,255,.38)':m.major?'rgba(206,222,255,.22)':'rgba(195,203,255,.085)';
+      ctx.lineWidth=m.bar?1.4:m.major?1:.55;ctx.stroke();
+    }
+
+    // Draw connected SUS slide / trace ribbons as perspective quads.
+    for(const link of (state.chart.slideLinks||[])){
+      const a=link.a,b=link.b,y1=yAtTime(a.time,state.time),y2=yAtTime(b.time,state.time);
+      if(Math.max(y1,y2)<horizonY-24||Math.min(y1,y2)>hitY+24)continue;
+      const f1=fieldAt(y1),f2=fieldAt(y2);
+      const u1=f1.unit,u2=f2.unit;
+      const unitsA=Math.max(1,Number(a.widthRaw)+1),unitsB=Math.max(1,Number(b.widthRaw)+1);
+      const traceScale=link.trend?0.72:1; // trace ribbons are guide rails, not full-width slide bodies
+      const l1=f1.left+a.laneIndex*u1,l2=f2.left+b.laneIndex*u2;
+      const rawR1=l1+unitsA*u1,rawR2=l2+unitsB*u2;
+      const c1=(l1+rawR1)/2,c2=(l2+rawR2)/2;
+      const r1=link.trend?c1+(rawR1-c1)*traceScale:rawR1;
+      const xL1=link.trend?c1+(l1-c1)*traceScale:l1;
+      const r2=link.trend?c2+(rawR2-c2)*traceScale:rawR2;
+      const xL2=link.trend?c2+(l2-c2)*traceScale:l2;
+      const mid=(y1+y2)/2, easeIn=link.direction===2,easeOut=[5,6].includes(link.direction);
+      const lc1=easeIn?mid:y1,lc2=easeOut?mid:y2,rc1=lc1,rc2=lc2;
+      ctx.save();ctx.beginPath();ctx.moveTo(xL1,y1);ctx.bezierCurveTo(xL1,lc1,xL2,lc2,xL2,y2);ctx.lineTo(r2,y2);ctx.bezierCurveTo(r2,rc2,r1,rc1,r1,y1);ctx.closePath();
+      const critical=!!link.critical, trace=!!link.trend, decoration=!!link.decoration;
+      // Match pjsekai-scores-rs default.css: normal slide = #c9fce2cc,
+      // critical slide = #fcf1c3cc; decorations use the lighter gradients.
+      const bodyColor=critical?'#fcf1c3':'#c9fce2';
+      ctx.fillStyle=decoration
+        ? (critical?'rgba(252,241,195,.48)':'rgba(201,252,226,.48)')
+        : (critical?'rgba(252,241,195,.80)':'rgba(201,252,226,.80)');
+      if(state.glow){ctx.shadowColor=critical?'#fff0bd':'#b7ffda';ctx.shadowBlur=trace?5:3;}
+      ctx.fill();ctx.shadowBlur=0;
+      ctx.strokeStyle=trace?(critical?'rgba(164,129,42,.95)':'rgba(32,133,87,.95)'):
+        (critical?'rgba(255,251,225,.96)':'rgba(245,255,249,.96)');
+      ctx.lineWidth=trace?Math.max(1.1,u1*.085):Math.max(.8,u1*.055);ctx.stroke();
+      if(trace){
+        ctx.beginPath();ctx.moveTo((xL1+r1)/2,y1);ctx.bezierCurveTo((xL1+r1)/2,lc1,(xL2+r2)/2,lc2,(xL2+r2)/2,y2);
+        ctx.strokeStyle=critical?'rgba(255,255,237,.96)':'rgba(255,255,255,.98)';
+        ctx.lineWidth=Math.max(.9,u1*.075);ctx.stroke();
+      }
+      // Draw trace/flick/critical relay markers at their real curve time.
+      for(const relay of (link.amongs||[])){
+        const ry=yAtTime(relay.time,state.time);if(ry<y1-1||ry>y2+1)continue;
+        const t=clamp((ry-y1)/(y2-y1||1),0,1);
+        const left= l1+(l2-l1)*t, right=r1+(r2-r1)*t, rx=(left+right)/2;
+        const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
+        const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
+        drawAmongMarker(kind,rx,ry,fieldAt(ry).unit);
+      }
+      ctx.restore();
+    }
+
+    // Renderer-generated SVG paths: map their original time/lane coordinates into the 3D field.
+    for(const sp of (state.chart.slidePaths||[])){
+      const bottom=sp.segmentStart+sp.segmentDuration;
+      if(bottom<state.time-.6||sp.segmentStart>state.time+approach+.6)continue;
+      const transformed=transformSvgPathForGame(sp.d,sp,p,w,h);
+      if(!transformed)continue;
+      const cls=String(sp.className||'').toLowerCase();
+      ctx.save();ctx.fillStyle=cls.includes('critical')?'rgba(252,241,195,.82)':cls.includes('decoration')?'rgba(201,252,226,.43)':'rgba(201,252,226,.80)';
+      if(state.glow){ctx.shadowColor=cls.includes('critical')?'#fff0bd':'#b7ffda';ctx.shadowBlur=7;}
+      ctx.fill(transformed);ctx.restore();
+    }
+
+    // SVG relay assets retain their individual kind and position.
+    for(const marker of (state.chart.markers||[])){
+      const y=yAtTime(marker.time,state.time);if(y<horizonY-8||y>hitY+8)continue;
+      const f=fieldAt(y),x=f.left+(marker.x-40)/16*f.unit;
+      const kind=marker.kind;drawAmongMarker(kind,x,y,f.unit);
+    }
+
+    // The centre monitor sits in front of the lane field. Keep slide ribbons
+    // behind it, then let approaching notes emerge below the jacket edge.
+    drawJacketFront(w,h);
+    const jacketBottom=h*(.035+.47);
+    // Accurate note sprites, scaled to depth so far-away notes are small and separated.
+    const passed=state.chart.notes.filter(n=>n.time<Math.max(0,state.time)).length;
+    for(const n of state.chart.notes){
+      const delta=n.time-state.time;if(delta<-.16||delta>approach+.24)continue;
+      const y=yAtTime(n.time,state.time);if(y<Math.max(horizonY-12,jacketBottom)||y>hitY+20)continue;
+      const f=fieldAt(y),geom=noteGeometry(n,f,f.unit),x=geom.x,noteW=geom.width;
+      const trace=isTraceNote(n);
+      const noteH=Math.max(1.1,Math.min(f.unit*.13,noteW*.16));
+      const spriteNo=spriteNumberForNote(n),img=spriteImage(`notes_${spriteNo}.png`);
+      if(img && img.complete && img.naturalWidth>0){
+        if(state.glow){ctx.save();ctx.shadowColor=paletteForFallback(n).glow;ctx.shadowBlur=trace?1.5:.75;ctx.drawImage(img,x,y-noteH/2,noteW,noteH);ctx.restore();}
+        else ctx.drawImage(img,x,y-noteH/2,noteW,noteH);
+      } else drawFallbackNote(n,x,y,noteW,noteH);
+      if(n.trend){
+        const mk=n.critical?'friction-critical':(n.channelType===5 || (n.isFlick && isTraceNote(n))?'friction-flick':'friction-long');
+        drawAmongMarker(mk,x+noteW/2,y,f.unit);
+      }
+      drawFlickArrow(n,f,y,noteW);
+    }
+    ctx.restore();
+
+    // Side rails and all twelve lane dividers continue onto the foreground
+    // runway, as in the supplied gameplay screenshot.
+    const floorF=fieldAt(h);
+    ctx.save();ctx.shadowColor='#d5a6ff';ctx.shadowBlur=5;ctx.strokeStyle='rgba(211,172,255,.60)';ctx.lineWidth=1.25;
+    for(let lane=0;lane<=12;lane++){
+      const xt=topF.left+lane*topF.unit, xh=bottomF.left+lane*bottomF.unit, xb=floorF.left+lane*floorF.unit;
+      ctx.beginPath();ctx.moveTo(xt,horizonY);ctx.lineTo(xh,hitY);ctx.lineTo(xb,h);ctx.lineWidth=(lane===0||lane===12)?1.5:(lane%3===0?1:.45);ctx.strokeStyle=(lane===0||lane===12)?'rgba(201,157,255,.72)':'rgba(195,205,255,.16)';ctx.stroke();
+    }
+    ctx.beginPath();ctx.moveTo(topF.left,horizonY);ctx.lineTo(floorF.left,h);ctx.moveTo(topF.right,horizonY);ctx.lineTo(floorF.right,h);ctx.stroke();ctx.restore();
+    // Central runway guide and reflected floor panels below the judgment edge.
+    ctx.save();
+    const runTop=hitY, runBottom=h, roadTopW=w*.27, roadBottomW=w*.52;
+    drawPoly([[cx-roadTopW/2,runTop],[cx+roadTopW/2,runTop],[cx+roadBottomW/2,runBottom],[cx-roadBottomW/2,runBottom]],'rgba(12,17,39,.24)','rgba(199,175,255,.15)',.7);
+    ctx.strokeStyle='rgba(177,195,255,.10)';ctx.lineWidth=.7;
+    for(let k=1;k<6;k++){const yy=runTop+(runBottom-runTop)*k/6;const half=roadTopW/2+(roadBottomW/2-roadTopW/2)*k/6;ctx.beginPath();ctx.moveTo(cx-half,yy);ctx.lineTo(cx+half,yy);ctx.stroke();}
+    ctx.restore();
+    // Wide trapezoid touch-zone: the upper judgement edge and lower lip
+    // follow the same slight outward spread as the original game HUD.
+    const bandH=h*.075, bandHalf=bottomF.width/2+w*.012;
+    const bandL=cx-bandHalf, bandR=cx+bandHalf;
+    ctx.save();
+    ctx.shadowColor='#e2bdff';ctx.shadowBlur=8;
+    drawPoly([[bottomF.left,hitY],[bottomF.right,hitY],[bandR,hitY+bandH],[bandL,hitY+bandH]],
+      'rgba(7,10,27,.76)','#d9aaff',Math.max(1.4,h*.009));
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='rgba(255,255,255,.76)';ctx.lineWidth=Math.max(.65,h*.003);
+    ctx.beginPath();ctx.moveTo(bottomF.left+4,hitY+1);ctx.lineTo(bottomF.right-4,hitY+1);ctx.stroke();
+    // Twelve touch divisions widen gradually through the judgement band.
+    for(let i=1;i<12;i++){
+      const t=i/12,xTop=bottomF.left+t*bottomF.width,xBottom=bandL+t*(bandR-bandL);
+      ctx.beginPath();ctx.moveTo(xTop,hitY+1);ctx.lineTo(xBottom,hitY+bandH);
+      ctx.strokeStyle='rgba(230,211,255,.38)';ctx.lineWidth=.65;ctx.stroke();
+    }
+    ctx.restore();
+    // Native-game inspired HUD is drawn last so it stays readable.
+    drawGameHud(w,h,p);
+    // Combo is shown in the compact HUD only; do not cover the note field.
+  }
+  function renderFlat() {
+    if (!ctx || !state.chart || !state.width) return;
+    const w=state.width,h=state.height,dpr=state.dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const bg=ctx.createLinearGradient(0,0,0,h);
+    bg.addColorStop(0,'#151b34');bg.addColorStop(1,'#080d1d');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+
+    const left=w*.055,right=w*.945,top=h*.055,hitY=h*.84,bottom=h*.95;
+    const fieldW=right-left,unit=fieldW/12;
+    // Pixel-time scale follows the original chart view and the reference
+    // renderer's time_height model. This prevents 1/16 and 1/32 notes from
+    // being squeezed into a few vertical pixels.
+    const pixelsPerSecond=clamp(h*1.5,300,360);
+    const mapY=(t)=>hitY-(t-state.time)*pixelsPerSecond;
+
+    // Twelve-lane chart field with strong main-lane divisions.
+    ctx.fillStyle='rgba(4,8,22,.60)';ctx.fillRect(left,top,fieldW,hitY-top);
+    for(let lane=0;lane<12;lane++){
+      ctx.fillStyle=lane%2?'rgba(110,139,215,.045)':'rgba(143,131,224,.065)';
+      ctx.fillRect(left+lane*unit,top,unit,hitY-top);
+    }
+    for(let lane=0;lane<=12;lane++){
+      const x=left+lane*unit;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);
+      const main=lane%2===0;
+      ctx.strokeStyle=main?'rgba(207,215,255,.28)':'rgba(185,198,255,.12)';
+      ctx.lineWidth=main?1.0:.55;ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(181,164,255,.48)';ctx.lineWidth=1.1;
+    ctx.strokeRect(left,top,fieldW,bottom-top);
+
+    // Beat / bar grid uses exactly the same time mapping as the note heads.
+    for(const mark of (state.chart.marks||[])){
+      const y=mapY(mark.time);if(y<top-2||y>hitY+2)continue;
+      ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);
+      ctx.strokeStyle=mark.bar?'rgba(244,222,255,.38)':mark.major?'rgba(215,221,255,.19)':'rgba(199,209,255,.075)';
+      ctx.lineWidth=mark.bar?1.2:.6;ctx.stroke();
+    }
+
+    // SUS slide / trace ribbons. The real width is retained; only trace guides
+    // are inset, matching the distinction used by the gameplay mode.
+    for(const link of (state.chart.slideLinks||[])){
+      const y1=mapY(link.a.time),y2=mapY(link.b.time);
+      if(Math.max(y1,y2)<top-20||Math.min(y1,y2)>hitY+20)continue;
+      const wa=Math.max(1,Number(link.a.widthRaw)+1),wb=Math.max(1,Number(link.b.widthRaw)+1);
+      const l1=left+link.a.laneIndex*unit,l2=left+link.b.laneIndex*unit;
+      const r1=l1+wa*unit,r2=l2+wb*unit;
+      const shrink=link.trend?.72:1;
+      const c1=(l1+r1)/2,c2=(l2+r2)/2;
+      const x1=c1+(l1-c1)*shrink,x2=c2+(l2-c2)*shrink;
+      const rr1=c1+(r1-c1)*shrink,rr2=c2+(r2-c2)*shrink;
+      const mid=(y1+y2)/2;
+      ctx.save();ctx.beginPath();ctx.moveTo(x1,y1);
+      ctx.bezierCurveTo(x1,mid,x2,mid,x2,y2);ctx.lineTo(rr2,y2);
+      ctx.bezierCurveTo(rr2,mid,rr1,mid,rr1,y1);ctx.closePath();
+      const critical=!!link.critical,trace=!!link.trend;
+      ctx.fillStyle=critical?'rgba(255,226,139,.62)':trace?'rgba(166,244,199,.52)':'rgba(82,220,151,.46)';
+      ctx.fill();ctx.strokeStyle=critical?'rgba(255,246,210,.9)':trace?'rgba(219,255,232,.92)':'rgba(214,255,230,.72)';
+      ctx.lineWidth=trace?1.1:.85;ctx.stroke();
+      if(trace){
+        ctx.beginPath();ctx.moveTo((x1+rr1)/2,y1);ctx.lineTo((x2+rr2)/2,y2);
+        ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+      }
+      for(const relay of (link.amongs||[])){
+        const ry=mapY(relay.time);if(ry<Math.min(y1,y2)-2||ry>Math.max(y1,y2)+2)continue;
+        const t=(relay.time-link.a.time)/(link.b.time-link.a.time||1);
+        const rx=((l1+r1)/2)+(((l2+r2)/2)-((l1+r1)/2))*t;
+        const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
+        const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
+        drawAmongMarker(kind,rx,ry,unit);
+      }
+      ctx.restore();
+    }
+
+    // Renderer-generated SVG slide paths use the same fixed pixels/second.
+    for(const sp of (state.chart.slidePaths||[])){
+      const segTop=sp.segmentStart,segBottom=segTop+sp.segmentDuration;
+      const yTop=mapY(segBottom),yBottom=mapY(segTop);
+      if(yBottom<top-20||yTop>hitY+20)continue;
+      const tr=transformSvgPathForFlat(sp.d,sp,left,unit,pixelsPerSecond,hitY,state.time);
+      if(!tr)continue;
+      ctx.save();
+      const cls=String(sp.className||'').toLowerCase();
+      ctx.fillStyle=cls.includes('critical')?'rgba(255,226,139,.62)':cls.includes('decoration')?'rgba(176,153,255,.36)':'rgba(166,244,199,.5)';
+      ctx.fill(tr);ctx.restore();
+    }
+
+    // SVG relay markers and note heads.
+    for(const marker of (state.chart.markers||[])){
+      const y=mapY(marker.time);if(y<top-12||y>hitY+12)continue;
+      const x=left+(marker.x-40)/16*unit;drawAmongMarker(marker.kind,x,y,unit);
+    }
+    const f={left,right,width:fieldW,unit,scale:1,t:1};
+    for(const n of state.chart.notes){
+      const y=mapY(n.time);if(y<top-18||y>hitY+18)continue;
+      const g=noteGeometry(n,f,unit),no=spriteNumberForNote(n),img=spriteImage(`notes_${no}.png`);
+      // Thin horizontal heads keep adjacent fast notes visually distinct.
+      const noteH=Math.max(2.2,Math.min(unit*.18,g.width*.17));
+      if(img&&img.complete&&img.naturalWidth>0)ctx.drawImage(img,g.x,y-noteH/2,g.width,noteH);
+      else drawFallbackNote(n,g.x,y,g.width,noteH);
+      if(n.trend){
+        const mk=n.critical?'friction-critical':(n.channelType===5||n.isFlick?'friction-flick':'friction-long');
+        drawAmongMarker(mk,g.x+g.width/2,y,unit*.62);
+      }
+      drawFlickArrow(n,f,y,g.width);
+    }
+
+    // Fixed judgement line and lower touch divisions.
+    ctx.save();ctx.shadowColor='#ddb6ff';ctx.shadowBlur=7;
+    ctx.strokeStyle='#e8d8ff';ctx.lineWidth=Math.max(2,h*.012);
+    ctx.beginPath();ctx.moveTo(left,hitY);ctx.lineTo(right,hitY);ctx.stroke();ctx.restore();
+    for(let i=1;i<12;i++){
+      const x=left+i*unit;ctx.beginPath();ctx.moveTo(x,hitY-3);ctx.lineTo(x,bottom);
+      ctx.strokeStyle='rgba(220,214,255,.16)';ctx.lineWidth=.6;ctx.stroke();
+    }
+    ctx.fillStyle='rgba(237,240,255,.7)';ctx.font=`700 ${Math.max(7,h*.045)}px Arial,sans-serif`;
+    ctx.fillText('LANE CHART VIEW',left,h*.975);
+  }
+
+  function transformSvgPathForFlat(d,sp,left,unit,pixelsPerSecond,hitY,now) {
+    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);
+    if(!tokens)return null;
+    const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
+    const point=(x,y)=>{
+      const t=sp.segmentStart+sp.segmentDuration-(y-32)/360;
+      return [left+((x-40)/16)*unit,hitY-(t-now)*pixelsPerSecond];
+    };
+    try{
+      while(i<tokens.length){
+        if(/^[A-Za-z]$/.test(tokens[i]))cmd=tokens[i++];
+        if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}
+        const rel=cmd===cmd.toLowerCase();
+        if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){
+          const x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx=rel?cx+x:x,ny=rel?cy+y:y,q=point(nx,ny);
+          if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}
+          else path.lineTo(q[0],q[1]);
+          cx=nx;cy=ny;
+        } else if(cmd==='C'||cmd==='c'){
+          const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y;
+          const q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);
+          path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;
+        } else return null;
+      }
+    } catch(_){return null;}
+    return path;
+  }
+
+  function render() {
+    if (state.viewMode === 'flat') renderFlat(); else renderGameplay();
+  }
+
+  function roundedRect(c,x,y,w,h,r) {
+    r=Math.min(r,w/2,h/2); c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();
+  }
+
+  async function loadContent(content, label='file') {
+    stopPlayback();
+    try {
+      const trimmed=String(content).trimStart();
+      const chart=trimmed.startsWith('<') || trimmed.startsWith('<?xml') ? parseSVGChart(content) : parseSUS(content);
+      setChart(chart,label);
+    } catch(e) {
+      status(`読み込み失敗：${e.message}`, 'warn');
+      throw e;
+    }
+  }
+
+  $('playButton').addEventListener('click', () => state.playing ? stopPlayback() : startPlayback());
+  $('restartButton').addEventListener('click', () => { stopPlayback(); state.time=-0.35; updateHud(); render(); });
+  $('seekBar').addEventListener('input', e => { stopPlayback(); state.time=Number(e.target.value); updateHud(); render(); });
+  $('speedSelect').addEventListener('change', e => { state.speed=Number(e.target.value)||1; render(); });
+  $('glowToggle').addEventListener('change', e => { state.glow=e.target.checked; render(); });
+  function setViewMode(mode){
+    state.viewMode=mode==='flat'?'flat':'game';
+    $('gameViewButton').classList.toggle('active',state.viewMode==='game');
+    $('flatViewButton').classList.toggle('active',state.viewMode==='flat');
+    $('gameViewButton').setAttribute('aria-selected',String(state.viewMode==='game'));
+    $('flatViewButton').setAttribute('aria-selected',String(state.viewMode==='flat'));
+    $('viewHint').textContent=state.viewMode==='game'?'12レーン・遠近ゲーム画面':'12レーン・一定スクロール速度';
+    document.querySelector('.song-info .eyebrow').textContent=state.viewMode==='game'?'NOW PREVIEWING · GAME VIEW':'NOW PREVIEWING · CHART VIEW';
+    $('songTitle').dataset.view=state.viewMode;
+    const screenEl=document.querySelector('.screen');
+    screenEl.classList.toggle('chart-mode',state.viewMode==='flat');
+    screenEl.classList.toggle('game-mode',state.viewMode==='game');
+    // ResizeObserver updates the backing canvas after its aspect ratio changes.
+    requestAnimationFrame(()=>resize());
+    render();
+  }
+  $('gameViewButton').addEventListener('click',()=>setViewMode('game'));
+  $('flatViewButton').addEventListener('click',()=>setViewMode('flat'));
+  $('fileButton').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', async e => {
+    const file=e.target.files && e.target.files[0]; if(!file) return;
+    try { await loadContent(await file.text(), file.name); }
+    catch(_) { /* message already displayed */ }
+    e.target.value='';
+  });
+  $('urlButton').addEventListener('click', async () => {
+    const url=$('sourceUrl').value.trim();
+    if(!url) return status('譜面URLを入力してください。','warn');
+    try {
+      status('URLから譜面データを取得しています…');
+      const response=await fetch(url, { mode:'cors', cache:'no-store' });
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text=await response.text();
+      await loadContent(text,url);
+    } catch(e) {
+      status(`URL読込に失敗しました：${e.message}。配信元のCORS制限が考えられます。SVGをブラウザで開いて保存し、「ファイルを選択」から読み込んでください。`,'warn');
+    }
+  });
+  $('demoButton').addEventListener('click', () => { stopPlayback(); setChart(makeDemoChart(),'demo'); });
+  window.addEventListener('keydown', e => {
+    if(e.code==='Space' && !['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)) {e.preventDefault();state.playing?stopPlayback():startPlayback();}
+    if(e.key.toLowerCase()==='r' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {stopPlayback();state.time=-0.35;updateHud();render();}
+  });
+  const screen=document.querySelector('.screen');
+  screen.addEventListener('dragover',e=>{e.preventDefault();screen.style.outline='2px solid #a78bfa';});
+  screen.addEventListener('dragleave',()=>screen.style.outline='');
+  screen.addEventListener('drop',async e=>{
+    e.preventDefault();screen.style.outline='';const f=e.dataTransfer.files?.[0];if(!f)return;
+    try{await loadContent(await f.text(),f.name);}catch(_){}
+  });
+  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
+
+  // Small public hooks used by the smoke tests; harmless for normal use.
+  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, noteFamily, makePerspective, setViewMode:(mode)=>setViewMode(mode), flatPixelsPerSecond:()=>clamp(state.height*1.5,300,360), getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
+  setChart(makeDemoChart(),'demo');
+})();
+</script>
+</body>
+</html>
