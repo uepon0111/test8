@@ -106,7 +106,7 @@
       <div class="brand-mark">♪</div>
       <div><h1>Project SEKAI Chart Player</h1><p>Interactive chart preview</p></div>
     </div>
-    <div class="top-pill">SUS / SVG IMPORT · 12 POSITION GRID</div>
+    <div class="top-pill">SUS / SVG IMPORT · SLOT-AWARE PARSER</div>
   </header>
 
   <main class="layout">
@@ -193,7 +193,7 @@
         <details><summary>参照PNGをページ内で表示</summary><img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewer generated chart for music 0304 append"></details>
       </section>
 
-      <p class="foot">本ツールはブラウザ内で動作する非公式プレビューです。SUSの譜面データを解析して再描画し、SVGでは pjsekai-scores-rs の既定レイアウト（lane_width=16 / time_height=360 / padding=40,32）に合わせてノーツ座標と時間を復元します。ゲーム本体の判定・演出・スキンを完全再現するものではありません。</p>
+      <p class="foot">本ツールはブラウザ内で動作する非公式プレビューです。SUSの譜面データを解析して再描画します。ノーツは左端レーンを基準に配置し、幅・方向ノーツ・スライド接続を譜面データから復元します。SVGでは pjsekai-scores-rs の座標系に合わせます。ゲーム本体の判定・演出・スキンを完全再現するものではありません。</p>
     </aside>
   </main>
 </div>
@@ -230,13 +230,33 @@
   };
 
   function parseSUS(source) {
+    // PJSK SUS parser: preserve the source lane/width values, then link
+    // directional and slide attachments using the same slot rules as the
+    // maintained pjsekai-scores parser (bar + left lane + width).
     const meta = { title: '', artist: '', designer: '', difficulty: '', level: '' };
     const bpmDefs = new Map();
     const events = [];
     const rawNotes = [];
     const lines = String(source).replace(/^\uFEFF/, '').split(/\r?\n/);
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
+
+    function parsePairs(data, lineLabel='譜面行') {
+      const compact = String(data).replace(/\s+/g, '').toUpperCase();
+      if (compact.length % 2 !== 0) {
+        throw new Error(`${lineLabel}: データ桁数が偶数ではありません。`);
+      }
+      const result = [];
+      const pairCount = compact.length / 2;
+      for (let pairIndex=0; pairIndex<pairCount; pairIndex++) {
+        const pair = compact.slice(pairIndex*2, pairIndex*2+2);
+        if (pair === '00') continue;
+        // The position is the pair index divided by the number of pairs.
+        result.push({ frac: pairIndex / pairCount, pair });
+      }
+      return result;
+    }
+
+    for (let lineNo=0; lineNo<lines.length; lineNo++) {
+      const line = lines[lineNo].trim();
       if (!line.startsWith('#')) continue;
       const colon = line.indexOf(':');
       let header = (colon >= 0 ? line.slice(1, colon) : line.slice(1)).trim();
@@ -248,7 +268,7 @@
 
       const metaMatch = header.match(/^(TITLE|ARTIST|DESIGNER|DIFFICULTY|PLAYLEVEL|LEVEL)$/i);
       if (metaMatch) {
-        const val = data.replace(/^(["'])(.*)\1$/, '$2');
+        const val = data.replace(/^(\")([\s\S]*)\1$/, '$2').replace(/^'(.*)'$/, '$1');
         const k = metaMatch[1].toUpperCase();
         if (k === 'TITLE') meta.title = val;
         if (k === 'ARTIST') meta.artist = val;
@@ -257,7 +277,9 @@
         if (k === 'PLAYLEVEL' || k === 'LEVEL') meta.level = val;
         continue;
       }
-      const bpmDef = header.match(/^BPM(..)$/);
+
+      // PJSK's BPM definition IDs are Base36 and case-sensitive in the source.
+      const bpmDef = header.match(/^BPM([0-9A-Z]{2})$/);
       if (bpmDef) {
         const bpm = Number(data);
         if (Number.isFinite(bpm) && bpm > 0) bpmDefs.set(parseBase36(bpmDef[1]), bpm);
@@ -272,12 +294,14 @@
       const bpmRef = header.match(/^(\d{3})08$/);
       if (bpmRef) {
         const bar = Number(bpmRef[1]);
-        parsePairs(data).forEach(({ frac, pair }) => {
+        parsePairs(data, `#${header}`).forEach(({ frac, pair }) => {
           const bpm = bpmDefs.get(parseBase36(pair));
           if (bpm) events.push({ bar: bar + frac, bpm });
         });
         continue;
       }
+
+      // PJSK chart channels: 1=tap, 3=slide, 5=directional, 9=decoration slide.
       const noteHeader = header.match(/^(\d{3})([1359])([0-9A-Z])([0-9A-Z])?$/i);
       if (!noteHeader) continue;
       const bar = Number(noteHeader[1]);
@@ -285,66 +309,114 @@
       const lane = b36(noteHeader[3]);
       const channel = noteHeader[4] ? b36(noteHeader[4]) : null;
       if (lane < 2 || lane > 13) continue;
-      parsePairs(data).forEach(({ frac, pair }) => {
+
+      parsePairs(data, `#${header}`).forEach(({ frac, pair }) => {
         const noteType = b36(pair[0]);
-        const rawWidth = b36(pair[1]);
-        if (!noteType || !rawWidth) return;
+        const widthRaw = b36(pair[1]);
+        if (noteType === 0) return;
+        // The second Base36 digit is the stored width; the renderer expands
+        // it by one lane unit for the note head. Keep both forms.
         rawNotes.push({
-          bar: bar + frac, laneIndex: lane - 2, widthUnits: rawWidth + 1,
-          noteType, channelType, channel, decoration: channelType === 9,
+          bar: bar + frac,
+          lane,
+          laneIndex: lane - 2,
+          widthRaw,
+          widthUnits: widthRaw + 1,
+          noteType,
+          channelType,
+          channel,
+          decoration: channelType === 9,
           kind: channelType === 3 || channelType === 9 ? 'slide' : (channelType === 5 ? 'flick' : 'tap'),
+          lineNo: lineNo + 1,
         });
       });
-    }
-
-    function parsePairs(data) {
-      const compact = String(data).replace(/\s+/g, '');
-      const result = [];
-      // SUS time fraction is pair-index / total-character-count.
-      for (let i = 0; i + 1 < compact.length; i += 2) {
-        const pair = compact.slice(i, i + 2).toUpperCase();
-        if (pair !== '00') result.push({ frac: i / compact.length, pair });
-      }
-      return result;
     }
 
     if (!rawNotes.length) throw new Error('譜面ノーツを読み取れませんでした。SUS/TXTファイルかどうか確認してください。');
     const timing = buildTiming(events);
     rawNotes.forEach(n => { n.time = timeAt(timing, n.bar); });
 
-    // A directional line (#mmm5x) often pairs with a tap at the same time/lane.
-    const tapByKey = new Map();
-    rawNotes.filter(n => n.channelType === 1).forEach(n => tapByKey.set(`${n.bar.toFixed(7)}:${n.laneIndex}`, n));
-    rawNotes.filter(n => n.channelType === 5).forEach(n => {
-      const paired = tapByKey.get(`${n.bar.toFixed(7)}:${n.laneIndex}`);
-      if (paired) {
-        n.critical = paired.noteType === 2 || paired.noteType === 6 || paired.noteType === 8;
-        n.trend = paired.noteType === 5 || paired.noteType === 6;
-        n.direction = n.noteType;
-        paired.hidden = true;
-      } else n.direction = n.noteType;
-    });
+    const sameSlot = (a,b) => Math.abs(a.bar-b.bar) < 1e-9 && a.lane === b.lane && a.widthRaw === b.widthRaw;
+    const tapTypeFlags = (target, tapType) => {
+      target.tapType = tapType;
+      target.critical = [2,6,8].includes(tapType);
+      target.trend = [5,6].includes(tapType);
+      if (tapType === 3) target.isFlick = true;
+      if (tapType === 4) target.damage = true;
+    };
 
-    const notes = rawNotes.filter(n => !n.hidden && !(n.channelType === 1 && [7,8].includes(n.noteType))).map(n => {
-      if (n.channelType === 1) {
-        n.critical = [2,6].includes(n.noteType);
-        n.trend = [5,6].includes(n.noteType);
-        if (n.noteType === 3) n.kind = 'flick';
-        if (n.noteType === 4) n.kind = 'damage';
+    // Taps on a slide point are attributes of that slide point, not a second
+    // independent note. Match exact lane and width; lane-only matching caused
+    // false merges when wide and narrow notes overlap.
+    for (const slide of rawNotes.filter(n => n.channelType === 3 || n.channelType === 9)) {
+      const tap = rawNotes.find(n => !n.hidden && n.channelType === 1 && sameSlot(n,slide));
+      if (tap && ![7,8].includes(tap.noteType)) {
+        tapTypeFlags(slide, tap.noteType);
+        tap.hidden = true;
       }
+    }
+
+    // Directional channel data is an overlay. It can decorate a tap or a
+    // slide point; attach only when the full SUS slot matches.
+    for (const directional of rawNotes.filter(n => n.channelType === 5)) {
+      const tap = rawNotes.find(n => !n.hidden && n.channelType === 1 && sameSlot(n,directional));
+      if (tap) {
+        tapTypeFlags(tap, tap.noteType);
+        tap.kind = 'flick';
+        tap.isFlick = true;
+        tap.direction = directional.noteType;
+        tap.directionalAttached = true;
+        tap.hiddenDirectional = true;
+        directional.hidden = true;
+        continue;
+      }
+      const slide = rawNotes.find(n => !n.hidden && (n.channelType === 3 || n.channelType === 9) && sameSlot(n,directional));
+      if (slide) {
+        slide.direction = directional.noteType;
+        slide.directionalAttached = true;
+        slide.isFlick = true;
+        directional.hidden = true;
+      } else {
+        directional.direction = directional.noteType;
+        directional.kind = 'flick';
+        directional.isFlick = true;
+      }
+    }
+
+    // Resolve native PJSK tap-note types.
+    for (const n of rawNotes) {
+      if (n.channelType !== 1 || n.hidden) continue;
+      tapTypeFlags(n, n.noteType);
+      if (n.noteType === 3) { n.kind = 'flick'; n.isFlick = true; }
+      else if (n.noteType === 4) n.kind = 'damage';
+      else if (n.isFlick && n.direction) n.kind = 'flick';
+      else n.kind = 'tap';
       if (n.kind === 'flick' && !n.direction) n.direction = 1;
-      return n;
+    }
+    // A directional line with no matching base note remains visible as a
+    // directional/flick note rather than being silently discarded.
+    for (const n of rawNotes) {
+      if (n.channelType === 5 && !n.hidden && !n.direction) n.direction = n.noteType;
+    }
+
+    const notes = rawNotes.filter(n => {
+      if (n.hidden) return false;
+      if (n.channelType === 1 && [7,8].includes(n.noteType)) return false;
+      if ((n.channelType === 3 || n.channelType === 9) && n.noteType === 5) return false; // invisible relay
+      if ((n.channelType === 3 || n.channelType === 9) && ![1,2,3].includes(n.noteType)) return false;
+      return true;
     });
 
     const maxBar = Math.max(...rawNotes.map(n => n.bar), 0);
     const endBar = Math.ceil(maxBar) + 2;
     const duration = Math.max(timeAt(timing, endBar), Math.max(...notes.map(n => n.time)) + 1);
     const marks = makeBeatMarks(timing, endBar);
-    const slideLinks = makeSlideLinks(notes);
+    const slideLinks = makeSlideLinks(rawNotes);
     const initialBpm = timeEventAt(timing, 0).bpm;
     return {
       meta, notes, timing, marks, slideLinks, duration,
       bpm: initialBpm, format: 'SUS', rawNoteCount: rawNotes.length,
+      parserVersion: '2.0-reference-aligned',
     };
   }
 
@@ -392,31 +464,35 @@
     }
     return marks;
   }
-  function makeSlideLinks(notes) {
+  function makeSlideLinks(rawNotes) {
     const groups = new Map();
-    for (const n of notes) {
-      if (n.kind !== 'slide' || n.channel == null) continue;
-      const key = `${n.channel}:${n.decoration ? 1 : 0}`;
+    for (const n of rawNotes) {
+      if (n.channelType !== 3 && n.channelType !== 9) continue;
+      const key = `${n.channelType}:${n.channel == null ? 'default' : n.channel}:${n.decoration ? 1 : 0}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(n);
     }
     const links = [];
     for (const group of groups.values()) {
-      group.sort((a,b) => a.time - b.time);
+      group.sort((a,b) => a.bar-b.bar || a.laneIndex-b.laneIndex || a.noteType-b.noteType);
       let chain = [];
+      const flush = () => {
+        // Type 5 is an invisible relay: it remains part of the chain ordering,
+        // but the rendered path joins adjacent visible points around it.
+        const visible = chain.filter(n => n.noteType !== 5 && [1,2,3].includes(n.noteType));
+        for (let i=1; i<visible.length; i++) links.push([visible[i-1],visible[i]]);
+        chain = [];
+      };
       for (const n of group) {
         if (n.noteType === 1) {
-          if (chain.length > 1) for (let i=1;i<chain.length;i++) links.push([chain[i-1],chain[i]]);
+          if (chain.length) flush();
           chain = [n];
         } else if (chain.length) {
           chain.push(n);
-          if (n.noteType === 2) {
-            for (let i=1;i<chain.length;i++) links.push([chain[i-1],chain[i]]);
-            chain = [];
-          }
+          if (n.noteType === 2) flush();
         }
       }
-      if (chain.length > 1) for (let i=1;i<chain.length;i++) links.push([chain[i-1],chain[i]]);
+      if (chain.length) flush();
     }
     return links;
   }
@@ -446,16 +522,17 @@
         const h = Number(use.getAttribute('height') || 0);
         if (!(w > 0 && h > 0)) continue;
         const units = w / 16;
-        const centerX = x + w/2;
         const centerY = y + h/2;
-        const laneIndex = Math.round((centerX - 48)/16 - (units - 2)/2);
+        // pjsekai-scores-rs positions note heads from the leftmost lane:
+        // x = lane_width * (lane - 2.5) + lane_padding.
+        const laneIndex = Math.round((x - 40) / 16 + 0.5);
         const noteTime = segmentStart + segDuration - (centerY - 32)/360;
         let kind = 'tap', critical = false, trend = false;
         if (symbolType === 0) critical = true;
         if (symbolType === 1) kind = 'slide';
         if (symbolType === 3 || symbolType === 6) kind = 'flick';
         if (symbolType === 4 || symbolType === 5 || symbolType === 6) trend = true;
-        notes.push({ time:noteTime, laneIndex:Math.max(0,Math.min(11,laneIndex)), widthUnits:units, kind, critical, trend, direction:1, source:'svg' });
+        notes.push({ time:noteTime, laneIndex:Math.max(0,Math.min(11,laneIndex)), widthUnits:units, widthRaw:Math.max(0,units-1), kind, critical, trend, direction:1, source:'svg' });
       }
       for (const path of seg.querySelectorAll('path')) {
         const cls = path.getAttribute('class') || '';
@@ -608,6 +685,11 @@
     canvas.height = Math.round(state.height*dpr);
     render();
   }
+  function noteGeometry(n, fieldLeft, halfW) {
+    const units = Math.max(1, Math.min(35, Number(n.widthUnits) || 1));
+    return { x: fieldLeft + (n.laneIndex - 0.5) * halfW, width: units * halfW, units };
+  }
+
   function render() {
     if (!ctx || !state.chart || !state.width) return;
     const w=state.width, h=state.height, dpr=state.dpr;
@@ -659,17 +741,25 @@
     for(const [a,b] of (state.chart.slideLinks||[])) {
       const y1=hitY-(a.time-state.time)*pps, y2=hitY-(b.time-state.time)*pps;
       if(Math.max(y1,y2)<-40 || Math.min(y1,y2)>h+40) continue;
-      const x1=fieldLeft+(a.laneIndex+.5)*halfW;
-      const x2=fieldLeft+(b.laneIndex+.5)*halfW;
-      const ribbonW=Math.max(8, Math.min(26, Math.min(a.widthUnits,b.widthUnits)*halfW));
-      ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
-      if(state.glow){ctx.shadowColor='#6af1da';ctx.shadowBlur=15;}
-      ctx.beginPath(); ctx.moveTo(x1,y1);
+      const x1=fieldLeft+a.laneIndex*halfW;
+      const x2=fieldLeft+b.laneIndex*halfW;
+      const widthA=Math.max(0,Number(a.widthRaw ?? (a.widthUnits-1)))*halfW;
+      const widthB=Math.max(0,Number(b.widthRaw ?? (b.widthUnits-1)))*halfW;
+      const pathPad=a.decoration?0:(halfW/16);
+      const leftA=x1+pathPad, leftB=x2+pathPad;
+      const rightA=x1+widthA-pathPad, rightB=x2+widthB-pathPad;
       const dy=(y2-y1)*.48;
-      ctx.bezierCurveTo(x1,y1+dy,x2,y2-dy,x2,y2);
-      ctx.strokeStyle=a.decoration?'rgba(193,168,255,.55)':'rgba(101,242,211,.72)';
-      ctx.lineWidth=ribbonW; ctx.stroke();
-      ctx.shadowBlur=0; ctx.lineWidth=1.2; ctx.strokeStyle='rgba(239,255,255,.72)'; ctx.stroke();
+      ctx.save(); ctx.lineJoin='round';
+      if(state.glow){ctx.shadowColor=a.critical?'#ffd36b':'#6af1da';ctx.shadowBlur=15;}
+      ctx.beginPath();
+      ctx.moveTo(leftA,y1);
+      ctx.bezierCurveTo(leftA,y1+dy,leftB,y2-dy,leftB,y2);
+      ctx.lineTo(rightB,y2);
+      ctx.bezierCurveTo(rightB,y2-dy,rightA,y1+dy,rightA,y1);
+      ctx.closePath();
+      ctx.fillStyle=a.decoration?'rgba(193,168,255,.48)':(a.critical?'rgba(255,211,107,.70)':'rgba(101,242,211,.68)');
+      ctx.fill();
+      ctx.shadowBlur=0; ctx.strokeStyle='rgba(239,255,255,.66)'; ctx.lineWidth=1.0; ctx.stroke();
       ctx.restore();
     }
     // Exact vector slide paths when input is a renderer-generated SVG.
@@ -691,11 +781,11 @@
       const delta=n.time-state.time;
       if(delta < -0.32 || delta > approach+0.3) continue;
       const y=hitY-delta*pps;
-      const units=Math.max(1,Math.min(12,n.widthUnits||2));
-      const noteW=units*halfW;
-      const x=fieldLeft+(n.laneIndex-(units-1)/2)*halfW;
-      if(n.kind==='slide' && n.noteType!==1 && n.noteType!==2 && n.noteType!==3) continue;
-      const isFlick=n.kind==='flick';
+      const geometry=noteGeometry(n,fieldLeft,halfW);
+      const noteW=geometry.width;
+      const x=geometry.x;
+      if(n.kind==='slide' && n.source!=='svg' && n.noteType!==1 && n.noteType!==2 && n.noteType!==3) continue;
+      const isFlick=n.kind==='flick' || n.isFlick === true;
       const isSlide=n.kind==='slide';
       const color=n.critical?'#ffd36e':(n.kind==='damage'?'#ff617b':(isFlick?'#ff91c7':(n.trend?'#83efb0':'#71efd5')));
       const grad=ctx.createLinearGradient(x,y-11,x,y+11);
@@ -716,9 +806,11 @@
         ctx.fillStyle='#fff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2.2; ctx.lineCap='round';
         const mid=x+noteW/2;
         ctx.beginPath();
-        if(dir===2){ctx.moveTo(mid,y+4);ctx.lineTo(mid,y-4);ctx.lineTo(mid-4,y-1);ctx.moveTo(mid,y-4);ctx.lineTo(mid+4,y-1);}
-        else if(dir===3||dir===5){ctx.moveTo(mid+3,y+3);ctx.lineTo(mid-3,y-3);ctx.lineTo(mid-3,y+1);ctx.moveTo(mid-3,y-3);ctx.lineTo(mid+1,y-3);}
-        else if(dir===4||dir===6){ctx.moveTo(mid-3,y+3);ctx.lineTo(mid+3,y-3);ctx.lineTo(mid-1,y-3);ctx.moveTo(mid+3,y-3);ctx.lineTo(mid+3,y+1);}
+        if(dir===2){ctx.moveTo(mid,y-4);ctx.lineTo(mid,y+4);ctx.lineTo(mid-4,y+1);ctx.moveTo(mid,y+4);ctx.lineTo(mid+4,y+1);}
+        else if(dir===3){ctx.moveTo(mid+3,y+3);ctx.lineTo(mid-3,y-3);ctx.lineTo(mid-3,y+1);ctx.moveTo(mid-3,y-3);ctx.lineTo(mid+1,y-3);}
+        else if(dir===4){ctx.moveTo(mid-3,y+3);ctx.lineTo(mid+3,y-3);ctx.lineTo(mid-1,y-3);ctx.moveTo(mid+3,y-3);ctx.lineTo(mid+3,y+1);}
+        else if(dir===5){ctx.moveTo(mid+3,y-3);ctx.lineTo(mid-3,y+3);ctx.lineTo(mid-3,y-1);ctx.moveTo(mid-3,y+3);ctx.lineTo(mid+1,y+3);}
+        else if(dir===6){ctx.moveTo(mid-3,y-3);ctx.lineTo(mid+3,y+3);ctx.lineTo(mid-1,y+3);ctx.moveTo(mid+3,y+3);ctx.lineTo(mid+3,y-1);}
         else {ctx.moveTo(mid,y+4);ctx.lineTo(mid,y-4);ctx.lineTo(mid-4,y);ctx.moveTo(mid,y-4);ctx.lineTo(mid+4,y);}
         ctx.stroke();
       }
@@ -794,7 +886,7 @@
   if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
 
   // Small public hooks used by the smoke tests; harmless for normal use.
-  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, getState:()=>state };
+  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, getState:()=>state };
   state.chart=makeDemoChart();
   state.duration=state.chart.duration;
   resize();
