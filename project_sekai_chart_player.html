@@ -42,6 +42,10 @@
   .song-info h2 { margin:4px 0 2px; font-size:16px; line-height:1.25; overflow-wrap:anywhere; }
   .song-info p { color:var(--muted); margin:0; font-size:11px; }
   .diff { padding:6px 9px; border-radius:9px; background:#ff6bb01b; border:1px solid #ff83bf55; color:#ffb0d4; font-size:10px; font-weight:800; letter-spacing:.08em; white-space:nowrap; }
+  .view-tabs { display:flex; align-items:center; gap:7px; margin:0 0 9px; padding:3px; border:1px solid var(--line); border-radius:11px; background:#0d1327; }
+  .view-tab { border:1px solid transparent; border-radius:8px; padding:7px 12px; background:transparent; color:#aeb8d5; font-size:10px; font-weight:800; }
+  .view-tab.active { color:#fff; border-color:#a99cff77; background:linear-gradient(135deg,#7164a7aa,#247e8a88); box-shadow:inset 0 0 0 1px #ffffff12; }
+  .view-hint { margin-left:auto; padding-right:5px; color:#8490b2; font-size:9px; white-space:nowrap; }
   .screen { position:relative; aspect-ratio:2.15 / 1; width:100%; border-radius:10px; overflow:hidden; background:#11162b; border:1px solid rgba(185,194,255,.22); box-shadow:inset 0 0 0 1px #ffffff12,0 8px 24px #0008; }
   #gameCanvas { position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:pan-y; }
   .screen-overlay,.judgement-label { display:none; }
@@ -77,13 +81,16 @@
   .stat strong { font-size:17px; font-variant-numeric:tabular-nums; }
   .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; }
   .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:#c6cce2; }
-  /* Project SEKAI note palette: tap=cyan, slide/trace=green, flick=pink/red,
-     critical=yellow; TapType::Damage uses the normal tap sprite. */
-  .swatch { width:26px; height:9px; border-radius:6px; background:linear-gradient(180deg,#ffffff,#74c9ef 55%,#278abf); color:#76d7fb; box-shadow:0 0 8px currentColor; }
-  .swatch.critical { background:linear-gradient(180deg,#fffde4,#ffe277 55%,#e6a92c); color:#ffd66d; }
-  .swatch.flick { background:linear-gradient(180deg,#fff,#d6d5ff 48%,#7f8de8); color:#aab6ff; }
-  .swatch.slide { background:#c9fce2; color:#9ff3c7; height:7px; box-shadow:0 0 8px currentColor; }
-  .swatch.trace { background:linear-gradient(90deg,#c9fce2,#75e5b5); color:#a9ffd0; height:7px; }
+  /* In-game body families: cyan tap, green slide, red flick, yellow critical.
+     Trace bodies use the slim green/red/yellow variants rather than pastel fill. */
+  .swatch { width:26px; height:9px; border-radius:6px; background:linear-gradient(180deg,#eaffff,#56d9f4 52%,#1684bd); color:#42c9f0; box-shadow:0 0 7px currentColor; }
+  .swatch.critical { background:linear-gradient(180deg,#fffde4,#ffe277 55%,#dca51b); color:#ffd64d; }
+  .swatch.flick { background:linear-gradient(180deg,#fff0f1,#ff626d 52%,#cb233c); color:#ff596b; }
+  .swatch.slide { background:linear-gradient(180deg,#eafff2,#5ae59b 55%,#1a9b63); color:#56e69a; height:7px; box-shadow:0 0 8px currentColor; }
+  .swatch.trace { height:4px; border-radius:6px; background:#55e69b; color:#55e69b; box-shadow:0 0 7px currentColor; }
+  .swatch.trace-flick { height:4px; background:#ff5668; color:#ff5668; box-shadow:0 0 7px currentColor; }
+  .swatch.trace-critical { height:4px; background:#ffd84c; color:#ffd84c; box-shadow:0 0 7px currentColor; }
+  .swatch.purple { background:#b17be8; color:#b17be8; }
   .ref-card { display:flex; align-items:center; gap:12px; background:#10162a; border:1px solid var(--line); padding:10px; border-radius:12px; }
   .ref-card img { width:78px; height:48px; object-fit:cover; object-position:center; border-radius:7px; background:#8e60aa; }
   .ref-card div { min-width:0; flex:1; }
@@ -105,7 +112,7 @@
       <div class="brand-mark">♪</div>
       <div><h1>Project SEKAI Chart Player</h1><p>Interactive chart preview</p></div>
     </div>
-    <div class="top-pill">12-LANE PERSPECTIVE · GAME VIEW</div>
+    <div class="top-pill">PROJECT SEKAI · 12 LANE CHART PLAYER</div>
   </header>
 
   <main class="layout">
@@ -118,8 +125,13 @@
         </div>
         <div class="diff" id="difficulty">EXPERT</div>
       </div>
-      <div class="screen" aria-label="プロセカ風ゲームプレイ画面">
-        <canvas id="gameCanvas" aria-label="遠近法で流れるプロジェクトセカイ譜面"></canvas>
+      <div class="view-tabs" role="tablist" aria-label="譜面表示モード">
+        <button class="view-tab active" id="gameViewButton" type="button" role="tab" aria-selected="true">プレイ画面</button>
+        <button class="view-tab" id="flatViewButton" type="button" role="tab" aria-selected="false">譜面ビュー</button>
+        <span class="view-hint" id="viewHint">3D・ゲーム風の遠近表示</span>
+      </div>
+      <div class="screen" aria-label="譜面表示画面">
+        <canvas id="gameCanvas" aria-label="譜面の再生プレビュー"></canvas>
         <div hidden><span id="bpmHud"></span><span id="chartStatus"></span><span id="comboNumber"></span></div>
       </div>
       <div class="transport">
@@ -170,10 +182,13 @@
       <section class="section">
         <h3>ノーツの種類</h3>
         <div class="legend">
-          <div class="legend-item"><i class="swatch"></i>通常タップ</div>
-          <div class="legend-item"><i class="swatch trace"></i>トレース（専用素材）</div>
-          <div class="legend-item"><i class="swatch flick"></i>フリック（矢印付き）</div>
-          <div class="legend-item"><i class="swatch critical"></i>クリティカル</div>
+          <div class="legend-item"><i class="swatch"></i>通常タップ（シアン）</div>
+          <div class="legend-item"><i class="swatch slide"></i>スライド（グリーン）</div>
+          <div class="legend-item"><i class="swatch flick"></i>フリック（レッド）</div>
+          <div class="legend-item"><i class="swatch critical"></i>クリティカル（イエロー）</div>
+          <div class="legend-item"><i class="swatch trace"></i>トレース（細身・緑／幅枠は譜面どおり）</div>
+          <div class="legend-item"><i class="swatch trace-flick"></i>トレースフリック（細身・レッド）</div>
+          <div class="legend-item"><i class="swatch trace-critical"></i>クリティカルトレース（細身・イエロー）</div>
         </div>
       </section>
 
@@ -187,7 +202,7 @@
         <details><summary>参照PNGをページ内で表示</summary><img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewer generated chart for music 0304 append"></details>
       </section>
 
-      <p class="foot">通常ノーツは asset3.pjsekai.moe のゲーム用ノーツ画像（notes_0～6.png）を直接使用します。トレースの中継点とフリック矢印も専用画像を読み込みます。素材が取得できない場合のみ色分けした代替描画に切り替わります。背景・遠近法・HUDはプレイ画面を参考にした非公式プレビューです。</p>
+      <p class="foot">ゲーム用ノーツ画像（notes_0～6.png）を優先使用し、通常タップ=シアン、スライド=グリーン、フリック=レッド、クリティカル=イエロー、トレース=細身のグリーン／レッド／イエローとして描画します。画像素材が取得できない場合は同じ色分類の代替描画を使います。トレースはゲーム用の細身スプライトを使用し、譜面上のレーン幅は変更しません。プレイ画面モードは添付の画面比率・レーン遠近を参考にした非公式プレビューです。</p>
     </aside>
   </main>
 </div>
@@ -203,7 +218,7 @@
   const state = {
     chart: null, playing: false, time: -2.35, duration: 30, speed: 1,
     lastFrame: 0, raf: 0, width: 0, height: 0, dpr: 1,
-    glow: true, activeSource: 'demo',
+    glow: true, activeSource: 'demo', viewMode:'game',
   };
   // Reuse the same note sprites used by the public Project SEKAI chart renderer.
   // Images are drawn directly into the canvas; no pixel readback is performed.
@@ -548,6 +563,7 @@
           direction: current.attachedDirectional?.noteType || 0,
           decoration: current.decoration,
           critical: slideMeta(current).critical,
+          trend: slideMeta(current).trend,
         });
         current = next;
       }
@@ -562,7 +578,7 @@
     return {
       meta, notes, timing, marks, slideLinks, duration,
       bpm: initialBpm, format: 'SUS', rawNoteCount: rawNotes.length,
-      parserVersion: '3.6-rs-linking-and-type-fidelity',
+      parserVersion: '3.7-rs-note-style-and-lane-geometry',
     };
   }
 
@@ -848,39 +864,51 @@
       meta:{ title, artist:subtitle, difficulty:'SVG', level:'', jacket }, notes,
       timing:[], marks, slideLinks:[], slidePaths, markers, duration,
       bpm:'—', format:'SVG', rawNoteCount:notes.length,
-      parserVersion:'3.6-scores-rs-svg-geometry-and-overlay-fidelity', unsupportedSymbols,
+      parserVersion:'3.7-scores-rs-svg-geometry-style-and-overlay-fidelity', unsupportedSymbols,
     };
   }
 
   function makeDemoChart() {
     const lines = ['#TITLE "SUSデモ譜面"', '#ARTIST "内蔵テストデータ"', '#DIFFICULTY "EXPERT"', '#PLAYLEVEL 28', '#BPM01: 170', '#BPM02: 195', '#BPM03: 148', '#00002: 4', '#00008: 01', '#00808: 02', '#01208: 03'];
     const buckets = new Map();
-    const put = (bar, type, lane, code, width=1, channel=null) => {
+    const put = (bar, type, lane, code, width=0, channel=null) => {
       const key = `${bar}:${type}:${lane}:${channel == null ? '' : channel}`;
       const bucket = buckets.get(key) || Array(32).fill('00');
       const index = Math.max(0,Math.min(31,Math.round(code.frac*32)));
       bucket[index] = BASE36[code.noteType || 1] + BASE36[width];
       buckets.set(key,bucket);
     };
-    const tap=(bar,step,lane,nt=1,w=1)=>put(bar,1,lane,{frac:step/32,noteType:nt},w);
-    const flick=(bar,step,lane,dir=1)=>put(bar,5,lane,{frac:step/32,noteType:dir},1);
-    const slide=(bar,step,lane,nt,ch=1,w=1)=>put(bar,3,lane,{frac:step/32,noteType:nt},w,ch);
+    const tap=(bar,step,lane,nt=1,w=0)=>put(bar,1,lane,{frac:step/32,noteType:nt},w);
+    const flick=(bar,step,lane,dir=1)=>put(bar,5,lane,{frac:step/32,noteType:dir},0);
+    const slide=(bar,step,lane,nt,ch=1,w=0)=>put(bar,3,lane,{frac:step/32,noteType:nt},w,ch);
+    // Put all in-game note families near the beginning so the built-in
+    // demonstration makes the actual sprite differences easy to inspect.
+    // TapType 5/6 are normal/critical trace overlays; the type-5/6 trace
+    // directional pairs below demonstrate red/yellow trace flick heads.
+    tap(0,4,4,5,0);                 // green trace
+    tap(0,20,8,6,0);                // yellow critical trace
+    flick(1,8,6,3); tap(1,8,6,5,0); // red trace flick (upper-left)
+    flick(1,24,9,4); tap(1,24,9,6,0); // yellow critical trace flick
+    // A short trace slide: start -> relay -> end, with trace applied to the
+    // start point only, matching the reference engine's per-point style.
+    slide(0,8,2,1,5,0); slide(0,24,4,3,5,0); slide(1,8,7,2,5,0);
+    tap(0,8,2,5,0);
     // A few measures of mixed patterns and spread notes.
     for (let b=0;b<4;b++) {
-      [0,8,16,24].forEach((s,i)=>tap(b,s,2+(i*3+b)%12,1,1));
-      [4,12,20,28].forEach((s,i)=>tap(b,s,3+(i*2+b*2)%11,(i===1?2:1),1));
+      [0,8,16,24].forEach((s,i)=>tap(b,s,2+(i*3+b)%12,1,(i===2 && b%2===0)?1:0));
+      [4,12,20,28].forEach((s,i)=>tap(b,s,3+(i*2+b*2)%11,(i===1?2:1),i===0&&b===1?1:0));
     }
-    for (let s=0;s<32;s+=4) tap(4,s,2+(s/4*2)%12,s%8===0?5:1,1);
+    for (let s=0;s<32;s+=4) tap(4,s,2+(s/4*2)%12,s%8===0?5:1,s===16?1:0);
     for (let s=2;s<32;s+=6) flick(4,s,2+(s*3)%12,(s%12===2?3:4));
     for (let b=5;b<8;b++) {
-      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4+b*2)%12),((s+b)%5===0?2:1),1);
+      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4+b*2)%12),((s+b)%5===0?2:1),(s===0&&b===6)?1:0);
       for(let s=2;s<32;s+=8) flick(b,s,2+((s*2+b)%12),s%16===2?5:6);
     }
     // Slide chains spanning multiple measures, one standard and one decorative.
-    slide(8,0,2,1,1,1); slide(8,24,6,3,1,1); slide(9,16,10,3,1,1); slide(10,8,7,2,1,1);
-    slide(8,8,13,1,2,1); slide(9,0,9,3,2,1); slide(9,24,5,2,2,1);
+    slide(8,0,2,1,1,0); slide(8,24,6,3,1,1); slide(9,16,10,3,1,0); slide(10,8,7,2,1,0);
+    slide(8,8,13,1,2,0); slide(9,0,9,3,2,1); slide(9,24,5,2,2,0);
     for(let b=11;b<16;b++) {
-      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4*3+b)%12), (s===0?2:1), 1);
+      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4*3+b)%12), (s===0?2:1), (s===0&&b===12)?1:0);
       if(b%2) for(let s=4;s<32;s+=8) flick(b,s,2+((s*5+b)%12),3+(b%4));
     }
     for (const [key, arr] of buckets) {
@@ -977,37 +1005,55 @@
     canvas.height = Math.round(state.height*dpr);
     render();
   }
+  function isTraceNote(n) {
+    return !!n && (!!n.trend || [4,5,6].includes(Number(n.symbolType)));
+  }
+  function noteFamily(n) {
+    if (isTraceNote(n)) return n.critical ? 'traceCritical' : (n.isFlick || n.kind === 'flick' ? 'traceFlick' : 'trace');
+    if (n.critical) return 'critical';
+    if (n.kind === 'slide') return 'slide';
+    if (n.kind === 'flick' || n.isFlick) return 'flick';
+    return 'tap';
+  }
   function noteGeometry(n, field, unit) {
     const units = Math.max(1, Math.min(12, Number(n.widthUnits) || 1));
-    // SUS lane is the anchor at the note's left half-lane; preserve that
-    // coordinate convention while leaving a slim gap between adjacent heads.
+    const family = noteFamily(n);
+    // Keep raw chart width intact; only apply a display inset to prevent
+    // adjacent note heads from visually touching. Trace heads use the game's
+    // slim render family and are narrower than regular heads.
     const nominalW = units * unit;
-    const width = Math.max(2, nominalW * 0.91);
-    const x = field.left + (Number(n.laneIndex) - 0.5) * unit + (nominalW - width) / 2;
-    return { x, width, units };
+    // The real notes_4/5/6 sprites already contain the slim trace silhouette
+    // inside the same lane-sized image box as other notes. Do not shrink the
+    // image box a second time: preserve the exact chart width for placement,
+    // flick arrows, marker alignment and adjacent-note spacing.
+    const scale = 1.0;
+    const width = Math.max(2, nominalW);
+    const x = field.left + (Number(n.laneIndex) - 0.5) * unit;
+    return { x, width, units, family, scale, nominalW };
   }
 
   const FALLBACK_PALETTES = {
-    tap: { top:'#ffffff', main:'#8bd9f7', bottom:'#349acb', glow:'#77d9ff' },
-    trace: { top:'#f4fff9', main:'#c9fce2', bottom:'#72dca9', glow:'#aaffd0' },
-    flick: { top:'#ffffff', main:'#d7ddff', bottom:'#8697e7', glow:'#b4c0ff' },
-    critical: { top:'#fffde8', main:'#ffe58c', bottom:'#eab747', glow:'#ffe58c' },
+    tap: { top:'#f2ffff', main:'#50d7f2', bottom:'#137eb8', glow:'#40d5f7' },
+    slide: { top:'#effff5', main:'#5de6a0', bottom:'#168c5d', glow:'#47ef9b' },
+    flick: { top:'#fff0f1', main:'#ff596b', bottom:'#bd1d38', glow:'#ff435d' },
+    critical: { top:'#fffde9', main:'#ffda4c', bottom:'#d49a12', glow:'#ffe05a' },
+    trace: { top:'#eafff1', main:'#51e39a', bottom:'#168c5b', glow:'#52f5a4' },
+    traceFlick: { top:'#fff0f1', main:'#ff5067', bottom:'#bd1d38', glow:'#ff526a' },
+    traceCritical: { top:'#fffde9', main:'#ffda4c', bottom:'#d49a12', glow:'#ffe05a' },
   };
   function spriteNumberForNote(n) {
+    // pjsekai-scores-rs sprite families: 0 critical, 1 slide, 2 tap,
+    // 3 flick, 4 trace, 5 critical trace, 6 trace flick.
     if (Number.isFinite(n.symbolType)) return Math.max(0,Math.min(6,Number(n.symbolType)));
-    const directional = n.channelType === 5 || (n.kind === 'slide' && n.isFlick);
+    const directional = n.channelType === 5 || n.kind === 'flick' || n.isFlick === true || (n.kind === 'slide' && n.isFlick);
     if (n.trend) return n.critical ? 5 : (directional ? 6 : 4);
     if (n.critical) return 0;
     if (directional) return 3;
     if (n.kind === 'slide') return 1;
-    // A regular TapType::Flick has a tap body (sprite 2) with a separate arrow.
     return 2;
   }
   function paletteForFallback(n) {
-    if (n.critical) return FALLBACK_PALETTES.critical;
-    if (n.trend || n.kind === 'slide') return FALLBACK_PALETTES.trace;
-    if (n.kind === 'flick' || n.isFlick) return FALLBACK_PALETTES.flick;
-    return FALLBACK_PALETTES.tap;
+    return FALLBACK_PALETTES[noteFamily(n)] || FALLBACK_PALETTES.tap;
   }
   function flickAssetForNote(n) {
     if (n.arrowAsset) return n.arrowAsset;
@@ -1021,20 +1067,29 @@
   }
   function clamp(v,a,b) { return Math.max(a,Math.min(b,v)); }
   function makePerspective(w,h) {
-    const cx=w/2, horizonY=h*0.205, hitY=h*0.805;
-    const halfBottom=w*0.405, topRatio=0.20;
+    // Tuned from the supplied 398x185 gameplay reference: the distant lane
+    // mouth is ~24% of the screen width, the judgement span ~67%, and the
+    // lower runway rails widen to ~90% of the screen.
+    const cx=w/2, horizonY=h*0.045, hitY=h*0.755;
+    const halfTop=w*0.118, halfJudge=w*0.335, halfRunway=w*0.46;
     const fieldAt=(y)=>{
-      const t=clamp((y-horizonY)/(hitY-horizonY),0,1);
-      const scale=topRatio+(1-topRatio)*Math.pow(t,0.92);
-      const half=halfBottom*scale;
-      return { left:cx-half, right:cx+half, width:half*2, unit:half*2/12, scale, t };
+      let half, t;
+      if (y <= hitY) {
+        t=clamp((y-horizonY)/(hitY-horizonY),0,1);
+        half=halfTop+(halfJudge-halfTop)*Math.pow(t,0.92);
+      } else {
+        t=clamp((y-hitY)/(h-hitY),0,1);
+        half=halfJudge+(halfRunway-halfJudge)*Math.pow(t,0.88);
+      }
+      return { left:cx-half, right:cx+half, width:half*2, unit:half*2/12, scale:half/halfJudge, t };
     };
-    const approach=3.65;
+    const approach=3.25;
     const yAtTime=(noteTime,now)=>{
       const d=noteTime-now;
-      return hitY-clamp(d/approach,-0.35,1.25)*(hitY-horizonY);
+      const depth=clamp(d/approach,0,1);
+      return hitY-Math.pow(depth,1.15)*(hitY-horizonY);
     };
-    return {cx,horizonY,hitY,halfBottom,fieldAt,approach,yAtTime};
+    return {cx,horizonY,hitY,halfBottom:halfJudge,halfRunway,fieldAt,approach,yAtTime};
   }
   function drawPoly(points, fill, stroke=null, lineWidth=1) {
     ctx.beginPath();
@@ -1057,7 +1112,7 @@
     }
     ctx.restore();
     // Distant wall with side display panels.
-    const panels=[{x:.055,y:.26,w:.19,h:.25,r:-.10},{x:.755,y:.18,w:.19,h:.24,r:.08},{x:.10,y:.52,w:.14,h:.17,r:-.08},{x:.78,y:.48,w:.15,h:.18,r:.10}];
+    const panels=[{x:.215,y:.275,w:.132,h:.275,r:-.055},{x:.68,y:.17,w:.132,h:.205,r:.045},{x:.045,y:.23,w:.12,h:.20,r:-.10},{x:.835,y:.25,w:.115,h:.19,r:.09}];
     for(const q of panels){
       ctx.save();ctx.translate(q.x*w,q.y*h);ctx.rotate(q.r);
       ctx.fillStyle='#080c1e';ctx.fillRect(-2,-2,q.w*w+4,q.h*h+4);
@@ -1068,7 +1123,7 @@
       ctx.globalAlpha=1;ctx.strokeStyle='rgba(229,225,255,.55)';ctx.lineWidth=1;ctx.strokeRect(0,0,q.w*w,q.h*h);ctx.restore();
     }
     // Main center monitor / jacket frame. Use the chart jacket if the SVG contains it.
-    const cx=w/2, cardW=w*.31, cardH=h*.48, cardX=cx-cardW/2, cardY=h*.035;
+    const cx=w/2, cardW=w*.235, cardH=h*.47, cardX=cx-cardW/2, cardY=h*.035;
     ctx.save();ctx.shadowColor='#9faaff';ctx.shadowBlur=15;
     ctx.fillStyle='#070b19';ctx.fillRect(cardX-5,cardY-4,cardW+10,cardH+11);
     ctx.strokeStyle='rgba(226,226,255,.78)';ctx.lineWidth=1.4;ctx.strokeRect(cardX-2,cardY-1,cardW+4,cardH+4);
@@ -1103,7 +1158,7 @@
     ctx.strokeStyle='rgba(241,235,255,.9)';ctx.lineWidth=1.1;ctx.strokeRect(barX,barY,barW,barH);
     ctx.fillStyle='rgba(223,220,255,.75)';ctx.fillRect(barX+2,barY+1,barW*.28,barH-2);
     // Life / skill gauge upper right and pause icon.
-    const pauseX=w*.905,pauseW=w*.055,pauseY=h*.045,pauseH=h*.19;
+    const pauseX=w*.918,pauseW=w*.042,pauseY=h*.035,pauseH=h*.135;
     const gaugeX=w*.68,gaugeY=h*.06,gaugeW=w*.20,gaugeH=Math.max(5,h*.055);
     ctx.fillStyle='#e9f4ff';ctx.font=`bold ${Math.max(7,h*.047)}px Arial,sans-serif`;ctx.textAlign='right';ctx.fillText('LIFE',gaugeX+gaugeW,gaugeY-2);
     ctx.fillStyle='#101a2a';ctx.fillRect(gaugeX,gaugeY,gaugeW,gaugeH);
@@ -1114,29 +1169,47 @@
     ctx.fillStyle='#1d2440';const pw=Math.max(2,pauseW*.16);ctx.fillRect(pauseX+pauseW*.29,pauseY+pauseH*.25,pw,pauseH*.5);ctx.fillRect(pauseX+pauseW*.58,pauseY+pauseH*.25,pw,pauseH*.5);
   }
   function drawFallbackNote(n,x,y,noteW,noteH) {
-    const pal=paletteForFallback(n),g=ctx.createLinearGradient(x,y-noteH/2,x,y+noteH/2);
+    const family=noteFamily(n),trace=family.startsWith('trace'),pal=paletteForFallback(n);
+    // Match the game's Slim trace render family inside the original lane
+    // bounds. Only the visible fallback body is narrower; its hitbox/layout
+    // box remains noteW so neighboring notes never drift or overlap.
+    const visualScale=trace?.66:1;
+    const bodyW=Math.max(2,noteW*visualScale);
+    const bodyH=Math.max(2,noteH*(trace?.82:1));
+    const inset=Math.min(noteH*.08,bodyW*.025);
+    const drawW=Math.max(2,bodyW-inset*2),drawX=x+(noteW-drawW)/2;
+    const drawY=y-bodyH/2;
+    const g=ctx.createLinearGradient(drawX,drawY,drawX,drawY+bodyH);
     g.addColorStop(0,pal.top);g.addColorStop(.48,pal.main);g.addColorStop(1,pal.bottom);
-    if(state.glow){ctx.shadowColor=pal.glow;ctx.shadowBlur=7;}
-    roundedRect(ctx,x,y-noteH/2,noteW,noteH,Math.min(noteH/2,5));ctx.fillStyle=g;ctx.fill();
-    ctx.shadowBlur=0;ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=.7;ctx.stroke();
+    if(state.glow){ctx.shadowColor=pal.glow;ctx.shadowBlur=trace?7:5;}
+    roundedRect(ctx,drawX,drawY,drawW,bodyH,Math.min(bodyH/2,5));ctx.fillStyle=g;ctx.fill();
+    ctx.shadowBlur=0;ctx.strokeStyle=trace?'rgba(239,255,246,.98)':'rgba(255,255,255,.84)';ctx.lineWidth=trace?1:.7;ctx.stroke();
+    if(trace){ctx.beginPath();ctx.moveTo(drawX+bodyH*.24,y);ctx.lineTo(drawX+drawW-bodyH*.24,y);ctx.strokeStyle='rgba(255,255,255,.82)';ctx.lineWidth=Math.max(.8,bodyH*.085);ctx.stroke();}
   }
   function drawFlickArrow(n,field,y,noteW) {
     if(!shouldDrawFlickArrow(n)) return;
     const file=flickAssetForNote(n), img=spriteImage(file);
-    const unit=field.unit, w=Math.min(unit*1.45,unit*.92*1.5), h=w/1.5;
-    const center=field.left+(n.laneIndex)*unit + (n.direction===3?-unit*.10:n.direction===4?unit*.10:0);
-    const cy=y-noteW*.10;
+    const unit=field.unit, rawWidth=Math.max(0,Math.min(6,Number(n.widthRaw)||0));
+    // Match pjsekai-scores-rs: vertical arrow proportions scale with note width.
+    const h=unit*1.5*Math.pow((rawWidth+3)/3,0.75);
+    const w=unit*2.25*Math.pow((rawWidth+0.5)/3,0.75);
+    const bias=n.direction===3?-unit*.25:n.direction===4?unit*.25:0;
+    const center=field.left+(Number(n.laneIndex||0)+rawWidth/2)*unit+bias;
+    const cy=y+unit*.25-h/2;
     if(img && img.complete && img.naturalWidth>0){
       ctx.save();
       if(Number(n.direction)===4){ctx.translate(center*2,0);ctx.scale(-1,1);ctx.drawImage(img,center-w/2,cy-h/2,w,h);}
       else ctx.drawImage(img,center-w/2,cy-h/2,w,h);
       ctx.restore();
     }else{
-      ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1.2,unit*.055);ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.beginPath();
-      if(n.direction===3){ctx.moveTo(center+w*.22,cy+h*.24);ctx.lineTo(center-w*.22,cy-h*.24);ctx.lineTo(center-w*.22,cy+h*.02);ctx.moveTo(center-w*.22,cy-h*.24);ctx.lineTo(center+w*.02,cy-h*.24);}
-      else if(n.direction===4){ctx.moveTo(center-w*.22,cy+h*.24);ctx.lineTo(center+w*.22,cy-h*.24);ctx.lineTo(center+w*.22,cy+h*.02);ctx.moveTo(center+w*.22,cy-h*.24);ctx.lineTo(center-w*.02,cy-h*.24);}
-      else {ctx.moveTo(center,cy+h*.25);ctx.lineTo(center,cy-h*.25);ctx.lineTo(center-w*.25,cy-h*.02);ctx.moveTo(center,cy-h*.25);ctx.lineTo(center+w*.25,cy-h*.02);}
+      ctx.save();ctx.strokeStyle=n.critical?'#fff3b1':'#fff';ctx.lineWidth=Math.max(1.2,unit*.07);ctx.lineCap='round';ctx.lineJoin='round';
+      const angle=n.direction===3?-Math.PI/4:n.direction===4?Math.PI/4:0;
+      const len=h*.34, head=w*.27, dx=Math.sin(angle)*len, dy=-Math.cos(angle)*len;
+      ctx.beginPath();ctx.moveTo(center-dx*.55,cy-dy*.55);ctx.lineTo(center+dx*.45,cy+dy*.45);
+      const tipX=center+dx*.45,tipY=cy+dy*.45;
+      const side=Math.atan2(dy,dx);
+      ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side-.72),tipY-head*Math.sin(side-.72));
+      ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side+.72),tipY-head*Math.sin(side+.72));
       ctx.stroke();ctx.restore();
     }
   }
@@ -1145,7 +1218,7 @@
       kind==='friction-critical'?'notes_friction_among_crtcl.png':
       kind==='friction-flick'?'notes_friction_among_flick.png':
       kind==='long'?'notes_long_among.png':'notes_friction_among_long.png';
-    const img=spriteImage(file),size=unit*.68;
+    const img=spriteImage(file),size=unit*.75;
     if(img && img.complete && img.naturalWidth>0) ctx.drawImage(img,x-size/2,y-size/2,size,size);
     else {ctx.beginPath();ctx.arc(x,y,Math.max(2,size*.28),0,Math.PI*2);ctx.fillStyle=kind.includes('critical')?'#fff1ba':'#d8ffea';ctx.fill();}
   }
@@ -1180,7 +1253,7 @@
     return path;
   }
 
-  function render() {
+  function renderGameplay() {
     if (!ctx || !state.chart || !state.width) return;
     const w=state.width,h=state.height,dpr=state.dpr;
     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
@@ -1220,15 +1293,25 @@
       const f1=fieldAt(y1),f2=fieldAt(y2);
       const u1=f1.unit,u2=f2.unit;
       const unitsA=Math.max(1,Number(a.widthRaw)+1),unitsB=Math.max(1,Number(b.widthRaw)+1);
-      const l1=f1.left+(a.laneIndex-.5)*u1,l2=f2.left+(b.laneIndex-.5)*u2;
-      const r1=l1+unitsA*u1,r2=l2+unitsB*u2;
+      const traceScale=link.trend?0.74:1;
+      const l1=f1.left+a.laneIndex*u1,l2=f2.left+b.laneIndex*u2;
+      const rawR1=l1+unitsA*u1,rawR2=l2+unitsB*u2;
+      const c1=(l1+rawR1)/2,c2=(l2+rawR2)/2;
+      const r1=link.trend?c1+(rawR1-c1)*traceScale:rawR1;
+      const xL1=link.trend?c1+(l1-c1)*traceScale:l1;
+      const r2=link.trend?c2+(rawR2-c2)*traceScale:rawR2;
+      const xL2=link.trend?c2+(l2-c2)*traceScale:l2;
       const mid=(y1+y2)/2, easeIn=link.direction===2,easeOut=[5,6].includes(link.direction);
       const lc1=easeIn?mid:y1,lc2=easeOut?mid:y2,rc1=lc1,rc2=lc2;
-      ctx.save();ctx.beginPath();ctx.moveTo(l1,y1);ctx.bezierCurveTo(l1,lc1,l2,lc2,l2,y2);ctx.lineTo(r2,y2);ctx.bezierCurveTo(r2,rc2,r1,rc1,r1,y1);ctx.closePath();
-      const critical=!!link.critical;
-      ctx.fillStyle=link.decoration?(critical?'rgba(252,241,195,.54)':'rgba(201,252,226,.43)'):(critical?'rgba(252,241,195,.82)':'rgba(201,252,226,.80)');
-      if(state.glow){ctx.shadowColor=critical?'#fff0bd':'#b7ffda';ctx.shadowBlur=6;}
-      ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='rgba(245,255,255,.58)';ctx.lineWidth=.75;ctx.stroke();
+      ctx.save();ctx.beginPath();ctx.moveTo(xL1,y1);ctx.bezierCurveTo(xL1,lc1,xL2,lc2,xL2,y2);ctx.lineTo(r2,y2);ctx.bezierCurveTo(r2,rc2,r1,rc1,r1,y1);ctx.closePath();
+      const critical=!!link.critical, trace=!!link.trend;
+      const bodyColor=critical?'#ffe064':'#5ce69d';
+      ctx.fillStyle=trace?(critical?'rgba(255,220,83,.28)':'rgba(73,239,148,.40)'):
+        link.decoration?(critical?'rgba(255,224,95,.25)':'rgba(76,230,147,.29)'):
+        (critical?'rgba(255,220,83,.54)':'rgba(76,230,147,.48)');
+      if(state.glow){ctx.shadowColor=critical?'#ffe16d':'#54f09c';ctx.shadowBlur=trace?8:5;}
+      ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle=trace?bodyColor:(critical?'rgba(255,245,180,.9)':'rgba(192,255,220,.9)');ctx.lineWidth=trace?Math.max(1,u1*.12):Math.max(.75,u1*.055);ctx.stroke();
+      if(trace){ctx.beginPath();ctx.moveTo((xL1+r1)/2,y1);ctx.bezierCurveTo((xL1+r1)/2,lc1,(xL2+r2)/2,lc2,(xL2+r2)/2,y2);ctx.strokeStyle=critical?'rgba(255,248,191,.8)':'rgba(212,255,228,.9)';ctx.lineWidth=Math.max(.8,u1*.055);ctx.stroke();}
       // Draw trace/flick/critical relay markers at their real curve time.
       for(const relay of (link.amongs||[])){
         const ry=yAtTime(relay.time,state.time);if(ry<y1-1||ry>y2+1)continue;
@@ -1266,21 +1349,37 @@
       const delta=n.time-state.time;if(delta<-.16||delta>approach+.24)continue;
       const y=yAtTime(n.time,state.time);if(y<horizonY-12||y>hitY+20)continue;
       const f=fieldAt(y),geom=noteGeometry(n,f,f.unit),x=geom.x,noteW=geom.width;
-      const noteH=Math.max(3,Math.min(f.unit*.52,noteW*.48));
+      const trace=isTraceNote(n);
+      const noteH=Math.max(2.4,Math.min(f.unit*.50,noteW*.62));
       const spriteNo=spriteNumberForNote(n),img=spriteImage(`notes_${spriteNo}.png`);
-      if(img && img.complete && img.naturalWidth>0)ctx.drawImage(img,x,y-noteH/2,noteW,noteH);
-      else drawFallbackNote(n,x,y,noteW,noteH);
+      if(img && img.complete && img.naturalWidth>0){
+        if(state.glow){ctx.save();ctx.shadowColor=paletteForFallback(n).glow;ctx.shadowBlur=trace?6:3;ctx.drawImage(img,x,y-noteH/2,noteW,noteH);ctx.restore();}
+        else ctx.drawImage(img,x,y-noteH/2,noteW,noteH);
+      } else drawFallbackNote(n,x,y,noteW,noteH);
       if(n.trend){
-        const mk=n.critical?'friction-critical':(n.channelType===5 || n.isFlick?'friction-flick':'friction-long');
+        const mk=n.critical?'friction-critical':(n.channelType===5 || (n.isFlick && isTraceNote(n))?'friction-flick':'friction-long');
         drawAmongMarker(mk,x+noteW/2,y,f.unit);
       }
       drawFlickArrow(n,f,y,noteW);
     }
     ctx.restore();
 
-    // Outer perspective rails and the broad judgement line.
-    ctx.save();ctx.shadowColor='#d5a6ff';ctx.shadowBlur=9;ctx.strokeStyle='rgba(211,172,255,.72)';ctx.lineWidth=1.4;
-    ctx.beginPath();ctx.moveTo(topF.left,horizonY);ctx.lineTo(bottomF.left,hitY);ctx.moveTo(topF.right,horizonY);ctx.lineTo(bottomF.right,hitY);ctx.stroke();ctx.restore();
+    // Side rails and all twelve lane dividers continue onto the foreground
+    // runway, as in the supplied gameplay screenshot.
+    const floorF=fieldAt(h);
+    ctx.save();ctx.shadowColor='#d5a6ff';ctx.shadowBlur=5;ctx.strokeStyle='rgba(211,172,255,.60)';ctx.lineWidth=1.25;
+    for(let lane=0;lane<=12;lane++){
+      const xt=topF.left+lane*topF.unit, xh=bottomF.left+lane*bottomF.unit, xb=floorF.left+lane*floorF.unit;
+      ctx.beginPath();ctx.moveTo(xt,horizonY);ctx.lineTo(xh,hitY);ctx.lineTo(xb,h);ctx.lineWidth=(lane===0||lane===12)?1.5:(lane%3===0?1:.45);ctx.strokeStyle=(lane===0||lane===12)?'rgba(201,157,255,.72)':'rgba(195,205,255,.16)';ctx.stroke();
+    }
+    ctx.beginPath();ctx.moveTo(topF.left,horizonY);ctx.lineTo(floorF.left,h);ctx.moveTo(topF.right,horizonY);ctx.lineTo(floorF.right,h);ctx.stroke();ctx.restore();
+    // Central runway guide and reflected floor panels below the judgment edge.
+    ctx.save();
+    const runTop=hitY, runBottom=h, roadTopW=w*.27, roadBottomW=w*.52;
+    drawPoly([[cx-roadTopW/2,runTop],[cx+roadTopW/2,runTop],[cx+roadBottomW/2,runBottom],[cx-roadBottomW/2,runBottom]],'rgba(12,17,39,.24)','rgba(199,175,255,.15)',.7);
+    ctx.strokeStyle='rgba(177,195,255,.10)';ctx.lineWidth=.7;
+    for(let k=1;k<6;k++){const yy=runTop+(runBottom-runTop)*k/6;const half=roadTopW/2+(roadBottomW/2-roadTopW/2)*k/6;ctx.beginPath();ctx.moveTo(cx-half,yy);ctx.lineTo(cx+half,yy);ctx.stroke();}
+    ctx.restore();
     ctx.save();ctx.shadowColor='#e2bdff';ctx.shadowBlur=9;ctx.strokeStyle='#e6d0ff';ctx.lineWidth=Math.max(2,h*.012);
     ctx.beginPath();ctx.moveTo(bottomF.left-4,hitY);ctx.lineTo(bottomF.right+4,hitY);ctx.stroke();
     ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(bottomF.left+5,hitY-2);ctx.lineTo(bottomF.right-5,hitY-2);ctx.stroke();ctx.restore();
@@ -1291,10 +1390,68 @@
     }
     // Native-game inspired HUD is drawn last so it stays readable.
     drawGameHud(w,h,p);
-    if(passed>0){
-      ctx.save();ctx.textAlign='center';ctx.font=`900 ${Math.max(11,h*.095)}px Arial,sans-serif`;ctx.fillStyle='rgba(255,255,255,.92)';ctx.shadowColor='#b7a8ff';ctx.shadowBlur=8;ctx.fillText(String(passed),cx,h*.68);ctx.font=`700 ${Math.max(5,h*.033)}px Arial,sans-serif`;ctx.fillStyle='rgba(227,231,255,.78)';ctx.shadowBlur=0;ctx.fillText('COMBO',cx,h*.72);ctx.restore();
-    }
+    // Combo is shown in the compact HUD only; do not cover the note field.
   }
+  function renderFlat() {
+    if (!ctx || !state.chart || !state.width) return;
+    const w=state.width,h=state.height,dpr=state.dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+    const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#151b34');bg.addColorStop(1,'#080d1d');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+    const left=w*.055,right=w*.945,top=h*.055,hitY=h*.84,bottom=h*.95,unit=(right-left)/12;
+    // Header strip and the same twelve lanes, viewed without perspective.
+    ctx.fillStyle='rgba(4,8,22,.56)';ctx.fillRect(left,top,right-left,hitY-top);
+    for(let lane=0;lane<12;lane++){
+      ctx.fillStyle=lane%2?'rgba(110,139,215,.055)':'rgba(143,131,224,.075)';ctx.fillRect(left+lane*unit,top,unit,hitY-top);
+    }
+    ctx.strokeStyle='rgba(207,215,255,.20)';ctx.lineWidth=.65;
+    for(let lane=0;lane<=12;lane++){const x=left+lane*unit;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();}
+    const visibleSeconds=4.25, mapY=(t)=>hitY-clamp((t-state.time)/visibleSeconds,0,1)*(hitY-top);
+    for(const mark of (state.chart.marks||[])){
+      const y=mapY(mark.time);if(y<top||y>hitY)continue;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.strokeStyle=mark.bar?'rgba(244,222,255,.36)':mark.major?'rgba(215,221,255,.20)':'rgba(199,209,255,.075)';ctx.lineWidth=mark.bar?1.2:.6;ctx.stroke();
+    }
+    // Slide ribbons use the same parsed path model as gameplay view.
+    for(const link of (state.chart.slideLinks||[])){
+      const y1=mapY(link.a.time),y2=mapY(link.b.time);if(y1<top-8&&y2<top-8||y1>hitY+8&&y2>hitY+8)continue;
+      const u=unit,wa=Math.max(1,Number(link.a.widthRaw)+1),wb=Math.max(1,Number(link.b.widthRaw)+1);
+      const l1=left+link.a.laneIndex*u,l2=left+link.b.laneIndex*u,r1=l1+wa*u,r2=l2+wb*u;
+      const shrink=link.trend?.74:1,c1=(l1+r1)/2,c2=(l2+r2)/2;
+      const x1=c1+(l1-c1)*shrink,x2=c2+(l2-c2)*shrink,rr1=c1+(r1-c1)*shrink,rr2=c2+(r2-c2)*shrink;
+      ctx.save();ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(rr2,y2);ctx.lineTo(rr1,y1);ctx.closePath();ctx.fillStyle=link.critical?'rgba(255,220,90,.38)':'rgba(82,231,153,.38)';ctx.fill();ctx.strokeStyle=link.critical?'#ffe58a':'#9affc5';ctx.lineWidth=link.trend?1.5:1;ctx.stroke();ctx.restore();
+    }
+    for(const sp of (state.chart.slidePaths||[])){
+      const end=sp.segmentStart+sp.segmentDuration;if(end<state.time-.5||sp.segmentStart>state.time+visibleSeconds)continue;
+      const tr=transformSvgPathForFlat(sp.d,sp,left,top,unit,visibleSeconds,hitY,state.time);if(!tr)continue;
+      ctx.save();ctx.fillStyle=String(sp.className).toLowerCase().includes('critical')?'rgba(255,220,90,.42)':'rgba(82,231,153,.36)';ctx.fill(tr);ctx.restore();
+    }
+    for(const marker of (state.chart.markers||[])){
+      const y=mapY(marker.time);if(y<top-8||y>hitY+8)continue;const x=left+(marker.x-40)/16*unit;drawAmongMarker(marker.kind,x,y,unit);
+    }
+    for(const n of state.chart.notes){
+      const delta=n.time-state.time;if(delta<-.16||delta>visibleSeconds+.18)continue;
+      const y=mapY(n.time);if(y<top-12||y>hitY+12)continue;
+      const f={left,right,width:right-left,unit,scale:1,t:1};const g=noteGeometry(n,f,unit),trace=isTraceNote(n);
+      const nh=Math.max(3,unit*.50);const no=spriteNumberForNote(n),img=spriteImage(`notes_${no}.png`);
+      if(img&&img.complete&&img.naturalWidth>0)ctx.drawImage(img,g.x,y-nh/2,g.width,nh);else drawFallbackNote(n,g.x,y,g.width,nh);
+      if(n.trend){const mk=n.critical?'friction-critical':(n.channelType===5?'friction-flick':'friction-long');drawAmongMarker(mk,g.x+g.width/2,y,unit);}
+      drawFlickArrow(n,f,y,g.width);
+    }
+    // Foreground judgement rail and touch divisions.
+    ctx.save();ctx.shadowColor='#ddb6ff';ctx.shadowBlur=8;ctx.strokeStyle='#e8d8ff';ctx.lineWidth=Math.max(2,h*.012);ctx.beginPath();ctx.moveTo(left,hitY);ctx.lineTo(right,hitY);ctx.stroke();ctx.restore();
+    for(let i=1;i<12;i++){const x=left+i*unit;ctx.beginPath();ctx.moveTo(x,hitY-3);ctx.lineTo(x,bottom);ctx.strokeStyle='rgba(220,214,255,.16)';ctx.lineWidth=.6;ctx.stroke();}
+    ctx.fillStyle='rgba(237,240,255,.7)';ctx.font=`700 ${Math.max(7,h*.045)}px Arial,sans-serif`;ctx.fillText('LANE CHART VIEW',left, h*.975);
+  }
+
+  function transformSvgPathForFlat(d,sp,left,top,unit,visibleSeconds,hitY,now) {
+    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);if(!tokens)return null;
+    const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
+    const point=(x,y)=>{const t=sp.segmentStart+sp.segmentDuration-(y-32)/360;return [left+((x-40)/16)*unit,hitY-clamp((t-now)/visibleSeconds,0,1)*(hitY-top)];};
+    try{while(i<tokens.length){if(/^[A-Za-z]$/.test(tokens[i]))cmd=tokens[i++];if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}const rel=cmd===cmd.toLowerCase();if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){const x=Number(tokens[i++]),y=Number(tokens[i++]),nx=rel?cx+x:x,ny=rel?cy+y:y,q=point(nx,ny);if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}else path.lineTo(q[0],q[1]);cx=nx;cy=ny;}else if(cmd==='C'||cmd==='c'){const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]),nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y,q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;}else return null;}}catch(_){return null;}return path;
+  }
+
+  function render() {
+    if (state.viewMode === 'flat') renderFlat(); else renderGameplay();
+  }
+
   function roundedRect(c,x,y,w,h,r) {
     r=Math.min(r,w/2,h/2); c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();
   }
@@ -1316,6 +1473,19 @@
   $('seekBar').addEventListener('input', e => { stopPlayback(); state.time=Number(e.target.value); updateHud(); render(); });
   $('speedSelect').addEventListener('change', e => { state.speed=Number(e.target.value)||1; render(); });
   $('glowToggle').addEventListener('change', e => { state.glow=e.target.checked; render(); });
+  function setViewMode(mode){
+    state.viewMode=mode==='flat'?'flat':'game';
+    $('gameViewButton').classList.toggle('active',state.viewMode==='game');
+    $('flatViewButton').classList.toggle('active',state.viewMode==='flat');
+    $('gameViewButton').setAttribute('aria-selected',String(state.viewMode==='game'));
+    $('flatViewButton').setAttribute('aria-selected',String(state.viewMode==='flat'));
+    $('viewHint').textContent=state.viewMode==='game'?'3D・ゲーム風の遠近表示':'12レーン・従来の譜面表示';
+    document.querySelector('.song-info .eyebrow').textContent=state.viewMode==='game'?'NOW PREVIEWING · GAME VIEW':'NOW PREVIEWING · CHART VIEW';
+    $('songTitle').dataset.view=state.viewMode;
+    render();
+  }
+  $('gameViewButton').addEventListener('click',()=>setViewMode('game'));
+  $('flatViewButton').addEventListener('click',()=>setViewMode('flat'));
   $('fileButton').addEventListener('click', () => $('fileInput').click());
   $('fileInput').addEventListener('change', async e => {
     const file=e.target.files && e.target.files[0]; if(!file) return;
@@ -1351,7 +1521,7 @@
   if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
 
   // Small public hooks used by the smoke tests; harmless for normal use.
-  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
+  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, noteFamily, makePerspective, setViewMode:(mode)=>{state.viewMode=mode;render();}, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
   setChart(makeDemoChart(),'demo');
 })();
 </script>
