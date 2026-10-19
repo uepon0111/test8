@@ -46,7 +46,9 @@
   .view-tab { border:1px solid transparent; border-radius:8px; padding:7px 12px; background:transparent; color:#aeb8d5; font-size:10px; font-weight:800; }
   .view-tab.active { color:#fff; border-color:#a99cff77; background:linear-gradient(135deg,#7164a7aa,#247e8a88); box-shadow:inset 0 0 0 1px #ffffff12; }
   .view-hint { margin-left:auto; padding-right:5px; color:#8490b2; font-size:9px; white-space:nowrap; }
-  .screen { position:relative; aspect-ratio:398 / 185; width:100%; border-radius:10px; overflow:hidden; background:#11162b; border:1px solid rgba(185,194,255,.22); box-shadow:inset 0 0 0 1px #ffffff12,0 8px 24px #0008; }
+  .screen { position:relative; aspect-ratio:4 / 5; width:100%; max-height:720px; border-radius:10px; overflow:hidden; background:#11162b; border:1px solid rgba(185,194,255,.22); box-shadow:inset 0 0 0 1px #ffffff12,0 8px 24px #0008; transition:aspect-ratio .18s ease; }
+  .screen.chart-mode { aspect-ratio:4 / 5; }
+  .screen.game-mode { aspect-ratio:398 / 185; }
   #gameCanvas { position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:pan-y; }
   .screen-overlay,.judgement-label { display:none; }
   .transport { padding:13px 3px 2px; }
@@ -110,7 +112,7 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark">♪</div>
-      <div><h1>Project SEKAI Chart Player</h1><p>Interactive chart preview · game-field update</p></div>
+      <div><h1>Project SEKAI Chart Player</h1><p>Chart view + game view</p></div>
     </div>
     <div class="top-pill">PROJECT SEKAI · 12 LANE CHART PLAYER</div>
   </header>
@@ -119,18 +121,18 @@
     <section class="panel player-panel" aria-label="譜面プレイヤー">
       <div class="stage-head">
         <div class="song-info">
-          <div class="eyebrow">Now Previewing · GAME VIEW</div>
+          <div class="eyebrow">Now Previewing · CHART VIEW</div>
           <h2 id="songTitle">SUSデモ譜面</h2>
           <p id="songArtist">内蔵テストデータ · BPM変化・フリック・スライド</p>
         </div>
         <div class="diff" id="difficulty">EXPERT</div>
       </div>
       <div class="view-tabs" role="tablist" aria-label="譜面表示モード">
-        <button class="view-tab active" id="gameViewButton" type="button" role="tab" aria-selected="true">ゲーム画面</button>
-        <button class="view-tab" id="flatViewButton" type="button" role="tab" aria-selected="false">譜面ビュー</button>
-        <span class="view-hint" id="viewHint">ゲーム画面風・12レーン遠近表示</span>
+        <button class="view-tab active" id="flatViewButton" type="button" role="tab" aria-selected="true">譜面ビュー（従来）</button>
+        <button class="view-tab" id="gameViewButton" type="button" role="tab" aria-selected="false">ゲーム画面</button>
+        <span class="view-hint" id="viewHint">12レーン・一定スクロール速度</span>
       </div>
-      <div class="screen" aria-label="譜面表示画面">
+      <div class="screen chart-mode" aria-label="譜面表示画面">
         <canvas id="gameCanvas" aria-label="譜面の再生プレビュー"></canvas>
         <div hidden><span id="bpmHud"></span><span id="chartStatus"></span><span id="comboNumber"></span></div>
       </div>
@@ -216,9 +218,9 @@
   const canvas = $('gameCanvas');
   const ctx = canvas.getContext('2d');
   const state = {
-    chart: null, playing: false, time: -2.35, duration: 30, speed: 1,
+    chart: null, playing: false, time: -0.35, duration: 30, speed: 1,
     lastFrame: 0, raf: 0, width: 0, height: 0, dpr: 1,
-    glow: true, activeSource: 'demo', viewMode:'game',
+    glow: true, activeSource: 'demo', viewMode:'flat',
   };
   // Reuse the same note sprites used by the public Project SEKAI chart renderer.
   // Images are drawn directly into the canvas; no pixel readback is performed.
@@ -922,7 +924,7 @@
   function setChart(chart, sourceLabel) {
     state.chart = chart;
     state.duration = chart.duration;
-    state.time = -2.35;
+    state.time = -0.35;
     state.playing = false;
     state.activeSource = sourceLabel;
     $('songTitle').textContent = chart.meta.title || '読み込んだ譜面';
@@ -956,8 +958,8 @@
   }
   function startPlayback() {
     if (!state.chart) return;
-    if (state.time >= state.duration) state.time = -2.35;
-    if (state.time === -2.35 && !state.playing) { /* pre-roll for the first notes */ }
+    if (state.time >= state.duration) state.time = -0.35;
+    if (state.time === -0.35 && !state.playing) { /* pre-roll for the first notes */ }
     state.playing = true;
     state.lastFrame = performance.now();
     $('playButton').textContent = 'Ⅱ';
@@ -1019,12 +1021,14 @@
     const units = Math.max(1, Math.min(12, Number(n.widthUnits) || 1));
     const family = noteFamily(n);
     // Chart geometry remains exact: lane + width define the hit area and
-    // slide connection. Only the visible head sprite is inset by 4% per side
+    // slide connection. Only the visible head sprite is inset by 7% per side
     // so adjacent heads retain a clean gap after glow / antialiasing.
     const nominalW = units * unit;
-    const visualScale = 0.92;
+    const visualScale = 0.86;
     const width = Math.max(1.5, nominalW * visualScale);
-    const chartLeft = field.left + (Number(n.laneIndex) - 0.5) * unit;
+    // laneIndex is zero-based in both SUS and SVG parsers. Align the head's
+    // left edge to that lane's left boundary (do not shift it half a lane).
+    const chartLeft = field.left + Number(n.laneIndex) * unit;
     const x = chartLeft + (nominalW - width) / 2;
     return { x, width, units, family, scale:visualScale, nominalW, chartLeft };
   }
@@ -1064,29 +1068,31 @@
   }
   function clamp(v,a,b) { return Math.max(a,Math.min(b,v)); }
   function makePerspective(w,h) {
-    // Measured from the supplied 398x185 gameplay reference:
-    // rear lane mouth ~= 20% screen width; judgement span ~= 67%;
-    // foreground runway ~= 90%; judgement band sits at ~= 75.5% screen height.
-    // The rear vanishing edge begins below the HUD / jacket area rather than
-    // at the very top of the canvas.
-    const cx=w/2, horizonY=h*0.345, hitY=h*0.755;
-    const halfTop=w*0.10, halfJudge=w*0.335, halfRunway=w*0.46;
+    // Perspective calibrated against the supplied in-game captures and several
+    // official Project SEKAI gameplay screenshots:
+    // rear field ~= 40% of screen width, judgement edge ~= 78%,
+    // lower runway expands to ~= 96%. Keep the playfield taller than the HUD.
+    const cx=w/2, horizonY=h*0.31, hitY=h*0.77;
+    const halfTop=w*0.20, halfJudge=w*0.39, halfRunway=w*0.48;
     const fieldAt=(y)=>{
       let half, t;
       if (y <= hitY) {
         t=clamp((y-horizonY)/(hitY-horizonY),0,1);
-        half=halfTop+(halfJudge-halfTop)*Math.pow(t,0.92);
+        half=halfTop+(halfJudge-halfTop)*Math.pow(t,0.94);
       } else {
         t=clamp((y-hitY)/(h-hitY),0,1);
         half=halfJudge+(halfRunway-halfJudge)*Math.pow(t,0.88);
       }
       return { left:cx-half, right:cx+half, width:half*2, unit:half*2/12, scale:half/halfJudge, t };
     };
-    const approach=3.25;
+    // A note farther than the look-ahead time remains ABOVE the horizon.
+    // Do not clamp distant notes to the horizon: that was the cause of the
+    // previous horizontal-looking pile-up. Notes are clipped by the field.
+    const approach=2.8;
     const yAtTime=(noteTime,now)=>{
-      const d=noteTime-now;
-      const depth=clamp(d/approach,0,1);
-      return hitY-Math.pow(depth,1.15)*(hitY-horizonY);
+      const d=(noteTime-now)/approach;
+      if(d>=0) return hitY-Math.pow(d,0.86)*(hitY-horizonY);
+      return hitY+Math.min(18,-d*120);
     };
     return {cx,horizonY,hitY,halfBottom:halfJudge,halfRunway,fieldAt,approach,yAtTime};
   }
@@ -1195,7 +1201,7 @@
   }
   function drawFallbackNote(n,x,y,noteW,noteH) {
     const family=noteFamily(n),trace=family.startsWith('trace'),pal=paletteForFallback(n);
-    // noteW is already the 92%-inset visual head box. Keep the fallback
+    // noteW is already the 86%-inset visual head box. Keep the fallback
     // sprite at that exact size so it matches the remote notes_0..6 assets.
     // Trace identity is shown by its mint/gold artwork and inner highlight,
     // not by secretly changing the note's chart width.
@@ -1338,7 +1344,7 @@
       const f1=fieldAt(y1),f2=fieldAt(y2);
       const u1=f1.unit,u2=f2.unit;
       const unitsA=Math.max(1,Number(a.widthRaw)+1),unitsB=Math.max(1,Number(b.widthRaw)+1);
-      const traceScale=1; // width stays identical to the SUS lane/width geometry
+      const traceScale=link.trend?0.72:1; // trace ribbons are guide rails, not full-width slide bodies
       const l1=f1.left+a.laneIndex*u1,l2=f2.left+b.laneIndex*u2;
       const rawR1=l1+unitsA*u1,rawR2=l2+unitsB*u2;
       const c1=(l1+rawR1)/2,c2=(l2+rawR2)/2;
@@ -1397,21 +1403,19 @@
       const kind=marker.kind;drawAmongMarker(kind,x,y,f.unit);
     }
 
-    // The centre monitor sits in front of the lane field. Keep slide ribbons
-    // behind it, then let approaching notes emerge below the jacket edge.
-    drawJacketFront(w,h);
-    const jacketBottom=h*(.035+.47);
-    // Accurate note sprites, scaled to depth so far-away notes are small and separated.
-    const passed=state.chart.notes.filter(n=>n.time<Math.max(0,state.time)).length;
+    // The jacket remains part of the stage background. The perspective field,
+    // ribbons and note heads are drawn in front of its lower edge, as in-game.
+    // Distant notes outside the 2.8 s travel window stay beyond the horizon;
+    // they are never collapsed onto one shared y-coordinate.
     for(const n of state.chart.notes){
-      const delta=n.time-state.time;if(delta<-.16||delta>approach+.24)continue;
-      const y=yAtTime(n.time,state.time);if(y<Math.max(horizonY-12,jacketBottom)||y>hitY+20)continue;
+      const delta=n.time-state.time;if(delta<-.12||delta>approach)continue;
+      const y=yAtTime(n.time,state.time);if(y<horizonY-1||y>hitY+2)continue;
       const f=fieldAt(y),geom=noteGeometry(n,f,f.unit),x=geom.x,noteW=geom.width;
       const trace=isTraceNote(n);
-      const noteH=Math.max(2.2,Math.min(f.unit*.46,noteW*.56));
+      const noteH=Math.max(3.5,Math.min(14,f.unit*.28));
       const spriteNo=spriteNumberForNote(n),img=spriteImage(`notes_${spriteNo}.png`);
       if(img && img.complete && img.naturalWidth>0){
-        if(state.glow){ctx.save();ctx.shadowColor=paletteForFallback(n).glow;ctx.shadowBlur=trace?3.5:1.4;ctx.drawImage(img,x,y-noteH/2,noteW,noteH);ctx.restore();}
+        if(state.glow){ctx.save();ctx.shadowColor=paletteForFallback(n).glow;ctx.shadowBlur=trace?1.5:.75;ctx.drawImage(img,x,y-noteH/2,noteW,noteH);ctx.restore();}
         else ctx.drawImage(img,x,y-noteH/2,noteW,noteH);
       } else drawFallbackNote(n,x,y,noteW,noteH);
       if(n.trend){
@@ -1433,7 +1437,7 @@
     ctx.beginPath();ctx.moveTo(topF.left,horizonY);ctx.lineTo(floorF.left,h);ctx.moveTo(topF.right,horizonY);ctx.lineTo(floorF.right,h);ctx.stroke();ctx.restore();
     // Central runway guide and reflected floor panels below the judgment edge.
     ctx.save();
-    const runTop=hitY, runBottom=h, roadTopW=w*.27, roadBottomW=w*.52;
+    const runTop=hitY, runBottom=h, roadTopW=bottomF.width, roadBottomW=Math.min(w*.98,bottomF.width+w*.18);
     drawPoly([[cx-roadTopW/2,runTop],[cx+roadTopW/2,runTop],[cx+roadBottomW/2,runBottom],[cx-roadBottomW/2,runBottom]],'rgba(12,17,39,.24)','rgba(199,175,255,.15)',.7);
     ctx.strokeStyle='rgba(177,195,255,.10)';ctx.lineWidth=.7;
     for(let k=1;k<6;k++){const yy=runTop+(runBottom-runTop)*k/6;const half=roadTopW/2+(roadBottomW/2-roadTopW/2)*k/6;ctx.beginPath();ctx.moveTo(cx-half,yy);ctx.lineTo(cx+half,yy);ctx.stroke();}
@@ -1464,56 +1468,149 @@
     if (!ctx || !state.chart || !state.width) return;
     const w=state.width,h=state.height,dpr=state.dpr;
     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-    const bg=ctx.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#151b34');bg.addColorStop(1,'#080d1d');ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
-    const left=w*.055,right=w*.945,top=h*.055,hitY=h*.84,bottom=h*.95,unit=(right-left)/12;
-    // Header strip and the same twelve lanes, viewed without perspective.
-    ctx.fillStyle='rgba(4,8,22,.56)';ctx.fillRect(left,top,right-left,hitY-top);
+    const bg=ctx.createLinearGradient(0,0,0,h);
+    bg.addColorStop(0,'#151b34');bg.addColorStop(1,'#080d1d');
+    ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+
+    const left=w*.055,right=w*.945,top=h*.055,hitY=h*.84,bottom=h*.95;
+    const fieldW=right-left,unit=fieldW/12;
+    // Pixel-time scale follows the original chart view and the reference
+    // renderer's time_height model. This prevents 1/16 and 1/32 notes from
+    // being squeezed into a few vertical pixels.
+    const pixelsPerSecond=240; // pjsekai-scores-rs reference time_height
+    const mapY=(t)=>hitY-(t-state.time)*pixelsPerSecond;
+
+    // Twelve-lane chart field with strong main-lane divisions.
+    ctx.fillStyle='rgba(4,8,22,.60)';ctx.fillRect(left,top,fieldW,hitY-top);
     for(let lane=0;lane<12;lane++){
-      ctx.fillStyle=lane%2?'rgba(110,139,215,.055)':'rgba(143,131,224,.075)';ctx.fillRect(left+lane*unit,top,unit,hitY-top);
+      ctx.fillStyle=lane%2?'rgba(110,139,215,.045)':'rgba(143,131,224,.065)';
+      ctx.fillRect(left+lane*unit,top,unit,hitY-top);
     }
-    ctx.strokeStyle='rgba(207,215,255,.20)';ctx.lineWidth=.65;
-    for(let lane=0;lane<=12;lane++){const x=left+lane*unit;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();}
-    const visibleSeconds=4.25, mapY=(t)=>hitY-clamp((t-state.time)/visibleSeconds,0,1)*(hitY-top);
+    for(let lane=0;lane<=12;lane++){
+      const x=left+lane*unit;ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);
+      const main=lane%2===0;
+      ctx.strokeStyle=main?'rgba(207,215,255,.28)':'rgba(185,198,255,.12)';
+      ctx.lineWidth=main?1.0:.55;ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(181,164,255,.48)';ctx.lineWidth=1.1;
+    ctx.strokeRect(left,top,fieldW,bottom-top);
+
+    // Beat / bar grid uses exactly the same time mapping as the note heads.
     for(const mark of (state.chart.marks||[])){
-      const y=mapY(mark.time);if(y<top||y>hitY)continue;ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.strokeStyle=mark.bar?'rgba(244,222,255,.36)':mark.major?'rgba(215,221,255,.20)':'rgba(199,209,255,.075)';ctx.lineWidth=mark.bar?1.2:.6;ctx.stroke();
+      const y=mapY(mark.time);if(y<top-2||y>hitY+2)continue;
+      ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);
+      ctx.strokeStyle=mark.bar?'rgba(244,222,255,.38)':mark.major?'rgba(215,221,255,.19)':'rgba(199,209,255,.075)';
+      ctx.lineWidth=mark.bar?1.2:.6;ctx.stroke();
     }
-    // Slide ribbons use the same parsed path model as gameplay view.
+
+    // SUS slide / trace ribbons. The real width is retained; only trace guides
+    // are inset, matching the distinction used by the gameplay mode.
     for(const link of (state.chart.slideLinks||[])){
-      const y1=mapY(link.a.time),y2=mapY(link.b.time);if(y1<top-8&&y2<top-8||y1>hitY+8&&y2>hitY+8)continue;
-      const u=unit,wa=Math.max(1,Number(link.a.widthRaw)+1),wb=Math.max(1,Number(link.b.widthRaw)+1);
-      const l1=left+link.a.laneIndex*u,l2=left+link.b.laneIndex*u,r1=l1+wa*u,r2=l2+wb*u;
-      const shrink=link.trend?.74:1,c1=(l1+r1)/2,c2=(l2+r2)/2;
-      const x1=c1+(l1-c1)*shrink,x2=c2+(l2-c2)*shrink,rr1=c1+(r1-c1)*shrink,rr2=c2+(r2-c2)*shrink;
-      ctx.save();ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(rr2,y2);ctx.lineTo(rr1,y1);ctx.closePath();ctx.fillStyle=link.critical?'rgba(255,220,90,.38)':'rgba(82,231,153,.38)';ctx.fill();ctx.strokeStyle=link.critical?'#ffe58a':'#9affc5';ctx.lineWidth=link.trend?1.5:1;ctx.stroke();ctx.restore();
+      const y1=mapY(link.a.time),y2=mapY(link.b.time);
+      if(Math.max(y1,y2)<top-20||Math.min(y1,y2)>hitY+20)continue;
+      const wa=Math.max(1,Number(link.a.widthRaw)+1),wb=Math.max(1,Number(link.b.widthRaw)+1);
+      const l1=left+link.a.laneIndex*unit,l2=left+link.b.laneIndex*unit;
+      const r1=l1+wa*unit,r2=l2+wb*unit;
+      const shrink=link.trend?.72:1;
+      const c1=(l1+r1)/2,c2=(l2+r2)/2;
+      const x1=c1+(l1-c1)*shrink,x2=c2+(l2-c2)*shrink;
+      const rr1=c1+(r1-c1)*shrink,rr2=c2+(r2-c2)*shrink;
+      const mid=(y1+y2)/2;
+      ctx.save();ctx.beginPath();ctx.moveTo(x1,y1);
+      ctx.bezierCurveTo(x1,mid,x2,mid,x2,y2);ctx.lineTo(rr2,y2);
+      ctx.bezierCurveTo(rr2,mid,rr1,mid,rr1,y1);ctx.closePath();
+      const critical=!!link.critical,trace=!!link.trend;
+      ctx.fillStyle=critical?'rgba(255,226,139,.62)':trace?'rgba(166,244,199,.52)':'rgba(82,220,151,.46)';
+      ctx.fill();ctx.strokeStyle=critical?'rgba(255,246,210,.9)':trace?'rgba(219,255,232,.92)':'rgba(214,255,230,.72)';
+      ctx.lineWidth=trace?1.1:.85;ctx.stroke();
+      if(trace){
+        ctx.beginPath();ctx.moveTo((x1+rr1)/2,y1);ctx.lineTo((x2+rr2)/2,y2);
+        ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+      }
+      for(const relay of (link.amongs||[])){
+        const ry=mapY(relay.time);if(ry<Math.min(y1,y2)-2||ry>Math.max(y1,y2)+2)continue;
+        const t=(relay.time-link.a.time)/(link.b.time-link.a.time||1);
+        const rx=((l1+r1)/2)+(((l2+r2)/2)-((l1+r1)/2))*t;
+        const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
+        const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
+        drawAmongMarker(kind,rx,ry,unit);
+      }
+      ctx.restore();
     }
+
+    // Renderer-generated SVG slide paths use the same fixed pixels/second.
     for(const sp of (state.chart.slidePaths||[])){
-      const end=sp.segmentStart+sp.segmentDuration;if(end<state.time-.5||sp.segmentStart>state.time+visibleSeconds)continue;
-      const tr=transformSvgPathForFlat(sp.d,sp,left,top,unit,visibleSeconds,hitY,state.time);if(!tr)continue;
-      ctx.save();ctx.fillStyle=String(sp.className).toLowerCase().includes('critical')?'rgba(255,220,90,.42)':'rgba(82,231,153,.36)';ctx.fill(tr);ctx.restore();
+      const segTop=sp.segmentStart,segBottom=segTop+sp.segmentDuration;
+      const yTop=mapY(segBottom),yBottom=mapY(segTop);
+      if(yBottom<top-20||yTop>hitY+20)continue;
+      const tr=transformSvgPathForFlat(sp.d,sp,left,unit,pixelsPerSecond,hitY,state.time);
+      if(!tr)continue;
+      ctx.save();
+      const cls=String(sp.className||'').toLowerCase();
+      ctx.fillStyle=cls.includes('critical')?'rgba(255,226,139,.62)':cls.includes('decoration')?'rgba(176,153,255,.36)':'rgba(166,244,199,.5)';
+      ctx.fill(tr);ctx.restore();
     }
+
+    // SVG relay markers and note heads.
     for(const marker of (state.chart.markers||[])){
-      const y=mapY(marker.time);if(y<top-8||y>hitY+8)continue;const x=left+(marker.x-40)/16*unit;drawAmongMarker(marker.kind,x,y,unit);
+      const y=mapY(marker.time);if(y<top-12||y>hitY+12)continue;
+      const x=left+(marker.x-40)/16*unit;drawAmongMarker(marker.kind,x,y,unit);
     }
+    const f={left,right,width:fieldW,unit,scale:1,t:1};
     for(const n of state.chart.notes){
-      const delta=n.time-state.time;if(delta<-.16||delta>visibleSeconds+.18)continue;
-      const y=mapY(n.time);if(y<top-12||y>hitY+12)continue;
-      const f={left,right,width:right-left,unit,scale:1,t:1};const g=noteGeometry(n,f,unit),trace=isTraceNote(n);
-      const nh=Math.max(2.4,unit*.46);const no=spriteNumberForNote(n),img=spriteImage(`notes_${no}.png`);
-      if(img&&img.complete&&img.naturalWidth>0)ctx.drawImage(img,g.x,y-nh/2,g.width,nh);else drawFallbackNote(n,g.x,y,g.width,nh);
-      if(n.trend){const mk=n.critical?'friction-critical':(n.channelType===5?'friction-flick':'friction-long');drawAmongMarker(mk,g.x+g.width/2,y,unit);}
+      const y=mapY(n.time);if(y<top-18||y>hitY+18)continue;
+      const g=noteGeometry(n,f,unit),no=spriteNumberForNote(n),img=spriteImage(`notes_${no}.png`);
+      // Thin horizontal heads keep adjacent fast notes visually distinct.
+      const noteH=Math.max(9,Math.min(18,unit*.38)); // reference note_size=18, scaled to lane width
+      if(img&&img.complete&&img.naturalWidth>0)ctx.drawImage(img,g.x,y-noteH/2,g.width,noteH);
+      else drawFallbackNote(n,g.x,y,g.width,noteH);
+      if(n.trend){
+        const mk=n.critical?'friction-critical':(n.channelType===5||n.isFlick?'friction-flick':'friction-long');
+        drawAmongMarker(mk,g.x+g.width/2,y,unit*.62);
+      }
       drawFlickArrow(n,f,y,g.width);
     }
-    // Foreground judgement rail and touch divisions.
-    ctx.save();ctx.shadowColor='#ddb6ff';ctx.shadowBlur=8;ctx.strokeStyle='#e8d8ff';ctx.lineWidth=Math.max(2,h*.012);ctx.beginPath();ctx.moveTo(left,hitY);ctx.lineTo(right,hitY);ctx.stroke();ctx.restore();
-    for(let i=1;i<12;i++){const x=left+i*unit;ctx.beginPath();ctx.moveTo(x,hitY-3);ctx.lineTo(x,bottom);ctx.strokeStyle='rgba(220,214,255,.16)';ctx.lineWidth=.6;ctx.stroke();}
-    ctx.fillStyle='rgba(237,240,255,.7)';ctx.font=`700 ${Math.max(7,h*.045)}px Arial,sans-serif`;ctx.fillText('LANE CHART VIEW',left, h*.975);
+
+    // Fixed judgement line and lower touch divisions.
+    ctx.save();ctx.shadowColor='#ddb6ff';ctx.shadowBlur=7;
+    ctx.strokeStyle='#e8d8ff';ctx.lineWidth=Math.max(2,h*.012);
+    ctx.beginPath();ctx.moveTo(left,hitY);ctx.lineTo(right,hitY);ctx.stroke();ctx.restore();
+    for(let i=1;i<12;i++){
+      const x=left+i*unit;ctx.beginPath();ctx.moveTo(x,hitY-3);ctx.lineTo(x,bottom);
+      ctx.strokeStyle='rgba(220,214,255,.16)';ctx.lineWidth=.6;ctx.stroke();
+    }
+    ctx.fillStyle='rgba(237,240,255,.7)';ctx.font=`700 ${Math.max(7,h*.045)}px Arial,sans-serif`;
+    ctx.fillText('LANE CHART VIEW',left,h*.975);
   }
 
-  function transformSvgPathForFlat(d,sp,left,top,unit,visibleSeconds,hitY,now) {
-    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);if(!tokens)return null;
+  function transformSvgPathForFlat(d,sp,left,unit,pixelsPerSecond,hitY,now) {
+    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);
+    if(!tokens)return null;
     const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
-    const point=(x,y)=>{const t=sp.segmentStart+sp.segmentDuration-(y-32)/360;return [left+((x-40)/16)*unit,hitY-clamp((t-now)/visibleSeconds,0,1)*(hitY-top)];};
-    try{while(i<tokens.length){if(/^[A-Za-z]$/.test(tokens[i]))cmd=tokens[i++];if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}const rel=cmd===cmd.toLowerCase();if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){const x=Number(tokens[i++]),y=Number(tokens[i++]),nx=rel?cx+x:x,ny=rel?cy+y:y,q=point(nx,ny);if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}else path.lineTo(q[0],q[1]);cx=nx;cy=ny;}else if(cmd==='C'||cmd==='c'){const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]),nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y,q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;}else return null;}}catch(_){return null;}return path;
+    const point=(x,y)=>{
+      const t=sp.segmentStart+sp.segmentDuration-(y-32)/360;
+      return [left+((x-40)/16)*unit,hitY-(t-now)*pixelsPerSecond];
+    };
+    try{
+      while(i<tokens.length){
+        if(/^[A-Za-z]$/.test(tokens[i]))cmd=tokens[i++];
+        if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}
+        const rel=cmd===cmd.toLowerCase();
+        if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){
+          const x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx=rel?cx+x:x,ny=rel?cy+y:y,q=point(nx,ny);
+          if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}
+          else path.lineTo(q[0],q[1]);
+          cx=nx;cy=ny;
+        } else if(cmd==='C'||cmd==='c'){
+          const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]);
+          const nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y;
+          const q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);
+          path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;
+        } else return null;
+      }
+    } catch(_){return null;}
+    return path;
   }
 
   function render() {
@@ -1537,7 +1634,7 @@
   }
 
   $('playButton').addEventListener('click', () => state.playing ? stopPlayback() : startPlayback());
-  $('restartButton').addEventListener('click', () => { stopPlayback(); state.time=-2.35; updateHud(); render(); });
+  $('restartButton').addEventListener('click', () => { stopPlayback(); state.time=-0.35; updateHud(); render(); });
   $('seekBar').addEventListener('input', e => { stopPlayback(); state.time=Number(e.target.value); updateHud(); render(); });
   $('speedSelect').addEventListener('change', e => { state.speed=Number(e.target.value)||1; render(); });
   $('glowToggle').addEventListener('change', e => { state.glow=e.target.checked; render(); });
@@ -1547,9 +1644,14 @@
     $('flatViewButton').classList.toggle('active',state.viewMode==='flat');
     $('gameViewButton').setAttribute('aria-selected',String(state.viewMode==='game'));
     $('flatViewButton').setAttribute('aria-selected',String(state.viewMode==='flat'));
-    $('viewHint').textContent=state.viewMode==='game'?'ゲーム画面風・12レーン遠近表示':'12レーン・従来の譜面表示';
+    $('viewHint').textContent=state.viewMode==='game'?'12レーン・遠近ゲーム画面':'12レーン・一定スクロール速度';
     document.querySelector('.song-info .eyebrow').textContent=state.viewMode==='game'?'NOW PREVIEWING · GAME VIEW':'NOW PREVIEWING · CHART VIEW';
     $('songTitle').dataset.view=state.viewMode;
+    const screenEl=document.querySelector('.screen');
+    screenEl.classList.toggle('chart-mode',state.viewMode==='flat');
+    screenEl.classList.toggle('game-mode',state.viewMode==='game');
+    // ResizeObserver updates the backing canvas after its aspect ratio changes.
+    requestAnimationFrame(()=>resize());
     render();
   }
   $('gameViewButton').addEventListener('click',()=>setViewMode('game'));
@@ -1577,7 +1679,7 @@
   $('demoButton').addEventListener('click', () => { stopPlayback(); setChart(makeDemoChart(),'demo'); });
   window.addEventListener('keydown', e => {
     if(e.code==='Space' && !['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)) {e.preventDefault();state.playing?stopPlayback():startPlayback();}
-    if(e.key.toLowerCase()==='r' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {stopPlayback();state.time=-2.35;updateHud();render();}
+    if(e.key.toLowerCase()==='r' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {stopPlayback();state.time=-0.35;updateHud();render();}
   });
   const screen=document.querySelector('.screen');
   screen.addEventListener('dragover',e=>{e.preventDefault();screen.style.outline='2px solid #a78bfa';});
@@ -1589,7 +1691,7 @@
   if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
 
   // Small public hooks used by the smoke tests; harmless for normal use.
-  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, noteFamily, makePerspective, setViewMode:(mode)=>{state.viewMode=mode;render();}, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
+  window.__chartPlayerTest = { revision:"2026-10-20-game-spacing-v2", parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, noteFamily, makePerspective, setViewMode:(mode)=>setViewMode(mode), flatPixelsPerSecond:()=>240, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
   setChart(makeDemoChart(),'demo');
 })();
 </script>
