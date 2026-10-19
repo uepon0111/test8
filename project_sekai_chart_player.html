@@ -81,12 +81,11 @@
   .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; }
   .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:#c6cce2; }
   /* Project SEKAI note palette: tap=cyan, slide/trace=green, flick=pink/red,
-     critical=yellow, damage=purple. */
+     critical=yellow; TapType::Damage uses the normal tap sprite. */
   .swatch { width:26px; height:9px; border-radius:6px; background:#55c9f2; color:#55c9f2; box-shadow:0 0 8px currentColor; }
   .swatch.critical { background:#ffd34f; color:#ffd34f; }
   .swatch.flick { background:#f178ad; color:#f178ad; }
   .swatch.slide { background:#58d99a; color:#58d99a; height:6px; }
-  .swatch.damage { background:#b18be8; color:#b18be8; }
   .ref-card { display:flex; align-items:center; gap:12px; background:#10162a; border:1px solid var(--line); padding:10px; border-radius:12px; }
   .ref-card img { width:78px; height:48px; object-fit:cover; object-position:center; border-radius:7px; background:#8e60aa; }
   .ref-card div { min-width:0; flex:1; }
@@ -181,7 +180,6 @@
           <div class="legend-item"><i class="swatch slide"></i>スライド／トレース（緑）</div>
           <div class="legend-item"><i class="swatch flick"></i>フリック（ピンク）</div>
           <div class="legend-item"><i class="swatch critical"></i>クリティカル（黄）</div>
-          <div class="legend-item"><i class="swatch damage"></i>ダメージ（紫）</div>
         </div>
       </section>
 
@@ -370,7 +368,8 @@
       target.tapType = tap.noteType;
       target.critical = [2, 6, 8].includes(tap.noteType);
       target.trend = [5, 6].includes(tap.noteType);
-      target.damage = tap.noteType === 4;
+      target.damage = false;
+      target.skillActivation = tap.noteType === 4;
       target.cancelled = [7, 8].includes(tap.noteType);
     };
 
@@ -436,7 +435,10 @@
       tapType: tap?.noteType ?? null,
       critical: !!tap && [2, 6, 8].includes(tap.noteType),
       trend: !!tap && [5, 6].includes(tap.noteType),
-      damage: !!tap && tap.noteType === 4,
+      // TapType::Damage (4) is rendered by pjsekai-scores-rs with the
+      // ordinary tap sprite; keep its semantic flag without purple styling.
+      damage: false,
+      skillActivation: !!tap && tap.noteType === 4,
       cancelled: !!tap && [7, 8].includes(tap.noteType),
     });
     const directionalMeta = (directional) => tapMeta(directional?.attachedTap);
@@ -448,7 +450,9 @@
       const headFlags = tapMeta(headTap);
       return {
         critical: own.critical || headFlags.critical,
-        trend: own.trend || headFlags.trend,
+        // Slide::is_trend checks only the current point's attached Tap /
+        // Directional. Unlike critical, trend is NOT inherited from the head.
+        trend: own.trend,
         cancelled: !!slide.attachedTap && own.cancelled,
       };
     };
@@ -458,7 +462,7 @@
     for (const tap of taps) {
       if (deleted.has(tap.id) || [7, 8].includes(tap.noteType)) continue;
       const flags = tapMeta(tap);
-      const kind = tap.noteType === 3 ? 'flick' : tap.noteType === 4 ? 'damage' : 'tap';
+      const kind = tap.noteType === 3 ? 'flick' : 'tap';
       notes.push({ ...tap, ...flags, kind, isFlick: kind === 'flick', direction: 1, source: 'sus' });
     }
     // Directional notes remain as one visible head when they were not
@@ -487,7 +491,7 @@
         if (!slide.attachedTap || [7, 8].includes(slide.attachedTap.noteType)) continue;
         const flags = tapMeta(slide.attachedTap);
         const hasDirection = !!slide.attachedDirectional;
-        const kind = slide.attachedTap.noteType === 3 ? 'flick' : slide.attachedTap.noteType === 4 ? 'damage' : 'tap';
+        const kind = slide.attachedTap.noteType === 3 ? 'flick' : 'tap';
         notes.push({ ...slide, ...flags, kind, isFlick: kind === 'flick' || hasDirection,
           direction: slide.direction || (kind === 'flick' ? 1 : 0), source: 'sus', decorationHead: true });
       }
@@ -538,7 +542,7 @@
     return {
       meta, notes, timing, marks, slideLinks, duration,
       bpm: initialBpm, format: 'SUS', rawNoteCount: rawNotes.length,
-      parserVersion: '3.4-direction-and-type-validation',
+      parserVersion: '3.6-rs-linking-and-type-fidelity',
     };
   }
 
@@ -634,7 +638,15 @@
       const segHeight = Number(seg.getAttribute('height'));
       const segDuration = Math.max(0, (segHeight - 64) / 360);
       const segmentFlickOverlays = [];
-      const segmentImages = [...seg.querySelectorAll('image')];
+      // Ignore reusable sprite definitions. Only rendered <use>/<image>/<path>
+      // instances describe chart events; paths inside <defs> are note artwork.
+      const isInsideDefs = (el) => {
+        for (let parent=el.parentElement; parent && parent!==seg; parent=parent.parentElement) {
+          if (String(parent.localName || '').toLowerCase() === 'defs') return true;
+        }
+        return false;
+      };
+      const segmentImages = [...seg.querySelectorAll('image')].filter(image => !isInsideDefs(image));
       for (const image of segmentImages) {
         const href = image.getAttribute('href') || image.getAttributeNS('http://www.w3.org/1999/xlink','href') || '';
         const file = href.split(/[?#]/)[0].split('/').pop() || '';
@@ -666,7 +678,7 @@
             time:segmentStart + segDuration - (cy - 32)/360, segmentStart, segmentDuration:segDuration });
         }
       }
-      const segmentUses = [...seg.querySelectorAll('use')].map(use => {
+      const segmentUses = [...seg.querySelectorAll('use')].filter(use => !isInsideDefs(use)).map(use => {
         const href = use.getAttribute('href') || use.getAttributeNS('http://www.w3.org/1999/xlink','href') || '';
         const m = href.match(/^#notes-(\d+)(?:-(\d+))?$/);
         if (!m) {
@@ -706,6 +718,7 @@
 
       const segmentPaths = [];
       for (const path of seg.querySelectorAll('path')) {
+        if (isInsideDefs(path)) continue;
         const cls = path.getAttribute('class') || '';
         const d = path.getAttribute('d') || '';
         if (!(cls.toLowerCase().includes('slide') || cls.toLowerCase().includes('decoration')) || !d) continue;
@@ -750,15 +763,20 @@
       const currentSegmentNotes = notes.slice(segmentNoteStart);
       for (const overlay of segmentFlickOverlays) {
         const ox0 = overlay.x, oy0 = overlay.y, ox1 = ox0 + overlay.w, oy1 = oy0 + overlay.h;
+        const arrowCx=(ox0+ox1)/2, arrowCy=(oy0+oy1)/2;
         const candidates = currentSegmentNotes.map(n => {
           const nx0=n.svgX, ny0=n.svgY, nx1=nx0+n.svgW, ny1=ny0+n.svgH;
           const iw=Math.max(0,Math.min(ox1,nx1)-Math.max(ox0,nx0));
           const ih=Math.max(0,Math.min(oy1,ny1)-Math.max(oy0,ny0));
           const overlap=iw*ih;
-          const dx=Math.abs((nx0+nx1)/2-(ox0+ox1)/2);
-          const dy=Math.abs((ny0+ny1)/2-(oy0+oy1)/2);
-          return {n,overlap,score:overlap - dx*dy*0.15};
-        }).filter(x=>x.overlap>0).sort((a,b)=>b.score-a.score);
+          const dx=Math.abs((nx0+nx1)/2-arrowCx);
+          const dy=Math.abs((ny0+ny1)/2-arrowCy);
+          // In the reference renderer the arrow's horizontal center is exactly
+          // the note's center. Prefer that invariant over overlap area: a wide
+          // adjacent note must not steal a flick arrow from its true note.
+          const centerTolerance=Math.max(2.5, Math.min(6, n.svgW*0.10));
+          return {n,overlap,dx,dy,score:dx*10 + dy*0.15 - overlap*0.0005,centerTolerance};
+        }).filter(x=>x.overlap>0 && x.dx<=x.centerTolerance).sort((a,b)=>a.score-b.score);
         const target = candidates[0]?.n;
         if (target) {
           target.isFlick = true;
@@ -770,16 +788,19 @@
       for (const note of currentSegmentNotes) {
         for (const sp of segmentPaths) {
           if (!sp.endpoint.start || !sp.endpoint.end) continue;
-          const leftEdge = note.svgX + 8;
-          const rightEdge = note.svgX + note.svgW - 8;
+          const inferredLaneWidth = note.svgW / Math.max(1, note.widthUnits);
+          const leftEdge = note.svgX + inferredLaneWidth/2;
+          const rightEdge = note.svgX + note.svgW - inferredLaneWidth/2;
           const cy = note.svgY + note.svgH/2;
-          const startMatch = Math.abs(leftEdge - sp.endpoint.start.x) <= 2.2 && Math.abs(cy - sp.endpoint.start.y) <= 2.2;
-          const endMatch = Math.abs(rightEdge - sp.endpoint.end.x) <= 2.2 && Math.abs(cy - sp.endpoint.end.y) <= 2.2;
+          const edgeTolerance = Math.max(1.1, inferredLaneWidth*0.14);
+          const startMatch = Math.abs(leftEdge - sp.endpoint.start.x) <= edgeTolerance && Math.abs(cy - sp.endpoint.start.y) <= edgeTolerance;
+          const endMatch = Math.abs(rightEdge - sp.endpoint.end.x) <= edgeTolerance && Math.abs(cy - sp.endpoint.end.y) <= edgeTolerance;
           if (startMatch || endMatch) {
             note.kind = 'slide';
             note.slideHead = true;
             note.slideEndpoint = startMatch ? 'start' : 'end';
             if (sp.className.toLowerCase().includes('critical')) note.critical = true;
+            if (startMatch && note.critical) sp.critical = true;
             if (sp.className.toLowerCase().includes('decoration')) note.decoration = true;
             break;
           }
@@ -805,7 +826,7 @@
       meta:{ title, artist:subtitle, difficulty:'SVG', level:'' }, notes,
       timing:[], marks, slideLinks:[], slidePaths, markers, duration,
       bpm:'—', format:'SVG', rawNoteCount:notes.length,
-      parserVersion:'3.5-scores-rs-svg-assets-directional', unsupportedSymbols,
+      parserVersion:'3.6-scores-rs-svg-geometry-and-overlay-fidelity', unsupportedSymbols,
     };
   }
 
@@ -961,10 +982,6 @@
       main:'#ffd34f', top:'#fff9c9', bottom:'#d49a1b', glow:'#ffd34f',
       ribbon:'rgba(255,207,66,.76)'
     },
-    damage: {
-      main:'#b38be8', top:'#f0e5ff', bottom:'#7953b9', glow:'#b28be9',
-      ribbon:'rgba(174,132,231,.66)'
-    }
   };
 
   // The reference renderer emits only Up / UpperLeft / UpperRight arrow
@@ -975,9 +992,10 @@
   }
 
   function paletteForNote(n) {
-    if (n.damage || n.kind === 'damage') return NOTE_PALETTES.damage;
     if (n.critical) return NOTE_PALETTES.critical;
-    const flick = n.kind === 'flick' || (n.isFlick === true && n.kind !== 'slide');
+    // A slide endpoint may itself carry a Directional overlay. Keep that
+    // head's flick/trend family even though its path is also a slide.
+    const flick = n.kind === 'flick' || n.isFlick === true;
     if (n.trend && flick) return NOTE_PALETTES.traceFlick;
     if (flick) return NOTE_PALETTES.flick;
     if (n.trend || n.kind === 'slide') return NOTE_PALETTES.slide;
@@ -989,7 +1007,6 @@
     if (cls.includes('critical')) return NOTE_PALETTES.critical;
     if (cls.includes('trace') && cls.includes('flick')) return NOTE_PALETTES.traceFlick;
     if (cls.includes('flick')) return NOTE_PALETTES.flick;
-    if (cls.includes('damage')) return NOTE_PALETTES.damage;
     return NOTE_PALETTES.slide;
   }
 
@@ -1090,7 +1107,11 @@
         const lx=bezier(leftA,leftA,leftB,leftB,t), rx=bezier(rightA,rightA,rightB,rightB,t);
         const cx=(lx+rx)/2;
         ctx.beginPath();ctx.arc(cx,cy,Math.max(2,halfW*.16),0,Math.PI*2);
-        ctx.fillStyle=relay.attachedTap?.noteType===2||relay.attachedTap?.noteType===6?'#ffe18a':'rgba(223,255,247,.9)';ctx.fill();
+        const relayTap=relay.attachedTap || relay.attachedDirectional?.attachedTap || null;
+        const relayHeadTap=relay.head && (relay.head.attachedTap || relay.head.attachedDirectional?.attachedTap);
+        const relayCritical=!!(relayTap && [2,6,8].includes(relayTap.noteType)) ||
+          !!(relayHeadTap && [2,6,8].includes(relayHeadTap.noteType));
+        ctx.fillStyle=relayCritical?'#ffe18a':'rgba(223,255,247,.9)';ctx.fill();
       }
       ctx.restore();
     }
@@ -1101,7 +1122,7 @@
       const sx=fieldW/192, sy=pps/360;
       const tx=fieldLeft-40*sx;
       const ty=hitY-(sp.segmentStart+sp.segmentDuration-state.time)*pps-32*sy;
-      const pathPalette=paletteForSlidePath(sp.className);
+      const pathPalette=sp.critical ? NOTE_PALETTES.critical : paletteForSlidePath(sp.className);
       ctx.save(); ctx.translate(tx,ty); ctx.scale(sx,sy);
       if(state.glow){ctx.shadowColor=pathPalette.glow;ctx.shadowBlur=18/sx;}
       ctx.fillStyle=sp.className.includes('decoration')?'rgba(188,157,255,.34)':pathPalette.ribbon;
@@ -1234,7 +1255,7 @@
   if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
 
   // Small public hooks used by the smoke tests; harmless for normal use.
-  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, shouldDrawFlickArrow, getState:()=>state };
+  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, noteGeometry, paletteForNote, shouldDrawFlickArrow, getState:()=>state };
   state.chart=makeDemoChart();
   state.duration=state.chart.duration;
   resize();
