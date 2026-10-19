@@ -213,6 +213,7 @@
 (() => {
   'use strict';
 
+  const PLAYER_BUILD = '2026.10.20-exact-svg-note-height-and-marker-layers-v12';
   const SVG_URL = 'https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg';
   const $ = (id) => document.getElementById(id);
   const canvas = $('gameCanvas');
@@ -698,8 +699,18 @@
         if (/^notes_flick_arrow(?:_crtcl)?_\d{2}(?:_diagonal)?\.(?:png|webp|svg)$/i.test(file)) {
           const diagonal = /_diagonal\./i.test(file);
           const transform = String(image.getAttribute('transform') || '').replace(/\s+/g,'');
-          const direction = !diagonal ? 1 : (/scale\(-1(?:,1)?\)/i.test(transform) ? 4 : 3);
-          segmentFlickOverlays.push({ direction, x:ix, y:iy, w:iw, h:ih, href:file });
+          const flip = /scale\(-1(?:,1)?\)/i.test(transform);
+          const direction = !diagonal ? 1 : (flip ? 4 : 3);
+          const originAttr = String(image.getAttribute('transform-origin') || '').trim();
+          const originMatch = originAttr.match(/^([-+]?\d*\.?\d+(?:e[-+]?\d+)?)/i);
+          const originX = originMatch ? Number(originMatch[1]) : ix + iw/2;
+          // Resolve the transformed image box now. The SVG renderer places
+          // upper-right flicks around transform-origin=(noteCenter+bias),
+          // so using the raw x/width later shifts the arrow on wide notes.
+          const finalX = flip ? (2*originX - (ix+iw)) : ix;
+          const arrowTime = segmentStart + segDuration - (iy + ih/2 - 32)/360;
+          segmentFlickOverlays.push({ direction, x:ix, finalX, y:iy, w:iw, h:ih,
+            href:file, flip, originX, time:arrowTime });
           continue;
         }
         // Trace/slide relay markers are also <image>s. Preserve their actual
@@ -800,26 +811,27 @@
       // when a tap/flick is attached to a decorative/critical slide.
       const currentSegmentNotes = notes.slice(segmentNoteStart);
       for (const overlay of segmentFlickOverlays) {
-        const ox0 = overlay.x, oy0 = overlay.y, ox1 = ox0 + overlay.w, oy1 = oy0 + overlay.h;
-        const arrowCx=(ox0+ox1)/2, arrowCy=(oy0+oy1)/2;
+        const ox0 = overlay.finalX ?? overlay.x, oy0 = overlay.y;
+        const arrowCx = ox0 + overlay.w/2, arrowCy = oy0 + overlay.h/2;
+        const directionalBias = overlay.direction===3 ? -(18/4) : overlay.direction===4 ? (18/4) : 0;
+        const unBiasedAnchorX = arrowCx - directionalBias;
         const candidates = currentSegmentNotes.map(n => {
-          const nx0=n.svgX, ny0=n.svgY, nx1=nx0+n.svgW, ny1=ny0+n.svgH;
-          const iw=Math.max(0,Math.min(ox1,nx1)-Math.max(ox0,nx0));
-          const ih=Math.max(0,Math.min(oy1,ny1)-Math.max(oy0,ny0));
-          const overlap=iw*ih;
-          const dx=Math.abs((nx0+nx1)/2-arrowCx);
-          const dy=Math.abs((ny0+ny1)/2-arrowCy);
-          // In the reference renderer the arrow's horizontal center is exactly
-          // the note's center. Prefer that invariant over overlap area: a wide
-          // adjacent note must not steal a flick arrow from its true note.
-          const centerTolerance=Math.max(2.5, Math.min(6, n.svgW*0.10));
-          return {n,overlap,dx,dy,score:dx*10 + dy*0.15 - overlap*0.0005,centerTolerance};
-        }).filter(x=>x.overlap>0 && x.dx<=x.centerTolerance).sort((a,b)=>a.score-b.score);
+          const noteCx=n.svgX+n.svgW/2, noteCy=n.svgY+n.svgH/2;
+          const dx=Math.abs(noteCx-unBiasedAnchorX);
+          const dy=Math.abs(noteCy-arrowCy);
+          // The arrow is intentionally drawn above the note body and may not
+          // overlap it vertically. Match by the renderer's exact anchor plus
+          // a small vertical neighbourhood, not by rectangle intersection.
+          const centerTolerance=Math.max(1.4, Math.min(3.2, n.svgW*0.055));
+          return {n,dx,dy,score:dx*20+dy,centerTolerance};
+        }).filter(x=>x.dx<=x.centerTolerance && x.dy<Math.max(72, x.n.svgH*2.8))
+          .sort((a,b)=>a.score-b.score);
         const target = candidates[0]?.n;
         if (target) {
           target.isFlick = true;
           target.direction = overlay.direction;
           target.arrowAsset = overlay.href;
+          target.arrowOverlay = { ...overlay };
           target.kind = target.kind === 'slide' ? 'slide' : 'flick';
         }
       }
@@ -866,7 +878,7 @@
       meta:{ title, artist:subtitle, difficulty:'SVG', level:'', jacket }, notes,
       timing:[], marks, slideLinks:[], slidePaths, markers, duration,
       bpm:'—', format:'SVG', rawNoteCount:notes.length,
-      parserVersion:'3.7-scores-rs-svg-geometry-style-and-overlay-fidelity', unsupportedSymbols,
+      parserVersion:'3.8-exact-note-box-svg-flick-box-slide-width-and-perspective-paths', unsupportedSymbols,
     };
   }
 
@@ -1018,19 +1030,28 @@
     return 'tap';
   }
   function noteGeometry(n, field, unit) {
-    const units = Math.max(1, Math.min(12, Number(n.widthUnits) || 1));
+    const rawWidth = clamp(Number(n.widthRaw) || 0, 0, 11);
+    const units = rawWidth + 1;
     const family = noteFamily(n);
-    // Chart geometry remains exact: lane + width define the hit area and
-    // slide connection. Only the visible head sprite is inset by 7% per side
-    // so adjacent heads retain a clean gap after glow / antialiasing.
-    const nominalW = units * unit;
-    const visualScale = 0.86;
-    const width = Math.max(1.5, nominalW * visualScale);
-    // laneIndex is zero-based in both SUS and SVG parsers. Align the head's
-    // left edge to that lane's left boundary (do not shift it half a lane).
+    // Use the actual SVG <use> box when available. The reference generator
+    // emits x=lane_width*(lane-2.5)+padding, width=(raw+1)*lane_width.
+    // SUS notes use that same geometry reconstructed from lane and width.
+    const x = Number.isFinite(n.svgX) ? field.left + ((n.svgX - 40) / 16) * unit
+      : field.left + (Number(n.laneIndex) - 0.5) * unit;
+    const width = Number.isFinite(n.svgW) && n.svgW > 0 ? (n.svgW / 16) * unit : units * unit;
     const chartLeft = field.left + Number(n.laneIndex) * unit;
-    const x = chartLeft + (nominalW - width) / 2;
-    return { x, width, units, family, scale:visualScale, nominalW, chartLeft };
+    return { x, width, units, family, scale:1, nominalW:width, chartLeft };
+  }
+  const BASE_LANE_WIDTH = 16;
+  const BASE_NOTE_BOX_HEIGHT = BASE_LANE_WIDTH / 64 * 56 * 2; // 28px in pjsekai-scores-rs SVG output
+  function noteSpriteBoxHeight(n, unit) {
+    const sourceHeight = Number.isFinite(n.svgH) && n.svgH > 0 ? n.svgH : BASE_NOTE_BOX_HEIGHT;
+    return sourceHeight * unit / BASE_LANE_WIDTH;
+  }
+  function noteFallbackVisibleHeight(unit) {
+    // Without the original PNG, draw only the visible band rather than the
+    // transparent 28px sprite canvas used by the official generated SVG.
+    return Math.max(4, Math.min(13, unit * 0.26));
   }
 
   const FALLBACK_PALETTES = {
@@ -1072,8 +1093,10 @@
     // official Project SEKAI gameplay screenshots:
     // rear field ~= 40% of screen width, judgement edge ~= 78%,
     // lower runway expands to ~= 96%. Keep the playfield taller than the HUD.
-    const cx=w/2, horizonY=h*0.31, hitY=h*0.77;
-    const halfTop=w*0.20, halfJudge=w*0.39, halfRunway=w*0.48;
+    const cx=w/2, horizonY=h*0.405, hitY=h*0.795;
+    // Match the broad 12-lane runway in gameplay references: about 40% width
+    // at the rear edge, 84% at the judgement line and almost full width below.
+    const halfTop=w*0.205, halfJudge=w*0.42, halfRunway=w*0.495;
     const fieldAt=(y)=>{
       let half, t;
       if (y <= hitY) {
@@ -1088,10 +1111,10 @@
     // A note farther than the look-ahead time remains ABOVE the horizon.
     // Do not clamp distant notes to the horizon: that was the cause of the
     // previous horizontal-looking pile-up. Notes are clipped by the field.
-    const approach=2.8;
+    const approach=3.0;
     const yAtTime=(noteTime,now)=>{
       const d=(noteTime-now)/approach;
-      if(d>=0) return hitY-Math.pow(d,0.86)*(hitY-horizonY);
+      if(d>=0) return hitY-Math.pow(d,0.94)*(hitY-horizonY);
       return hitY+Math.min(18,-d*120);
     };
     return {cx,horizonY,hitY,halfBottom:halfJudge,halfRunway,fieldAt,approach,yAtTime};
@@ -1128,7 +1151,7 @@
       ctx.globalAlpha=1;ctx.strokeStyle='rgba(229,225,255,.55)';ctx.lineWidth=1;ctx.strokeRect(0,0,q.w*w,q.h*h);ctx.restore();
     }
     // Main center monitor / jacket frame. Use the chart jacket if the SVG contains it.
-    const cx=w/2, cardW=w*.235, cardH=h*.47, cardX=cx-cardW/2, cardY=h*.035;
+    const cx=w/2, cardW=w*.225, cardH=h*.355, cardX=cx-cardW/2, cardY=h*.035;
     ctx.save();ctx.shadowColor='#9faaff';ctx.shadowBlur=15;
     ctx.fillStyle='#070b19';ctx.fillRect(cardX-5,cardY-4,cardW+10,cardH+11);
     ctx.strokeStyle='rgba(226,226,255,.78)';ctx.lineWidth=1.4;ctx.strokeRect(cardX-2,cardY-1,cardW+4,cardH+4);
@@ -1153,7 +1176,7 @@
   function drawJacketFront(w,h) {
     // Re-paint the centre stage screen after drawing lane perspective. This
     // masks rear lane rails behind the jacket, just like the supplied capture.
-    const cx=w/2, cardW=w*.235, cardH=h*.47, cardX=cx-cardW/2, cardY=h*.035;
+    const cx=w/2, cardW=w*.225, cardH=h*.355, cardX=cx-cardW/2, cardY=h*.035;
     ctx.save();
     ctx.shadowColor='#9faaff';ctx.shadowBlur=12;
     ctx.fillStyle='#070b19';ctx.fillRect(cardX-5,cardY-4,cardW+10,cardH+11);
@@ -1201,14 +1224,13 @@
   }
   function drawFallbackNote(n,x,y,noteW,noteH) {
     const family=noteFamily(n),trace=family.startsWith('trace'),pal=paletteForFallback(n);
-    // noteW is already the 86%-inset visual head box. Keep the fallback
-    // sprite at that exact size so it matches the remote notes_0..6 assets.
+    // noteW is the exact source-chart hit-box width (raw width + one lane).
+    // Keep the fallback body aligned to that same box as the remote sprites.
     // Trace identity is shown by its mint/gold artwork and inner highlight,
     // not by secretly changing the note's chart width.
     const bodyW=Math.max(2,noteW);
     const bodyH=Math.max(2,noteH);
-    const inset=Math.min(noteH*.08,bodyW*.025);
-    const drawW=Math.max(2,bodyW-inset*2),drawX=x+(noteW-drawW)/2;
+    const drawW=Math.max(2,bodyW),drawX=x;
     const drawY=y-bodyH/2;
     const g=ctx.createLinearGradient(drawX,drawY,drawX,drawY+bodyH);
     g.addColorStop(0,pal.top);g.addColorStop(.48,pal.main);g.addColorStop(1,pal.bottom);
@@ -1224,43 +1246,70 @@
       ctx.strokeStyle='rgba(21,128,81,.72)';ctx.lineWidth=Math.max(.8,bodyH*.08);ctx.stroke();
     }
   }
-  function drawFlickArrow(n,field,y,noteW) {
+  function drawFlickArrow(n,field,y,projection=null) {
     if(!shouldDrawFlickArrow(n)) return;
     const file=flickAssetForNote(n), img=spriteImage(file);
     const unit=field.unit, rawWidth=Math.max(0,Math.min(6,Number(n.widthRaw)||0));
-    // Match pjsekai-scores-rs: vertical arrow proportions scale with note width.
+
+    // SVG charts already contain the exact generated arrow <image> box. Keep
+    // its native dimensions, vertical offset and horizontal flip rather than
+    // rebuilding a width-dependent approximation from the note head.
+    if(n.arrowOverlay){
+      const ov=n.arrowOverlay;
+      const arrowY=projection?.mapY ? projection.mapY(ov.time) : y;
+      const arrowField=projection?.fieldAt ? projection.fieldAt(arrowY) : field;
+      const scale=arrowField.unit/16;
+      const x=arrowField.left+((ov.finalX-40)/16)*arrowField.unit;
+      const w=ov.w*scale, h=ov.h*scale, cy=arrowY;
+      if(img&&img.complete&&img.naturalWidth>0){
+        ctx.save();
+        if(ov.flip){ctx.translate(2*(x+w/2),0);ctx.scale(-1,1);}
+        ctx.drawImage(img,x,cy-h/2,w,h);
+        ctx.restore();
+      }else{
+        drawArrowFallback(x+w/2,cy,w,h,n.direction,n.critical,arrowField.unit);
+      }
+      return;
+    }
+
+    // SUS-only fallback: the official renderer uses a width-indexed asset and
+    // scales it with rawWidth (not the visible widthRaw+1 note-head width).
     const h=unit*1.5*Math.pow((rawWidth+3)/3,0.75);
     const w=unit*2.25*Math.pow((rawWidth+0.5)/3,0.75);
-    const bias=n.direction===3?-unit*.25:n.direction===4?unit*.25:0;
+    const bias=n.direction===3?-(18/4)*(unit/16):n.direction===4?(18/4)*(unit/16):0;
     const center=field.left+(Number(n.laneIndex||0)+rawWidth/2)*unit+bias;
     const cy=y+unit*.25-h/2;
-    if(img && img.complete && img.naturalWidth>0){
+    if(img&&img.complete&&img.naturalWidth>0){
       ctx.save();
-      if(Number(n.direction)===4){ctx.translate(center*2,0);ctx.scale(-1,1);ctx.drawImage(img,center-w/2,cy-h/2,w,h);}
-      else ctx.drawImage(img,center-w/2,cy-h/2,w,h);
+      if(Number(n.direction)===4){ctx.translate(2*center,0);ctx.scale(-1,1);}
+      ctx.drawImage(img,center-w/2,cy-h/2,w,h);
       ctx.restore();
     }else{
-      ctx.save();ctx.strokeStyle=n.critical?'#fff3b1':'#fff';ctx.lineWidth=Math.max(1.2,unit*.07);ctx.lineCap='round';ctx.lineJoin='round';
-      const angle=n.direction===3?-Math.PI/4:n.direction===4?Math.PI/4:0;
-      const len=h*.34, head=w*.27, dx=Math.sin(angle)*len, dy=-Math.cos(angle)*len;
-      ctx.beginPath();ctx.moveTo(center-dx*.55,cy-dy*.55);ctx.lineTo(center+dx*.45,cy+dy*.45);
-      const tipX=center+dx*.45,tipY=cy+dy*.45;
-      const side=Math.atan2(dy,dx);
-      ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side-.72),tipY-head*Math.sin(side-.72));
-      ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side+.72),tipY-head*Math.sin(side+.72));
-      ctx.stroke();ctx.restore();
+      drawArrowFallback(center,cy,w,h,n.direction,n.critical,unit);
     }
   }
-  function drawAmongMarker(kind,x,y,unit) {
+  function drawArrowFallback(center,cy,w,h,direction,critical,unit){
+    ctx.save();ctx.strokeStyle=critical?'#fff3b1':'#fff';
+    ctx.lineWidth=Math.max(1.2,unit*.075);ctx.lineCap='round';ctx.lineJoin='round';
+    const angle=direction===3?-Math.PI/4:direction===4?Math.PI/4:0;
+    const len=h*.34, head=w*.27, dx=Math.sin(angle)*len, dy=-Math.cos(angle)*len;
+    ctx.beginPath();ctx.moveTo(center-dx*.55,cy-dy*.55);ctx.lineTo(center+dx*.45,cy+dy*.45);
+    const tipX=center+dx*.45,tipY=cy+dy*.45,side=Math.atan2(dy,dx);
+    ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side-.72),tipY-head*Math.sin(side-.72));
+    ctx.moveTo(tipX,tipY);ctx.lineTo(tipX-head*Math.cos(side+.72),tipY-head*Math.sin(side+.72));
+    ctx.stroke();ctx.restore();
+  }
+
+  function drawAmongMarker(kind,x,y,unit,widthUnits=0.75,heightUnits=0.75) {
     const file=kind==='long-critical'?'notes_long_among_crtcl.png':
       kind==='friction-critical'?'notes_friction_among_crtcl.png':
       kind==='friction-flick'?'notes_friction_among_flick.png':
       kind==='long'?'notes_long_among.png':'notes_friction_among_long.png';
-    const img=spriteImage(file),size=unit*.78;
+    const img=spriteImage(file),w=unit*widthUnits,h=unit*heightUnits;
     if(img && img.complete && img.naturalWidth>0) {
-      ctx.drawImage(img,x-size/2,y-size/2,size,size);
+      ctx.drawImage(img,x-w/2,y-h/2,w,h);
     } else {
-      const flick=kind.includes('flick'),critical=kind.includes('critical');
+      const size=Math.min(w,h),flick=kind.includes('flick'),critical=kind.includes('critical');
       const fill=critical?'#fff0b5':flick?'#ff7183':'#b9f8d2';
       const edge=critical?'#b78a24':flick?'#ae2842':'#18774e';
       ctx.save();ctx.translate(x,y);
@@ -1273,35 +1322,88 @@
       ctx.restore();
     }
   }
-  function transformSvgPathForGame(d, sp, perspective, w, h, pps) {
-    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);
-    if(!tokens) return null;
-    const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
-    const point=(x,y)=>{
-      const noteTime=sp.segmentStart+sp.segmentDuration-(y-32)/360;
-      const py=perspective.yAtTime(noteTime,state.time);
-      const f=perspective.fieldAt(py);
-      const px=f.left+((x-40)/16)*f.unit;
-      return [px,py];
+  function cubicPoint(p0,p1,p2,p3,t){
+    const mt=1-t,mt2=mt*mt,t2=t*t;
+    return [mt2*mt*p0[0]+3*mt2*t*p1[0]+3*mt*t2*p2[0]+t2*t*p3[0],
+            mt2*mt*p0[1]+3*mt2*t*p1[1]+3*mt*t2*p2[1]+t2*t*p3[1]];
+  }
+  function cubicXAtY(points,targetY){
+    const ascending=points[3][1]>=points[0][1];let lo=0,hi=1;
+    for(let k=0;k<28;k++){
+      const mid=(lo+hi)/2,p=cubicPoint(points[0],points[1],points[2],points[3],mid);
+      if((p[1]<targetY)===ascending)lo=mid;else hi=mid;
+    }
+    return cubicPoint(points[0],points[1],points[2],points[3],(lo+hi)/2)[0];
+  }
+  function makeSlideCurves(link, y0, y1, f0, f1, yMid){
+    const rawA=Math.max(0,Number(link.a.widthRaw)||0),rawB=Math.max(0,Number(link.b.widthRaw)||0);
+    const padA=link.decoration?0:f0.unit/16, padB=link.decoration?0:f1.unit/16;
+    const l0=f0.left+link.a.laneIndex*f0.unit+padA;
+    const r0=f0.left+(link.a.laneIndex+rawA)*f0.unit-padA;
+    const l1=f1.left+link.b.laneIndex*f1.unit+padB;
+    const r1=f1.left+(link.b.laneIndex+rawB)*f1.unit-padB;
+    const c1=link.direction===2?yMid:y0, c2=[5,6].includes(link.direction)?yMid:y1;
+    return {
+      left:[[l0,y0],[l0,c1],[l1,c2],[l1,y1]],
+      right:[[r0,y0],[r0,c1],[r1,c2],[r1,y1]],
+      l0,r0,l1,r1,y0,y1
     };
+  }
+  function fillSlideCurves(curves, link, screenUnit){
+    const L=curves.left,R=curves.right;
+    ctx.beginPath();ctx.moveTo(L[0][0],L[0][1]);
+    ctx.bezierCurveTo(L[1][0],L[1][1],L[2][0],L[2][1],L[3][0],L[3][1]);
+    ctx.lineTo(R[3][0],R[3][1]);
+    ctx.bezierCurveTo(R[2][0],R[2][1],R[1][0],R[1][1],R[0][0],R[0][1]);ctx.closePath();
+    const critical=!!link.critical,decoration=!!link.decoration;
+    ctx.fillStyle=critical?(decoration?'rgba(252,241,195,.42)':'rgba(252,241,195,.80)'):
+      (decoration?'rgba(201,252,226,.42)':'rgba(201,252,226,.80)');
+    ctx.fill();
+    ctx.strokeStyle=critical?'rgba(255,251,225,.92)':'rgba(245,255,249,.92)';
+    ctx.lineWidth=Math.max(.7,screenUnit*.045);ctx.stroke();
+  }
+  function drawSlideRelays(relay, curves, relayY, unit){
+    const leftX=cubicXAtY(curves.left,relayY),rightX=cubicXAtY(curves.right,relayY),rx=(leftX+rightX)/2;
+    const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
+    const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
+    drawAmongMarker(kind,rx,relayY,unit,1,1);
+  }
+  function projectSvgPath(d, pointFn, curveSteps=20){
+    const tokens=String(d).match(/[MmLlCcZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g);
+    if(!tokens)return null;
+    const path=new Path2D();let i=0,cmd='',cx=0,cy=0,sx=0,sy=0;
     try{
       while(i<tokens.length){
-        if(/^[A-Za-z]$/.test(tokens[i])) cmd=tokens[i++];
-        if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;continue;}
+        if(/^[A-Za-z]$/.test(tokens[i]))cmd=tokens[i++];
+        if(cmd==='Z'||cmd==='z'){path.closePath();cx=sx;cy=sy;cmd='';continue;}
         const rel=cmd===cmd.toLowerCase();
         if(cmd==='M'||cmd==='m'||cmd==='L'||cmd==='l'){
           const x=Number(tokens[i++]),y=Number(tokens[i++]);
-          const nx=rel?cx+x:x,ny=rel?cy+y:y;const q=point(nx,ny);
+          const nx=rel?cx+x:x,ny=rel?cy+y:y,q=pointFn(nx,ny);
           if(cmd==='M'||cmd==='m'){path.moveTo(q[0],q[1]);sx=nx;sy=ny;cmd=rel?'l':'L';}
-          else path.lineTo(q[0],q[1]);cx=nx;cy=ny;
+          else path.lineTo(q[0],q[1]);
+          cx=nx;cy=ny;
         }else if(cmd==='C'||cmd==='c'){
           const x1=Number(tokens[i++]),y1=Number(tokens[i++]),x2=Number(tokens[i++]),y2=Number(tokens[i++]),x=Number(tokens[i++]),y=Number(tokens[i++]);
-          const nx1=rel?cx+x1:x1,ny1=rel?cy+y1:y1,nx2=rel?cx+x2:x2,ny2=rel?cy+y2:y2,nx=rel?cx+x:x,ny=rel?cy+y:y;
-          const q1=point(nx1,ny1),q2=point(nx2,ny2),q=point(nx,ny);path.bezierCurveTo(q1[0],q1[1],q2[0],q2[1],q[0],q[1]);cx=nx;cy=ny;
-        }else{ return null; }
+          const p0=[cx,cy],p1=[rel?cx+x1:x1,rel?cy+y1:y1],p2=[rel?cx+x2:x2,rel?cy+y2:y2],p3=[rel?cx+x:x,rel?cy+y:y];
+          for(let step=1;step<=curveSteps;step++){
+            const q=cubicPoint(p0,p1,p2,p3,step/curveSteps),screen=pointFn(q[0],q[1]);
+            path.lineTo(screen[0],screen[1]);
+          }
+          cx=p3[0];cy=p3[1];
+        }else return null;
       }
     }catch(_){return null;}
     return path;
+  }
+
+  function transformSvgPathForGame(d, sp, perspective, w, h, pps) {
+    return projectSvgPath(d,(x,y)=>{
+      const noteTime=sp.segmentStart+sp.segmentDuration-(y-32)/360;
+      const py=perspective.yAtTime(noteTime,state.time);
+      const f=perspective.fieldAt(py);
+      return [f.left+((x-40)/16)*f.unit,py];
+    },24);
   }
 
   function renderGameplay() {
@@ -1342,44 +1444,15 @@
       const a=link.a,b=link.b,y1=yAtTime(a.time,state.time),y2=yAtTime(b.time,state.time);
       if(Math.max(y1,y2)<horizonY-24||Math.min(y1,y2)>hitY+24)continue;
       const f1=fieldAt(y1),f2=fieldAt(y2);
-      const u1=f1.unit,u2=f2.unit;
-      const unitsA=Math.max(1,Number(a.widthRaw)+1),unitsB=Math.max(1,Number(b.widthRaw)+1);
-      const traceScale=link.trend?0.72:1; // trace ribbons are guide rails, not full-width slide bodies
-      const l1=f1.left+a.laneIndex*u1,l2=f2.left+b.laneIndex*u2;
-      const rawR1=l1+unitsA*u1,rawR2=l2+unitsB*u2;
-      const c1=(l1+rawR1)/2,c2=(l2+rawR2)/2;
-      const r1=link.trend?c1+(rawR1-c1)*traceScale:rawR1;
-      const xL1=link.trend?c1+(l1-c1)*traceScale:l1;
-      const r2=link.trend?c2+(rawR2-c2)*traceScale:rawR2;
-      const xL2=link.trend?c2+(l2-c2)*traceScale:l2;
-      const mid=(y1+y2)/2, easeIn=link.direction===2,easeOut=[5,6].includes(link.direction);
-      const lc1=easeIn?mid:y1,lc2=easeOut?mid:y2,rc1=lc1,rc2=lc2;
-      ctx.save();ctx.beginPath();ctx.moveTo(xL1,y1);ctx.bezierCurveTo(xL1,lc1,xL2,lc2,xL2,y2);ctx.lineTo(r2,y2);ctx.bezierCurveTo(r2,rc2,r1,rc1,r1,y1);ctx.closePath();
-      const critical=!!link.critical, trace=!!link.trend, decoration=!!link.decoration;
-      // Match pjsekai-scores-rs default.css: normal slide = #c9fce2cc,
-      // critical slide = #fcf1c3cc; decorations use the lighter gradients.
-      const bodyColor=critical?'#fcf1c3':'#c9fce2';
-      ctx.fillStyle=decoration
-        ? (critical?'rgba(252,241,195,.48)':'rgba(201,252,226,.48)')
-        : (critical?'rgba(252,241,195,.80)':'rgba(201,252,226,.80)');
-      if(state.glow){ctx.shadowColor=critical?'#fff0bd':'#b7ffda';ctx.shadowBlur=trace?5:3;}
-      ctx.fill();ctx.shadowBlur=0;
-      ctx.strokeStyle=trace?(critical?'rgba(164,129,42,.95)':'rgba(32,133,87,.95)'):
-        (critical?'rgba(255,251,225,.96)':'rgba(245,255,249,.96)');
-      ctx.lineWidth=trace?Math.max(1.1,u1*.085):Math.max(.8,u1*.055);ctx.stroke();
-      if(trace){
-        ctx.beginPath();ctx.moveTo((xL1+r1)/2,y1);ctx.bezierCurveTo((xL1+r1)/2,lc1,(xL2+r2)/2,lc2,(xL2+r2)/2,y2);
-        ctx.strokeStyle=critical?'rgba(255,255,237,.96)':'rgba(255,255,255,.98)';
-        ctx.lineWidth=Math.max(.9,u1*.075);ctx.stroke();
-      }
-      // Draw trace/flick/critical relay markers at their real curve time.
+      const yMid=yAtTime((a.time+b.time)/2,state.time);
+      const curves=makeSlideCurves(link,y1,y2,f1,f2,yMid);
+      ctx.save();
+      if(state.glow){ctx.shadowColor=link.critical?'#fff0bd':'#b7ffda';ctx.shadowBlur=3;}
+      fillSlideCurves(curves,link,(f1.unit+f2.unit)/2);ctx.shadowBlur=0;
       for(const relay of (link.amongs||[])){
-        const ry=yAtTime(relay.time,state.time);if(ry<y1-1||ry>y2+1)continue;
-        const t=clamp((ry-y1)/(y2-y1||1),0,1);
-        const left= l1+(l2-l1)*t, right=r1+(r2-r1)*t, rx=(left+right)/2;
-        const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
-        const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
-        drawAmongMarker(kind,rx,ry,fieldAt(ry).unit);
+        const ry=yAtTime(relay.time,state.time);
+        if(ry<Math.min(y1,y2)-1||ry>Math.max(y1,y2)+1)continue;
+        drawSlideRelays(relay,curves,ry,fieldAt(ry).unit);
       }
       ctx.restore();
     }
@@ -1396,13 +1469,6 @@
       ctx.fill(transformed);ctx.restore();
     }
 
-    // SVG relay assets retain their individual kind and position.
-    for(const marker of (state.chart.markers||[])){
-      const y=yAtTime(marker.time,state.time);if(y<horizonY-8||y>hitY+8)continue;
-      const f=fieldAt(y),x=f.left+(marker.x-40)/16*f.unit;
-      const kind=marker.kind;drawAmongMarker(kind,x,y,f.unit);
-    }
-
     // The jacket remains part of the stage background. The perspective field,
     // ribbons and note heads are drawn in front of its lower edge, as in-game.
     // Distant notes outside the 2.8 s travel window stay beyond the horizon;
@@ -1412,17 +1478,31 @@
       const y=yAtTime(n.time,state.time);if(y<horizonY-1||y>hitY+2)continue;
       const f=fieldAt(y),geom=noteGeometry(n,f,f.unit),x=geom.x,noteW=geom.width;
       const trace=isTraceNote(n);
-      const noteH=Math.max(3.5,Math.min(14,f.unit*.28));
+      const noteH=noteSpriteBoxHeight(n,f.unit);
+      const fallbackH=noteFallbackVisibleHeight(f.unit);
       const spriteNo=spriteNumberForNote(n),img=spriteImage(`notes_${spriteNo}.png`);
       if(img && img.complete && img.naturalWidth>0){
         if(state.glow){ctx.save();ctx.shadowColor=paletteForFallback(n).glow;ctx.shadowBlur=trace?1.5:.75;ctx.drawImage(img,x,y-noteH/2,noteW,noteH);ctx.restore();}
         else ctx.drawImage(img,x,y-noteH/2,noteW,noteH);
-      } else drawFallbackNote(n,x,y,noteW,noteH);
-      if(n.trend){
-        const mk=n.critical?'friction-critical':(n.channelType===5 || (n.isFlick && isTraceNote(n))?'friction-flick':'friction-long');
-        drawAmongMarker(mk,x+noteW/2,y,f.unit);
-      }
-      drawFlickArrow(n,f,y,noteW);
+      } else drawFallbackNote(n,x,y,noteW,fallbackH);
+    }
+    // Match the source SVG layer order: note heads → among markers → flick arrows.
+    for(const marker of (state.chart.markers||[])){
+      const y=yAtTime(marker.time,state.time);if(y<horizonY-8||y>hitY+8)continue;
+      const f=fieldAt(y),x=f.left+(marker.x-40)/16*f.unit;
+      drawAmongMarker(marker.kind,x,y,f.unit,marker.w/16,marker.h/16);
+    }
+    for(const n of state.chart.notes){
+      if(!n.trend)continue;
+      const y=yAtTime(n.time,state.time);if(y<horizonY-14||y>hitY+14)continue;
+      const f=fieldAt(y),g=noteGeometry(n,f,f.unit);
+      const mk=n.critical?'friction-critical':(n.channelType===5 || (n.isFlick && isTraceNote(n))?'friction-flick':'friction-long');
+      drawAmongMarker(mk,g.x+g.width/2,y,f.unit,.75,.75);
+    }
+    for(const n of state.chart.notes){
+      const delta=n.time-state.time;if(delta<-.12||delta>approach+.3)continue;
+      const y=yAtTime(n.time,state.time);if(y<horizonY-24||y>hitY+24)continue;
+      const f=fieldAt(y);drawFlickArrow(n,f,y,{mapY:(t)=>yAtTime(t,state.time),fieldAt});
     }
     ctx.restore();
 
@@ -1508,32 +1588,13 @@
     for(const link of (state.chart.slideLinks||[])){
       const y1=mapY(link.a.time),y2=mapY(link.b.time);
       if(Math.max(y1,y2)<top-20||Math.min(y1,y2)>hitY+20)continue;
-      const wa=Math.max(1,Number(link.a.widthRaw)+1),wb=Math.max(1,Number(link.b.widthRaw)+1);
-      const l1=left+link.a.laneIndex*unit,l2=left+link.b.laneIndex*unit;
-      const r1=l1+wa*unit,r2=l2+wb*unit;
-      const shrink=link.trend?.72:1;
-      const c1=(l1+r1)/2,c2=(l2+r2)/2;
-      const x1=c1+(l1-c1)*shrink,x2=c2+(l2-c2)*shrink;
-      const rr1=c1+(r1-c1)*shrink,rr2=c2+(r2-c2)*shrink;
-      const mid=(y1+y2)/2;
-      ctx.save();ctx.beginPath();ctx.moveTo(x1,y1);
-      ctx.bezierCurveTo(x1,mid,x2,mid,x2,y2);ctx.lineTo(rr2,y2);
-      ctx.bezierCurveTo(rr2,mid,rr1,mid,rr1,y1);ctx.closePath();
-      const critical=!!link.critical,trace=!!link.trend;
-      ctx.fillStyle=critical?'rgba(255,226,139,.62)':trace?'rgba(166,244,199,.52)':'rgba(82,220,151,.46)';
-      ctx.fill();ctx.strokeStyle=critical?'rgba(255,246,210,.9)':trace?'rgba(219,255,232,.92)':'rgba(214,255,230,.72)';
-      ctx.lineWidth=trace?1.1:.85;ctx.stroke();
-      if(trace){
-        ctx.beginPath();ctx.moveTo((x1+rr1)/2,y1);ctx.lineTo((x2+rr2)/2,y2);
-        ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
-      }
+      const f0={left,unit},f1={left,unit};
+      const curves=makeSlideCurves(link,y1,y2,f0,f1,mapY((link.a.time+link.b.time)/2));
+      ctx.save();fillSlideCurves(curves,link,unit);
       for(const relay of (link.amongs||[])){
-        const ry=mapY(relay.time);if(ry<Math.min(y1,y2)-2||ry>Math.max(y1,y2)+2)continue;
-        const t=(relay.time-link.a.time)/(link.b.time-link.a.time||1);
-        const rx=((l1+r1)/2)+(((l2+r2)/2)-((l1+r1)/2))*t;
-        const tap=relay.attachedTap||relay.attachedDirectional?.attachedTap;
-        const kind=tap&&[2,6,8].includes(tap.noteType)?'friction-critical':relay.attachedDirectional?'friction-flick':'friction-long';
-        drawAmongMarker(kind,rx,ry,unit);
+        const ry=mapY(relay.time);
+        if(ry<Math.min(y1,y2)-2||ry>Math.max(y1,y2)+2)continue;
+        drawSlideRelays(relay,curves,ry,unit);
       }
       ctx.restore();
     }
@@ -1554,21 +1615,34 @@
     // SVG relay markers and note heads.
     for(const marker of (state.chart.markers||[])){
       const y=mapY(marker.time);if(y<top-12||y>hitY+12)continue;
-      const x=left+(marker.x-40)/16*unit;drawAmongMarker(marker.kind,x,y,unit);
+      const x=left+(marker.x-40)/16*unit;drawAmongMarker(marker.kind,x,y,unit,marker.w/16,marker.h/16);
     }
     const f={left,right,width:fieldW,unit,scale:1,t:1};
     for(const n of state.chart.notes){
       const y=mapY(n.time);if(y<top-18||y>hitY+18)continue;
       const g=noteGeometry(n,f,unit),no=spriteNumberForNote(n),img=spriteImage(`notes_${no}.png`);
-      // Thin horizontal heads keep adjacent fast notes visually distinct.
-      const noteH=Math.max(9,Math.min(18,unit*.38)); // reference note_size=18, scaled to lane width
+      // Preserve the original lane width and use a larger vertical note body for readability.
+      const noteH=noteSpriteBoxHeight(n,unit);
+      const fallbackH=noteFallbackVisibleHeight(unit);
       if(img&&img.complete&&img.naturalWidth>0)ctx.drawImage(img,g.x,y-noteH/2,g.width,noteH);
-      else drawFallbackNote(n,g.x,y,g.width,noteH);
-      if(n.trend){
-        const mk=n.critical?'friction-critical':(n.channelType===5||n.isFlick?'friction-flick':'friction-long');
-        drawAmongMarker(mk,g.x+g.width/2,y,unit*.62);
-      }
-      drawFlickArrow(n,f,y,g.width);
+      else drawFallbackNote(n,g.x,y,g.width,fallbackH);
+    }
+    // Match the reference order: SVG among assets and trace markers, then flicks.
+    for(const marker of (state.chart.markers||[])){
+      const y=mapY(marker.time);if(y<top-12||y>hitY+12)continue;
+      const x=left+(marker.x-40)/16*unit;
+      drawAmongMarker(marker.kind,x,y,unit,marker.w/16,marker.h/16);
+    }
+    for(const n of state.chart.notes){
+      if(!n.trend)continue;
+      const y=mapY(n.time);if(y<top-14||y>hitY+14)continue;
+      const g=noteGeometry(n,f,unit);
+      const mk=n.critical?'friction-critical':(n.channelType===5||n.isFlick?'friction-flick':'friction-long');
+      drawAmongMarker(mk,g.x+g.width/2,y,unit,.75,.75);
+    }
+    for(const n of state.chart.notes){
+      const y=mapY(n.time);if(y<top-24||y>hitY+24)continue;
+      drawFlickArrow(n,f,y,{mapY});
     }
 
     // Fixed judgement line and lower touch divisions.
@@ -1691,7 +1765,7 @@
   if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
 
   // Small public hooks used by the smoke tests; harmless for normal use.
-  window.__chartPlayerTest = { revision:"2026-10-20-game-spacing-v2", parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, noteFamily, makePerspective, setViewMode:(mode)=>setViewMode(mode), flatPixelsPerSecond:()=>240, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
+  window.__chartPlayerTest = { revision:"2026-10-20-source-note-box-28px-marker-and-flick-layers-v12", parseSUS, parseSVGChart, makeDemoChart, noteGeometry, spriteNumberForNote, shouldDrawFlickArrow, noteFamily, makePerspective, makeSlideCurves, projectSvgPath, noteSpriteBoxHeight, noteFallbackVisibleHeight, drawAmongMarker, setViewMode:(mode)=>setViewMode(mode), flatPixelsPerSecond:()=>240, getState:()=>state, assetStatus:()=>[...spriteCache.entries()].map(([name,img])=>({name,loaded:img.complete&&img.naturalWidth>0,width:img.naturalWidth||0,height:img.naturalHeight||0})) };
   setChart(makeDemoChart(),'demo');
 })();
 </script>
