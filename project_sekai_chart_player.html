@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project SEKAI Chart Player</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c1020;
+    --panel: #171c32;
+    --panel2: #202744;
+    --ink: #f5f6ff;
+    --muted: #a6aecb;
+    --line: rgba(191,205,255,.15);
+    --purple: #a78bfa;
+    --cyan: #67e8f9;
+    --mint: #72f2d2;
+    --gold: #ffd36b;
+    --pink: #ff8bc4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans JP", sans-serif; }
+  body { background: radial-gradient(ellipse at 15% -10%, rgba(116,82,204,.28), transparent 42%), radial-gradient(ellipse at 100% 35%, rgba(45,170,190,.12), transparent 36%), var(--bg); }
+  button, input, select { font:inherit; }
+  button { cursor:pointer; }
+  a { color:#b9a4ff; }
+  .app { max-width:1300px; margin:0 auto; padding:22px 22px 36px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:22px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand-mark { width:42px; height:42px; display:grid; place-items:center; border-radius:14px; background:linear-gradient(135deg,#8b5cf6,#4f46e5 58%,#0891b2); box-shadow:0 10px 28px #5242a544; font-size:21px; font-weight:900; }
+  .brand h1 { margin:0; font-size:18px; letter-spacing:.02em; }
+  .brand p { margin:3px 0 0; color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+  .top-pill { color:#cfc5ff; font-size:11px; border:1px solid #9480e44d; padding:7px 11px; border-radius:100px; background:#8b5cf61c; white-space:nowrap; }
+  .layout { display:grid; grid-template-columns:minmax(380px, 520px) minmax(320px,1fr); gap:22px; align-items:start; }
+  .panel { background:linear-gradient(180deg,rgba(27,33,58,.96),rgba(19,24,43,.98)); border:1px solid var(--line); border-radius:20px; box-shadow:0 18px 55px #0005; overflow:hidden; }
+  .player-panel { padding:14px; }
+  .stage-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:3px 4px 12px; }
+  .song-info { min-width:0; }
+  .song-info .eyebrow { color:#b6a7ff; text-transform:uppercase; letter-spacing:.16em; font-size:9px; font-weight:800; }
+  .song-info h2 { margin:4px 0 2px; font-size:16px; line-height:1.25; overflow-wrap:anywhere; }
+  .song-info p { color:var(--muted); margin:0; font-size:11px; }
+  .diff { padding:6px 9px; border-radius:9px; background:#ff6bb01b; border:1px solid #ff83bf55; color:#ffb0d4; font-size:10px; font-weight:800; letter-spacing:.08em; white-space:nowrap; }
+  .screen { position:relative; border-radius:15px; overflow:hidden; background:#11162b; border:1px solid rgba(185,194,255,.15); }
+  #gameCanvas { display:block; width:100%; height:560px; touch-action:pan-y; }
+  .screen-overlay { position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; }
+  .screen-topline { padding:10px 12px 0; display:flex; justify-content:space-between; color:#d5dafa; font-size:10px; text-shadow:0 2px 6px #000; }
+  .combo { text-align:center; padding-bottom:105px; font-weight:900; font-size:21px; letter-spacing:.05em; color:#fff; text-shadow:0 0 13px #a78bfa,0 2px 4px #000; opacity:.86; }
+  .combo small { display:block; color:#d0d6f2; font-size:8px; letter-spacing:.25em; }
+  .judgement-label { position:absolute; bottom:70px; left:0; right:0; text-align:center; color:#f1edff; font-size:9px; letter-spacing:.35em; font-weight:800; text-shadow:0 0 10px #b9a1ff; }
+  .transport { padding:13px 3px 2px; }
+  .transport-main { display:flex; align-items:center; gap:8px; }
+  .play-btn { flex:0 0 47px; width:47px; height:43px; border:0; border-radius:13px; color:#15142a; background:linear-gradient(135deg,#c4b5fd,#67e8f9); font-size:17px; box-shadow:0 6px 20px #8b5cf633; }
+  .sub-btn { flex:0 0 40px; width:40px; height:40px; border:1px solid var(--line); border-radius:12px; background:#252d4b; color:#e9ecff; }
+  .progress-wrap { flex:1; min-width:0; }
+  input[type=range] { width:100%; accent-color:#9b8aff; cursor:pointer; }
+  .time-row { display:flex; justify-content:space-between; margin-top:2px; color:var(--muted); font-variant-numeric:tabular-nums; font-size:10px; }
+  .speed-row { display:flex; align-items:center; justify-content:space-between; margin-top:11px; gap:12px; }
+  .speed-row label { font-size:11px; color:var(--muted); }
+  select, .url-input { background:#10162a; color:var(--ink); border:1px solid var(--line); border-radius:9px; padding:8px 10px; outline:none; }
+  select:focus, .url-input:focus { border-color:#9b8aff; }
+  .speed-select { padding:6px 9px; font-size:11px; }
+  .help-line { color:#8f9ab9; font-size:10px; margin:10px 3px 0; line-height:1.55; }
+  .side-panel { padding:20px; }
+  .section + .section { border-top:1px solid var(--line); margin-top:19px; padding-top:18px; }
+  .section h3 { margin:0 0 10px; font-size:13px; letter-spacing:.02em; }
+  .section-desc { margin:-3px 0 12px; color:var(--muted); font-size:11px; line-height:1.6; }
+  .source-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .action-btn { border:1px solid #8b83ba55; color:#e9e6ff; background:#38345d; padding:9px 12px; border-radius:10px; font-size:11px; font-weight:700; }
+  .action-btn.primary { color:#17142b; border:0; background:linear-gradient(135deg,#c4b5fd,#67e8f9); }
+  .action-btn.ghost { background:#10162a; border-color:var(--line); color:#c8d0e9; }
+  .url-row { display:flex; gap:8px; margin-top:11px; }
+  .url-input { flex:1; min-width:0; font-size:10px; }
+  .status { margin-top:12px; padding:10px 11px; border-radius:10px; background:#10162a; border:1px solid var(--line); color:#aab5d2; font-size:10px; line-height:1.55; overflow-wrap:anywhere; }
+  .status.ok { border-color:#54d9ba55; color:#9fead8; background:#1a4d4326; }
+  .status.warn { border-color:#e8b75b55; color:#f3d294; background:#62451b22; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .stat { border:1px solid var(--line); background:#11172b; border-radius:12px; padding:11px; min-width:0; }
+  .stat span { display:block; font-size:9px; color:var(--muted); margin-bottom:5px; }
+  .stat strong { font-size:17px; font-variant-numeric:tabular-nums; }
+  .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; }
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:#c6cce2; }
+  .swatch { width:26px; height:9px; border-radius:6px; background:var(--mint); box-shadow:0 0 8px currentColor; }
+  .swatch.critical { background:var(--gold); color:var(--gold); }
+  .swatch.flick { background:var(--pink); color:var(--pink); }
+  .swatch.slide { background:#8cefe1; color:#8cefe1; height:5px; }
+  .swatch.damage { background:#ff647c; color:#ff647c; }
+  .ref-card { display:flex; align-items:center; gap:12px; background:#10162a; border:1px solid var(--line); padding:10px; border-radius:12px; }
+  .ref-card img { width:78px; height:48px; object-fit:cover; object-position:center; border-radius:7px; background:#8e60aa; }
+  .ref-card div { min-width:0; flex:1; }
+  .ref-card strong { display:block; font-size:10px; }
+  .ref-card a { font-size:10px; }
+  details { margin-top:10px; }
+  details summary { cursor:pointer; color:#aeb7d1; font-size:10px; }
+  details img { width:100%; margin-top:10px; border-radius:9px; border:1px solid var(--line); }
+  .foot { margin:17px 4px 0; color:#7f8aaa; font-size:9px; line-height:1.6; }
+  .file-hidden { display:none; }
+  @media (max-width: 900px) { .layout { grid-template-columns:1fr; max-width:560px; margin:auto; } .side-panel { order:2; } }
+  @media (max-width: 520px) { .app { padding:13px 10px 25px; } .topbar { margin-bottom:14px; } .brand h1 { font-size:15px; } .top-pill { display:none; } .player-panel { padding:10px; } #gameCanvas { height:500px; } .side-panel { padding:15px; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">♪</div>
+      <div><h1>Project SEKAI Chart Player</h1><p>Interactive chart preview</p></div>
+    </div>
+    <div class="top-pill">SUS / SVG IMPORT · 12 POSITION GRID</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel player-panel" aria-label="譜面プレイヤー">
+      <div class="stage-head">
+        <div class="song-info">
+          <div class="eyebrow">Now Previewing</div>
+          <h2 id="songTitle">SUSデモ譜面</h2>
+          <p id="songArtist">内蔵テストデータ · BPM変化・フリック・スライド</p>
+        </div>
+        <div class="diff" id="difficulty">EXPERT</div>
+      </div>
+      <div class="screen">
+        <canvas id="gameCanvas" aria-label="流れる譜面"></canvas>
+        <div class="screen-overlay">
+          <div class="screen-topline"><span id="bpmHud">BPM 170</span><span id="chartStatus">PREVIEW</span></div>
+          <div class="combo"><span id="comboNumber">0</span><small>COMBO</small></div>
+        </div>
+        <div class="judgement-label">J U D G E M E N T</div>
+      </div>
+      <div class="transport">
+        <div class="transport-main">
+          <button class="play-btn" id="playButton" aria-label="再生">▶</button>
+          <button class="sub-btn" id="restartButton" aria-label="最初から">↺</button>
+          <div class="progress-wrap">
+            <input type="range" id="seekBar" min="0" max="100" value="0" step="0.01" aria-label="再生位置">
+            <div class="time-row"><span id="currentTime">00:00.0</span><span id="duration">00:00.0</span></div>
+          </div>
+        </div>
+        <div class="speed-row">
+          <label for="speedSelect">再生速度</label>
+          <select class="speed-select" id="speedSelect">
+            <option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1.0×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2.0×</option>
+          </select>
+          <label><input type="checkbox" id="glowToggle" checked> ノーツ発光</label>
+        </div>
+      </div>
+      <p class="help-line">Space：再生 / 一時停止　 R：最初から　タイムバーをドラッグすると任意の位置へ移動できます。</p>
+    </section>
+
+    <aside class="panel side-panel">
+      <section class="section" style="padding-top:0;margin-top:0;border-top:0">
+        <h3>譜面データを読み込む</h3>
+        <p class="section-desc">ゲームアセットから取り出した SUS / TXT、または pjsekai.moe 形式の SVG を読み込めます。PNGは画像なので、動く譜面に変換するにはSUSかSVGを使用してください。</p>
+        <div class="source-actions">
+          <button class="action-btn primary" id="fileButton">ファイルを選択</button>
+          <button class="action-btn" id="demoButton">デモ譜面に戻す</button>
+          <input class="file-hidden" type="file" id="fileInput" accept=".sus,.txt,.svg,text/plain,image/svg+xml">
+        </div>
+        <div class="url-row">
+          <input class="url-input" id="sourceUrl" spellcheck="false" value="https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg" aria-label="譜面URL">
+          <button class="action-btn" id="urlButton">URL読込</button>
+        </div>
+        <div class="status" id="loadStatus" role="status">内蔵デモ譜面を表示中です。実際の譜面はSUS/TXTファイル、または上のSVG URLから読み込めます。</div>
+      </section>
+
+      <section class="section">
+        <h3>読み込み内容</h3>
+        <div class="stats">
+          <div class="stat"><span>ノーツ数</span><strong id="noteCount">—</strong></div>
+          <div class="stat"><span>譜面時間</span><strong id="durationStat">—</strong></div>
+          <div class="stat"><span>BPM</span><strong id="bpmStat">—</strong></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>ノーツの種類</h3>
+        <div class="legend">
+          <div class="legend-item"><i class="swatch"></i>通常ノーツ</div>
+          <div class="legend-item"><i class="swatch critical"></i>クリティカル</div>
+          <div class="legend-item"><i class="swatch flick"></i>フリック</div>
+          <div class="legend-item"><i class="swatch slide"></i>スライド</div>
+          <div class="legend-item"><i class="swatch damage"></i>ダメージ</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h3>参照元の譜面画像</h3>
+        <p class="section-desc">今回の例として指定された楽曲ID 0304 / APPEND のPNGです。静止画の見た目の比較に使えます。</p>
+        <div class="ref-card">
+          <img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewerの譜面画像" loading="lazy">
+          <div><strong>なんです。 / APPEND</strong><a href="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" target="_blank" rel="noopener">PNGを別タブで開く ↗</a><br><a href="https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg" target="_blank" rel="noopener">SVG譜面を開く ↗</a></div>
+        </div>
+        <details><summary>参照PNGをページ内で表示</summary><img src="https://storage.sekai.best/sekai-music-charts/jp/0304/append.png" alt="Sekai Viewer generated chart for music 0304 append"></details>
+      </section>
+
+      <p class="foot">本ツールはブラウザ内で動作する非公式プレビューです。SUSの譜面データを解析して再描画し、SVGでは pjsekai-scores-rs の既定レイアウト（lane_width=16 / time_height=360 / padding=40,32）に合わせてノーツ座標と時間を復元します。ゲーム本体の判定・演出・スキンを完全再現するものではありません。</p>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const SVG_URL = 'https://asset3.pjsekai.moe/music/music_score/0304_01/append.svg';
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const state = {
+    chart: null, playing: false, time: -2.35, duration: 30, speed: 1,
+    lastFrame: 0, raf: 0, width: 0, height: 0, dpr: 1,
+    glow: true, activeSource: 'demo',
+  };
+
+  const BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const b36 = (c) => {
+    const n = BASE36.indexOf(String(c || '0').toUpperCase());
+    return n < 0 ? 0 : n;
+  };
+  const parseBase36 = (s) => {
+    let n = 0;
+    for (const c of String(s || '0')) n = n * 36 + b36(c);
+    return n;
+  };
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const fmtTime = (sec) => {
+    sec = Math.max(0, Number(sec) || 0);
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return `${pad2(m)}:${s.toFixed(1).padStart(4, '0')}`;
+  };
+
+  function parseSUS(source) {
+    const meta = { title: '', artist: '', designer: '', difficulty: '', level: '' };
+    const bpmDefs = new Map();
+    const events = [];
+    const rawNotes = [];
+    const lines = String(source).replace(/^\uFEFF/, '').split(/\r?\n/);
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith('#')) continue;
+      const colon = line.indexOf(':');
+      let header = (colon >= 0 ? line.slice(1, colon) : line.slice(1)).trim();
+      let data = colon >= 0 ? line.slice(colon + 1).trim() : '';
+      if (colon < 0) {
+        const whitespaceMeta = line.match(/^#(\w+)\s+(.*)$/);
+        if (whitespaceMeta) { header = whitespaceMeta[1]; data = whitespaceMeta[2].trim(); }
+      }
+
+      const metaMatch = header.match(/^(TITLE|ARTIST|DESIGNER|DIFFICULTY|PLAYLEVEL|LEVEL)$/i);
+      if (metaMatch) {
+        const val = data.replace(/^(["'])(.*)\1$/, '$2');
+        const k = metaMatch[1].toUpperCase();
+        if (k === 'TITLE') meta.title = val;
+        if (k === 'ARTIST') meta.artist = val;
+        if (k === 'DESIGNER') meta.designer = val;
+        if (k === 'DIFFICULTY') meta.difficulty = val;
+        if (k === 'PLAYLEVEL' || k === 'LEVEL') meta.level = val;
+        continue;
+      }
+      const bpmDef = header.match(/^BPM(..)$/);
+      if (bpmDef) {
+        const bpm = Number(data);
+        if (Number.isFinite(bpm) && bpm > 0) bpmDefs.set(parseBase36(bpmDef[1]), bpm);
+        continue;
+      }
+      const lengthMatch = header.match(/^(\d{3})02$/);
+      if (lengthMatch) {
+        const length = Number(data);
+        if (Number.isFinite(length) && length > 0) events.push({ bar: Number(lengthMatch[1]), barLength: length });
+        continue;
+      }
+      const bpmRef = header.match(/^(\d{3})08$/);
+      if (bpmRef) {
+        const bar = Number(bpmRef[1]);
+        parsePairs(data).forEach(({ frac, pair }) => {
+          const bpm = bpmDefs.get(parseBase36(pair));
+          if (bpm) events.push({ bar: bar + frac, bpm });
+        });
+        continue;
+      }
+      const noteHeader = header.match(/^(\d{3})([1359])([0-9A-Z])([0-9A-Z])?$/i);
+      if (!noteHeader) continue;
+      const bar = Number(noteHeader[1]);
+      const channelType = Number(noteHeader[2]);
+      const lane = b36(noteHeader[3]);
+      const channel = noteHeader[4] ? b36(noteHeader[4]) : null;
+      if (lane < 2 || lane > 13) continue;
+      parsePairs(data).forEach(({ frac, pair }) => {
+        const noteType = b36(pair[0]);
+        const rawWidth = b36(pair[1]);
+        if (!noteType || !rawWidth) return;
+        rawNotes.push({
+          bar: bar + frac, laneIndex: lane - 2, widthUnits: rawWidth + 1,
+          noteType, channelType, channel, decoration: channelType === 9,
+          kind: channelType === 3 || channelType === 9 ? 'slide' : (channelType === 5 ? 'flick' : 'tap'),
+        });
+      });
+    }
+
+    function parsePairs(data) {
+      const compact = String(data).replace(/\s+/g, '');
+      const result = [];
+      // SUS time fraction is pair-index / total-character-count.
+      for (let i = 0; i + 1 < compact.length; i += 2) {
+        const pair = compact.slice(i, i + 2).toUpperCase();
+        if (pair !== '00') result.push({ frac: i / compact.length, pair });
+      }
+      return result;
+    }
+
+    if (!rawNotes.length) throw new Error('譜面ノーツを読み取れませんでした。SUS/TXTファイルかどうか確認してください。');
+    const timing = buildTiming(events);
+    rawNotes.forEach(n => { n.time = timeAt(timing, n.bar); });
+
+    // A directional line (#mmm5x) often pairs with a tap at the same time/lane.
+    const tapByKey = new Map();
+    rawNotes.filter(n => n.channelType === 1).forEach(n => tapByKey.set(`${n.bar.toFixed(7)}:${n.laneIndex}`, n));
+    rawNotes.filter(n => n.channelType === 5).forEach(n => {
+      const paired = tapByKey.get(`${n.bar.toFixed(7)}:${n.laneIndex}`);
+      if (paired) {
+        n.critical = paired.noteType === 2 || paired.noteType === 6 || paired.noteType === 8;
+        n.trend = paired.noteType === 5 || paired.noteType === 6;
+        n.direction = n.noteType;
+        paired.hidden = true;
+      } else n.direction = n.noteType;
+    });
+
+    const notes = rawNotes.filter(n => !n.hidden && !(n.channelType === 1 && [7,8].includes(n.noteType))).map(n => {
+      if (n.channelType === 1) {
+        n.critical = [2,6].includes(n.noteType);
+        n.trend = [5,6].includes(n.noteType);
+        if (n.noteType === 3) n.kind = 'flick';
+        if (n.noteType === 4) n.kind = 'damage';
+      }
+      if (n.kind === 'flick' && !n.direction) n.direction = 1;
+      return n;
+    });
+
+    const maxBar = Math.max(...rawNotes.map(n => n.bar), 0);
+    const endBar = Math.ceil(maxBar) + 2;
+    const duration = Math.max(timeAt(timing, endBar), Math.max(...notes.map(n => n.time)) + 1);
+    const marks = makeBeatMarks(timing, endBar);
+    const slideLinks = makeSlideLinks(notes);
+    const initialBpm = timeEventAt(timing, 0).bpm;
+    return {
+      meta, notes, timing, marks, slideLinks, duration,
+      bpm: initialBpm, format: 'SUS', rawNoteCount: rawNotes.length,
+    };
+  }
+
+  function buildTiming(rawEvents) {
+    const byBar = new Map();
+    for (const ev of rawEvents) {
+      const key = Number(ev.bar.toFixed(9));
+      const target = byBar.get(key) || { bar: key };
+      if (ev.bpm != null) target.bpm = ev.bpm;
+      if (ev.barLength != null) target.barLength = ev.barLength;
+      byBar.set(key, target);
+    }
+    const grouped = [...byBar.values()].sort((a,b) => a.bar - b.bar);
+    if (!byBar.has(0)) grouped.unshift({ bar:0, bpm:120, barLength:4 });
+    let bpm = 120, barLength = 4, prevBar = 0, seconds = 0;
+    const timeline = [];
+    for (const ev of grouped) {
+      if (ev.bar > prevBar) seconds += (ev.bar - prevBar) * barLength * 60 / bpm;
+      if (ev.bpm != null) bpm = ev.bpm;
+      if (ev.barLength != null) barLength = ev.barLength;
+      timeline.push({ bar:ev.bar, seconds, bpm, barLength });
+      prevBar = ev.bar;
+    }
+    if (!timeline.length) timeline.push({ bar:0, seconds:0, bpm:120, barLength:4 });
+    return timeline;
+  }
+  function timeEventAt(timeline, bar) {
+    let found = timeline[0];
+    for (const ev of timeline) { if (ev.bar <= bar + 1e-9) found = ev; else break; }
+    return found;
+  }
+  function timeAt(timeline, bar) {
+    const ev = timeEventAt(timeline, bar);
+    return ev.seconds + (bar - ev.bar) * ev.barLength * 60 / ev.bpm;
+  }
+  function makeBeatMarks(timeline, endBar) {
+    const marks = [];
+    for (let bar=0; bar<=endBar; bar++) {
+      const event = timeEventAt(timeline, bar);
+      const beats = Math.max(1, Math.min(12, Math.round(event.barLength || 4)));
+      for (let j=0; j<beats*4; j++) {
+        const pos = bar + j/(beats*4);
+        marks.push({ time:timeAt(timeline, pos), major:j%4===0, bar:j===0 });
+      }
+    }
+    return marks;
+  }
+  function makeSlideLinks(notes) {
+    const groups = new Map();
+    for (const n of notes) {
+      if (n.kind !== 'slide' || n.channel == null) continue;
+      const key = `${n.channel}:${n.decoration ? 1 : 0}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(n);
+    }
+    const links = [];
+    for (const group of groups.values()) {
+      group.sort((a,b) => a.time - b.time);
+      let chain = [];
+      for (const n of group) {
+        if (n.noteType === 1) {
+          if (chain.length > 1) for (let i=1;i<chain.length;i++) links.push([chain[i-1],chain[i]]);
+          chain = [n];
+        } else if (chain.length) {
+          chain.push(n);
+          if (n.noteType === 2) {
+            for (let i=1;i<chain.length;i++) links.push([chain[i-1],chain[i]]);
+            chain = [];
+          }
+        }
+      }
+      if (chain.length > 1) for (let i=1;i<chain.length;i++) links.push([chain[i-1],chain[i]]);
+    }
+    return links;
+  }
+
+  function parseSVGChart(source) {
+    const doc = new DOMParser().parseFromString(String(source), 'image/svg+xml');
+    if (doc.querySelector('parsererror')) throw new Error('SVGの解析に失敗しました。正しい譜面SVGか確認してください。');
+    const root = doc.documentElement;
+    if (!root || root.localName.toLowerCase() !== 'svg') throw new Error('SVGルート要素が見つかりません。');
+    const segments = [...root.children].filter(el => el.localName.toLowerCase() === 'svg' && el.hasAttribute('x') && el.hasAttribute('height'))
+      .sort((a,b) => Number(a.getAttribute('x')) - Number(b.getAttribute('x')));
+    if (!segments.length) throw new Error('譜面セクションが見つかりません。このSVGは対応する譜面出力形式ではない可能性があります。');
+    const notes = [], marks = [], slidePaths = [];
+    let segmentStart = 0;
+    let maxBpm = null;
+    for (const seg of segments) {
+      const segHeight = Number(seg.getAttribute('height'));
+      const segDuration = Math.max(0, (segHeight - 64) / 360);
+      for (const use of seg.querySelectorAll('use')) {
+        const href = use.getAttribute('href') || use.getAttributeNS('http://www.w3.org/1999/xlink','href') || '';
+        const m = href.match(/^#notes-(\d+)(?:-(\d+))?/);
+        if (!m) continue;
+        const symbolType = Number(m[1]);
+        const x = Number(use.getAttribute('x') || 0);
+        const y = Number(use.getAttribute('y') || 0);
+        const w = Number(use.getAttribute('width') || 0);
+        const h = Number(use.getAttribute('height') || 0);
+        if (!(w > 0 && h > 0)) continue;
+        const units = w / 16;
+        const centerX = x + w/2;
+        const centerY = y + h/2;
+        const laneIndex = Math.round((centerX - 48)/16 - (units - 2)/2);
+        const noteTime = segmentStart + segDuration - (centerY - 32)/360;
+        let kind = 'tap', critical = false, trend = false;
+        if (symbolType === 0) critical = true;
+        if (symbolType === 1) kind = 'slide';
+        if (symbolType === 3 || symbolType === 6) kind = 'flick';
+        if (symbolType === 4 || symbolType === 5 || symbolType === 6) trend = true;
+        notes.push({ time:noteTime, laneIndex:Math.max(0,Math.min(11,laneIndex)), widthUnits:units, kind, critical, trend, direction:1, source:'svg' });
+      }
+      for (const path of seg.querySelectorAll('path')) {
+        const cls = path.getAttribute('class') || '';
+        if (!cls.includes('slide') || !path.getAttribute('d')) continue;
+        try { slidePaths.push({ path:new Path2D(path.getAttribute('d')), d:path.getAttribute('d'), className:cls, segmentStart, segmentDuration:segDuration }); }
+        catch (_) { /* ignore unsupported path geometry */ }
+      }
+      // Beat/event marks are retained by the SVG as horizontal chart lines.
+      for (const line of seg.querySelectorAll('line.bar-line, line.beat-line')) {
+        const y = Number(line.getAttribute('y1') || 0);
+        const t = segmentStart + segDuration - (y - 32)/360;
+        marks.push({ time:t, major:line.getAttribute('class') === 'bar-line', bar:line.getAttribute('class') === 'bar-line' });
+      }
+      segmentStart += segDuration;
+    }
+    if (!notes.length) throw new Error('SVG内に譜面ノーツがありません。');
+    const titleEl = root.querySelector('text.title');
+    const subtitleEl = root.querySelector('text.subtitle');
+    const title = titleEl ? titleEl.textContent.trim() : '読み込んだSVG譜面';
+    const subtitle = subtitleEl ? subtitleEl.textContent.trim() : '';
+    const duration = Math.max(segmentStart, ...notes.map(n => n.time + 1));
+    return {
+      meta:{ title, artist:subtitle, difficulty:'SVG', level:'' }, notes,
+      timing:[], marks, slideLinks:[], slidePaths, duration,
+      bpm:maxBpm || '—', format:'SVG', rawNoteCount:notes.length,
+    };
+  }
+
+  function makeDemoChart() {
+    const lines = ['#TITLE "SUSデモ譜面"', '#ARTIST "内蔵テストデータ"', '#DIFFICULTY "EXPERT"', '#PLAYLEVEL 28', '#BPM01: 170', '#BPM02: 195', '#BPM03: 148', '#00002: 4', '#00008: 01', '#00808: 02', '#01208: 03'];
+    const buckets = new Map();
+    const put = (bar, type, lane, code, width=1, channel=null) => {
+      const key = `${bar}:${type}:${lane}:${channel == null ? '' : channel}`;
+      const bucket = buckets.get(key) || Array(32).fill('00');
+      const index = Math.max(0,Math.min(31,Math.round(code.frac*32)));
+      bucket[index] = BASE36[code.noteType || 1] + BASE36[width];
+      buckets.set(key,bucket);
+    };
+    const tap=(bar,step,lane,nt=1,w=1)=>put(bar,1,lane,{frac:step/32,noteType:nt},w);
+    const flick=(bar,step,lane,dir=1)=>put(bar,5,lane,{frac:step/32,noteType:dir},1);
+    const slide=(bar,step,lane,nt,ch=1,w=1)=>put(bar,3,lane,{frac:step/32,noteType:nt},w,ch);
+    // A few measures of mixed patterns and spread notes.
+    for (let b=0;b<4;b++) {
+      [0,8,16,24].forEach((s,i)=>tap(b,s,2+(i*3+b)%12,1,1));
+      [4,12,20,28].forEach((s,i)=>tap(b,s,3+(i*2+b*2)%11,(i===1?2:1),1));
+    }
+    for (let s=0;s<32;s+=4) tap(4,s,2+(s/4*2)%12,s%8===0?5:1,1);
+    for (let s=2;s<32;s+=6) flick(4,s,2+(s*3)%12,(s%12===2?3:4));
+    for (let b=5;b<8;b++) {
+      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4+b*2)%12),((s+b)%5===0?2:1),1);
+      for(let s=2;s<32;s+=8) flick(b,s,2+((s*2+b)%12),s%16===2?5:6);
+    }
+    // Slide chains spanning multiple measures, one standard and one decorative.
+    slide(8,0,2,1,1,1); slide(8,24,6,3,1,1); slide(9,16,10,3,1,1); slide(10,8,7,2,1,1);
+    slide(8,8,13,1,2,1); slide(9,0,9,3,2,1); slide(9,24,5,2,2,1);
+    for(let b=11;b<16;b++) {
+      for(let s=0;s<32;s+=4) tap(b,s,2+((s/4*3+b)%12), (s===0?2:1), 1);
+      if(b%2) for(let s=4;s<32;s+=8) flick(b,s,2+((s*5+b)%12),3+(b%4));
+    }
+    for (const [key, arr] of buckets) {
+      const [bar,type,lane,channel] = key.split(':');
+      const header = String(Number(bar)).padStart(3,'0') + type + BASE36[Number(lane)] + (channel === '' ? '' : BASE36[Number(channel)]);
+      lines.push(`#${header}: ${arr.join('')}`);
+    }
+    return parseSUS(lines.join('\n'));
+  }
+
+  function setChart(chart, sourceLabel) {
+    state.chart = chart;
+    state.duration = chart.duration;
+    state.time = -2.35;
+    state.playing = false;
+    state.activeSource = sourceLabel;
+    $('songTitle').textContent = chart.meta.title || '読み込んだ譜面';
+    $('songArtist').textContent = chart.meta.artist || `${chart.format} chart data`;
+    $('difficulty').textContent = [chart.meta.difficulty, chart.meta.level].filter(Boolean).join(' ') || chart.format;
+    $('noteCount').textContent = chart.notes.length.toLocaleString('ja-JP');
+    $('durationStat').textContent = fmtTime(chart.duration);
+    $('bpmStat').textContent = chart.bpm || (chart.timing?.[0]?.bpm ?? '—');
+    $('duration').textContent = fmtTime(chart.duration);
+    $('seekBar').max = chart.duration;
+    $('seekBar').value = 0;
+    $('bpmHud').textContent = chart.timing?.length ? `BPM ${chart.timing[0].bpm}` : `BPM ${chart.bpm || '—'}`;
+    $('chartStatus').textContent = chart.format === 'SVG' ? 'SVG IMPORT' : 'SUS IMPORT';
+    $('comboNumber').textContent = '0';
+    $('playButton').textContent = '▶';
+    status(`読み込み成功：${chart.format} / ${chart.notes.length.toLocaleString('ja-JP')} ノーツ / ${fmtTime(chart.duration)}`, 'ok');
+    updateHud();
+    render();
+  }
+  function status(message, kind='') {
+    const el = $('loadStatus');
+    el.textContent = message;
+    el.className = `status ${kind}`.trim();
+  }
+  function stopPlayback() {
+    state.playing = false;
+    if (state.raf) cancelAnimationFrame(state.raf);
+    state.raf = 0;
+    $('playButton').textContent = '▶';
+  }
+  function startPlayback() {
+    if (!state.chart) return;
+    if (state.time >= state.duration) state.time = -2.35;
+    if (state.time === -2.35 && !state.playing) { /* pre-roll for the first notes */ }
+    state.playing = true;
+    state.lastFrame = performance.now();
+    $('playButton').textContent = 'Ⅱ';
+    state.raf = requestAnimationFrame(tick);
+  }
+  function tick(now) {
+    if (!state.playing) return;
+    const dt = Math.min(0.05, (now - state.lastFrame) / 1000);
+    state.lastFrame = now;
+    state.time += dt * state.speed;
+    if (state.time >= state.duration) { state.time = state.duration; stopPlayback(); }
+    updateHud();
+    render();
+    if (state.playing) state.raf = requestAnimationFrame(tick);
+  }
+  function updateHud() {
+    const shown = Math.max(0, state.time);
+    $('currentTime').textContent = fmtTime(shown);
+    $('seekBar').value = Math.min(state.duration, shown);
+    if (state.chart?.timing?.length) {
+      const bar = barAtTime(state.chart.timing, shown);
+      $('bpmHud').textContent = `BPM ${timeEventAt(state.chart.timing,bar).bpm}`;
+    }
+    const passed = state.chart?.notes?.filter(n => n.time < shown).length || 0;
+    $('comboNumber').textContent = passed.toLocaleString('ja-JP');
+  }
+  function barAtTime(timeline, time) {
+    let ev = timeline[0];
+    for (let i=0;i<timeline.length;i++) {
+      const cur=timeline[i], next=timeline[i+1];
+      if (!next) { ev=cur; break; }
+      if (time < next.seconds) { ev=cur; break; }
+      ev=next;
+    }
+    return ev.bar + (time - ev.seconds) * ev.bpm / (ev.barLength * 60);
+  }
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    state.width = Math.max(1, rect.width);
+    state.height = Math.max(1, rect.height);
+    state.dpr = dpr;
+    canvas.width = Math.round(state.width*dpr);
+    canvas.height = Math.round(state.height*dpr);
+    render();
+  }
+  function render() {
+    if (!ctx || !state.chart || !state.width) return;
+    const w=state.width, h=state.height, dpr=state.dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    const fieldLeft = Math.max(24,w*0.065), fieldRight = w-Math.max(24,w*0.065);
+    const fieldW = fieldRight-fieldLeft;
+    const halfW=fieldW/12;
+    const pps = Math.min(360, Math.max(180, h*0.47)) * state.speed;
+    const hitY = h-82;
+    const approach = hitY / pps;
+
+    // Base playfield and six main lanes, each split into two note positions.
+    const bg = ctx.createLinearGradient(0,0,0,h);
+    bg.addColorStop(0,'#141a31'); bg.addColorStop(.68,'#1a2040'); bg.addColorStop(1,'#24244a');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+    const side=ctx.createLinearGradient(0,0,w,0);
+    side.addColorStop(0,'rgba(18,22,43,.95)'); side.addColorStop(.14,'rgba(84,91,153,.10)'); side.addColorStop(.86,'rgba(84,91,153,.10)'); side.addColorStop(1,'rgba(18,22,43,.95)');
+    ctx.fillStyle=side; ctx.fillRect(fieldLeft,0,fieldW,h);
+    for(let lane=0;lane<6;lane++) {
+      ctx.fillStyle=lane%2===0?'rgba(123,133,205,.035)':'rgba(63,211,213,.025)';
+      ctx.fillRect(fieldLeft+lane*2*halfW,0,2*halfW,h);
+    }
+    // Scrolling beat lines.
+    if (state.chart.marks?.length) {
+      for(const m of state.chart.marks) {
+        const y=hitY-(m.time-state.time)*pps;
+        if(y < -3 || y > h+3) continue;
+        ctx.beginPath(); ctx.moveTo(fieldLeft,y); ctx.lineTo(fieldRight,y);
+        ctx.strokeStyle=m.bar?'rgba(192,178,255,.34)':(m.major?'rgba(189,201,255,.18)':'rgba(186,196,255,.075)');
+        ctx.lineWidth=m.bar?1.35:(m.major?.85:.55); ctx.stroke();
+      }
+    }
+    for(let i=0;i<=12;i++) {
+      const x=fieldLeft+i*halfW;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h);
+      const main=i%2===0;
+      ctx.strokeStyle=main?'rgba(185,199,255,.30)':'rgba(185,199,255,.09)';
+      ctx.lineWidth=main?1.15:.55; ctx.stroke();
+    }
+    // Thin outer rails and upper glow.
+    ctx.strokeStyle='rgba(171,157,255,.62)'; ctx.lineWidth=1.5;
+    ctx.strokeRect(fieldLeft,1,fieldW,h-2);
+    const glow=ctx.createLinearGradient(0,0,0,85);
+    glow.addColorStop(0,'rgba(145,111,255,.14)'); glow.addColorStop(1,'rgba(145,111,255,0)');
+    ctx.fillStyle=glow; ctx.fillRect(fieldLeft,0,fieldW,85);
+
+    // Slide ribbons from native SUS links.
+    for(const [a,b] of (state.chart.slideLinks||[])) {
+      const y1=hitY-(a.time-state.time)*pps, y2=hitY-(b.time-state.time)*pps;
+      if(Math.max(y1,y2)<-40 || Math.min(y1,y2)>h+40) continue;
+      const x1=fieldLeft+(a.laneIndex+.5)*halfW;
+      const x2=fieldLeft+(b.laneIndex+.5)*halfW;
+      const ribbonW=Math.max(8, Math.min(26, Math.min(a.widthUnits,b.widthUnits)*halfW));
+      ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+      if(state.glow){ctx.shadowColor='#6af1da';ctx.shadowBlur=15;}
+      ctx.beginPath(); ctx.moveTo(x1,y1);
+      const dy=(y2-y1)*.48;
+      ctx.bezierCurveTo(x1,y1+dy,x2,y2-dy,x2,y2);
+      ctx.strokeStyle=a.decoration?'rgba(193,168,255,.55)':'rgba(101,242,211,.72)';
+      ctx.lineWidth=ribbonW; ctx.stroke();
+      ctx.shadowBlur=0; ctx.lineWidth=1.2; ctx.strokeStyle='rgba(239,255,255,.72)'; ctx.stroke();
+      ctx.restore();
+    }
+    // Exact vector slide paths when input is a renderer-generated SVG.
+    for(const sp of (state.chart.slidePaths||[])) {
+      const top=sp.segmentStart, bottom=top+sp.segmentDuration;
+      if(bottom < state.time-approach || top > state.time+approach) continue;
+      const sx=fieldW/192, sy=pps/360;
+      const tx=fieldLeft-40*sx;
+      const ty=hitY-(sp.segmentStart+sp.segmentDuration-state.time)*pps-32*sy;
+      ctx.save(); ctx.translate(tx,ty); ctx.scale(sx,sy);
+      if(state.glow){ctx.shadowColor=sp.className.includes('critical')?'#ffd36b':'#73efdc';ctx.shadowBlur=18/sx;}
+      ctx.fillStyle=sp.className.includes('critical')?'rgba(255,209,104,.76)':(sp.className.includes('decoration')?'rgba(188,157,255,.40)':'rgba(104,239,214,.66)');
+      ctx.fill(sp.path);
+      ctx.restore();
+    }
+
+    // Notes approach the fixed judgement line.
+    for(const n of state.chart.notes) {
+      const delta=n.time-state.time;
+      if(delta < -0.32 || delta > approach+0.3) continue;
+      const y=hitY-delta*pps;
+      const units=Math.max(1,Math.min(12,n.widthUnits||2));
+      const noteW=units*halfW;
+      const x=fieldLeft+(n.laneIndex-(units-1)/2)*halfW;
+      if(n.kind==='slide' && n.noteType!==1 && n.noteType!==2 && n.noteType!==3) continue;
+      const isFlick=n.kind==='flick';
+      const isSlide=n.kind==='slide';
+      const color=n.critical?'#ffd36e':(n.kind==='damage'?'#ff617b':(isFlick?'#ff91c7':(n.trend?'#83efb0':'#71efd5')));
+      const grad=ctx.createLinearGradient(x,y-11,x,y+11);
+      grad.addColorStop(0,n.critical?'#fff0b4':(isFlick?'#ffd1e5':'#d7fff5'));
+      grad.addColorStop(.46,color); grad.addColorStop(1,n.critical?'#dc963e':(isFlick?'#db5c9d':'#28bda9'));
+      ctx.save();
+      if(state.glow){ctx.shadowColor=color;ctx.shadowBlur=n.critical?20:13;}
+      const hh=isSlide?14:17;
+      roundedRect(ctx,x,y-hh/2,noteW,hh,Math.min(8,hh/2));
+      ctx.fillStyle=grad; ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1.05; ctx.stroke();
+      if(n.critical){
+        ctx.beginPath();ctx.moveTo(x+5,y);ctx.lineTo(x+11,y-4);ctx.lineTo(x+17,y);ctx.lineTo(x+11,y+4);ctx.closePath();ctx.fillStyle='rgba(255,255,255,.85)';ctx.fill();
+      }
+      if(isFlick){
+        const dir=n.direction||1;
+        ctx.fillStyle='#fff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2.2; ctx.lineCap='round';
+        const mid=x+noteW/2;
+        ctx.beginPath();
+        if(dir===2){ctx.moveTo(mid,y+4);ctx.lineTo(mid,y-4);ctx.lineTo(mid-4,y-1);ctx.moveTo(mid,y-4);ctx.lineTo(mid+4,y-1);}
+        else if(dir===3||dir===5){ctx.moveTo(mid+3,y+3);ctx.lineTo(mid-3,y-3);ctx.lineTo(mid-3,y+1);ctx.moveTo(mid-3,y-3);ctx.lineTo(mid+1,y-3);}
+        else if(dir===4||dir===6){ctx.moveTo(mid-3,y+3);ctx.lineTo(mid+3,y-3);ctx.lineTo(mid-1,y-3);ctx.moveTo(mid+3,y-3);ctx.lineTo(mid+3,y+1);}
+        else {ctx.moveTo(mid,y+4);ctx.lineTo(mid,y-4);ctx.lineTo(mid-4,y);ctx.moveTo(mid,y-4);ctx.lineTo(mid+4,y);}
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Judgement line and small touch zones.
+    const lineGrad=ctx.createLinearGradient(fieldLeft,0,fieldRight,0);
+    lineGrad.addColorStop(0,'rgba(151,130,255,.2)');lineGrad.addColorStop(.5,'rgba(222,220,255,.95)');lineGrad.addColorStop(1,'rgba(91,230,230,.2)');
+    ctx.save();ctx.shadowColor='#b4a5ff';ctx.shadowBlur=16;ctx.strokeStyle=lineGrad;ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(fieldLeft-5,hitY);ctx.lineTo(fieldRight+5,hitY);ctx.stroke();ctx.restore();
+    for(let i=0;i<6;i++) {
+      ctx.fillStyle='rgba(198,207,255,.12)';
+      ctx.fillRect(fieldLeft+i*2*halfW+3,hitY+10,2*halfW-6,2);
+    }
+    // Fade at the top and bottom for the rhythm-game depth.
+    const topFade=ctx.createLinearGradient(0,0,0,75);topFade.addColorStop(0,'rgba(9,13,27,.50)');topFade.addColorStop(1,'rgba(9,13,27,0)');ctx.fillStyle=topFade;ctx.fillRect(fieldLeft,0,fieldW,75);
+    const bottomFade=ctx.createLinearGradient(0,h-100,0,h);bottomFade.addColorStop(0,'rgba(11,13,29,0)');bottomFade.addColorStop(1,'rgba(11,13,29,.58)');ctx.fillStyle=bottomFade;ctx.fillRect(fieldLeft,h-100,fieldW,100);
+  }
+  function roundedRect(c,x,y,w,h,r) {
+    r=Math.min(r,w/2,h/2); c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();
+  }
+
+  async function loadContent(content, label='file') {
+    stopPlayback();
+    try {
+      const trimmed=String(content).trimStart();
+      const chart=trimmed.startsWith('<') || trimmed.startsWith('<?xml') ? parseSVGChart(content) : parseSUS(content);
+      setChart(chart,label);
+    } catch(e) {
+      status(`読み込み失敗：${e.message}`, 'warn');
+      throw e;
+    }
+  }
+
+  $('playButton').addEventListener('click', () => state.playing ? stopPlayback() : startPlayback());
+  $('restartButton').addEventListener('click', () => { stopPlayback(); state.time=-2.35; updateHud(); render(); });
+  $('seekBar').addEventListener('input', e => { stopPlayback(); state.time=Number(e.target.value); updateHud(); render(); });
+  $('speedSelect').addEventListener('change', e => { state.speed=Number(e.target.value)||1; render(); });
+  $('glowToggle').addEventListener('change', e => { state.glow=e.target.checked; render(); });
+  $('fileButton').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', async e => {
+    const file=e.target.files && e.target.files[0]; if(!file) return;
+    try { await loadContent(await file.text(), file.name); }
+    catch(_) { /* message already displayed */ }
+    e.target.value='';
+  });
+  $('urlButton').addEventListener('click', async () => {
+    const url=$('sourceUrl').value.trim();
+    if(!url) return status('譜面URLを入力してください。','warn');
+    try {
+      status('URLから譜面データを取得しています…');
+      const response=await fetch(url, { mode:'cors', cache:'no-store' });
+      if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text=await response.text();
+      await loadContent(text,url);
+    } catch(e) {
+      status(`URL読込に失敗しました：${e.message}。配信元のCORS制限が考えられます。SVGをブラウザで開いて保存し、「ファイルを選択」から読み込んでください。`,'warn');
+    }
+  });
+  $('demoButton').addEventListener('click', () => { stopPlayback(); setChart(makeDemoChart(),'demo'); });
+  window.addEventListener('keydown', e => {
+    if(e.code==='Space' && !['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)) {e.preventDefault();state.playing?stopPlayback():startPlayback();}
+    if(e.key.toLowerCase()==='r' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {stopPlayback();state.time=-2.35;updateHud();render();}
+  });
+  const screen=document.querySelector('.screen');
+  screen.addEventListener('dragover',e=>{e.preventDefault();screen.style.outline='2px solid #a78bfa';});
+  screen.addEventListener('dragleave',()=>screen.style.outline='');
+  screen.addEventListener('drop',async e=>{
+    e.preventDefault();screen.style.outline='';const f=e.dataTransfer.files?.[0];if(!f)return;
+    try{await loadContent(await f.text(),f.name);}catch(_){}
+  });
+  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(canvas); else window.addEventListener('resize',resize);
+
+  // Small public hooks used by the smoke tests; harmless for normal use.
+  window.__chartPlayerTest = { parseSUS, parseSVGChart, makeDemoChart, getState:()=>state };
+  state.chart=makeDemoChart();
+  state.duration=state.chart.duration;
+  resize();
+  $('songTitle').textContent=state.chart.meta.title;
+  $('songArtist').textContent=state.chart.meta.artist;
+  $('difficulty').textContent=`${state.chart.meta.difficulty} ${state.chart.meta.level}`;
+  $('noteCount').textContent=state.chart.notes.length.toLocaleString('ja-JP');
+  $('durationStat').textContent=fmtTime(state.chart.duration);
+  $('bpmStat').textContent=state.chart.bpm;
+  $('duration').textContent=fmtTime(state.chart.duration);
+  $('seekBar').max=state.chart.duration;
+  $('bpmHud').textContent=`BPM ${state.chart.bpm}`;
+  status('内蔵デモ譜面を表示中です。実際の譜面はSUS/TXTファイル、または上のSVG URLから読み込めます。','');
+  updateHud(); render();
+})();
+</script>
+</body>
+</html>
