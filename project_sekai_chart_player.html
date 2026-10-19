@@ -80,11 +80,13 @@
   .stat strong { font-size:17px; font-variant-numeric:tabular-nums; }
   .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 12px; }
   .legend-item { display:flex; align-items:center; gap:8px; font-size:10px; color:#c6cce2; }
-  .swatch { width:26px; height:9px; border-radius:6px; background:var(--mint); box-shadow:0 0 8px currentColor; }
-  .swatch.critical { background:var(--gold); color:var(--gold); }
-  .swatch.flick { background:var(--pink); color:var(--pink); }
-  .swatch.slide { background:#8cefe1; color:#8cefe1; height:5px; }
-  .swatch.damage { background:#ff647c; color:#ff647c; }
+  /* Project SEKAI note palette: tap=cyan, slide/trace=green, flick=pink/red,
+     critical=yellow, damage=purple. */
+  .swatch { width:26px; height:9px; border-radius:6px; background:#55c9f2; color:#55c9f2; box-shadow:0 0 8px currentColor; }
+  .swatch.critical { background:#ffd34f; color:#ffd34f; }
+  .swatch.flick { background:#f178ad; color:#f178ad; }
+  .swatch.slide { background:#58d99a; color:#58d99a; height:6px; }
+  .swatch.damage { background:#b18be8; color:#b18be8; }
   .ref-card { display:flex; align-items:center; gap:12px; background:#10162a; border:1px solid var(--line); padding:10px; border-radius:12px; }
   .ref-card img { width:78px; height:48px; object-fit:cover; object-position:center; border-radius:7px; background:#8e60aa; }
   .ref-card div { min-width:0; flex:1; }
@@ -175,11 +177,11 @@
       <section class="section">
         <h3>ノーツの種類</h3>
         <div class="legend">
-          <div class="legend-item"><i class="swatch"></i>通常ノーツ</div>
-          <div class="legend-item"><i class="swatch critical"></i>クリティカル</div>
-          <div class="legend-item"><i class="swatch flick"></i>フリック</div>
-          <div class="legend-item"><i class="swatch slide"></i>スライド</div>
-          <div class="legend-item"><i class="swatch damage"></i>ダメージ</div>
+          <div class="legend-item"><i class="swatch"></i>タップ（シアン）</div>
+          <div class="legend-item"><i class="swatch slide"></i>スライド／トレース（緑）</div>
+          <div class="legend-item"><i class="swatch flick"></i>フリック（ピンク）</div>
+          <div class="legend-item"><i class="swatch critical"></i>クリティカル（黄）</div>
+          <div class="legend-item"><i class="swatch damage"></i>ダメージ（紫）</div>
         </div>
       </section>
 
@@ -528,11 +530,13 @@
         const laneIndex = Math.round((x - 40) / 16 + 0.5);
         const noteTime = segmentStart + segDuration - (centerY - 32)/360;
         let kind = 'tap', critical = false, trend = false;
-        if (symbolType === 0) critical = true;
-        if (symbolType === 1) kind = 'slide';
+        // pjsekai-scores symbol families: 0=critical tap, 1/2=slide,
+        // 3=flick, 4/5=trace, 6=trace flick. Critical variants use yellow.
+        if (symbolType === 0 || symbolType === 2 || symbolType === 5) critical = true;
+        if (symbolType === 1 || symbolType === 2) kind = 'slide';
         if (symbolType === 3 || symbolType === 6) kind = 'flick';
         if (symbolType === 4 || symbolType === 5 || symbolType === 6) trend = true;
-        notes.push({ time:noteTime, laneIndex:Math.max(0,Math.min(11,laneIndex)), widthUnits:units, widthRaw:Math.max(0,units-1), kind, critical, trend, direction:1, source:'svg' });
+        notes.push({ time:noteTime, laneIndex:Math.max(0,Math.min(11,laneIndex)), widthUnits:units, widthRaw:Math.max(0,units-1), kind, critical, trend, isFlick:kind==='flick', direction:1, source:'svg' });
       }
       for (const path of seg.querySelectorAll('path')) {
         const cls = path.getAttribute('class') || '';
@@ -690,6 +694,54 @@
     return { x: fieldLeft + (n.laneIndex - 0.5) * halfW, width: units * halfW, units };
   }
 
+  // Colors are keyed by the same visual families as the in-game note skin.
+  // A critical note overrides its base action color (tap/slide/flick) with yellow.
+  const NOTE_PALETTES = {
+    tap: {
+      main:'#58c8f1', top:'#e6faff', bottom:'#168bbd', glow:'#49c8f5',
+      ribbon:'rgba(75,195,239,.62)'
+    },
+    slide: {
+      main:'#55d69a', top:'#e1fff0', bottom:'#159568', glow:'#4ce09b',
+      ribbon:'rgba(73,211,145,.64)'
+    },
+    flick: {
+      main:'#f17eae', top:'#ffe8f2', bottom:'#c64d86', glow:'#f47caf',
+      ribbon:'rgba(239,103,158,.64)'
+    },
+    traceFlick: {
+      main:'#ed6877', top:'#ffe7e9', bottom:'#bd3c50', glow:'#f16b7b',
+      ribbon:'rgba(231,85,104,.64)'
+    },
+    critical: {
+      main:'#ffd34f', top:'#fff9c9', bottom:'#d49a1b', glow:'#ffd34f',
+      ribbon:'rgba(255,207,66,.76)'
+    },
+    damage: {
+      main:'#b38be8', top:'#f0e5ff', bottom:'#7953b9', glow:'#b28be9',
+      ribbon:'rgba(174,132,231,.66)'
+    }
+  };
+
+  function paletteForNote(n) {
+    if (n.damage || n.kind === 'damage') return NOTE_PALETTES.damage;
+    if (n.critical) return NOTE_PALETTES.critical;
+    const flick = n.kind === 'flick' || n.isFlick === true;
+    if (n.trend && flick) return NOTE_PALETTES.traceFlick;
+    if (flick) return NOTE_PALETTES.flick;
+    if (n.trend || n.kind === 'slide') return NOTE_PALETTES.slide;
+    return NOTE_PALETTES.tap;
+  }
+
+  function paletteForSlidePath(className='') {
+    const cls = String(className).toLowerCase();
+    if (cls.includes('critical')) return NOTE_PALETTES.critical;
+    if (cls.includes('trace') && cls.includes('flick')) return NOTE_PALETTES.traceFlick;
+    if (cls.includes('flick')) return NOTE_PALETTES.flick;
+    if (cls.includes('damage')) return NOTE_PALETTES.damage;
+    return NOTE_PALETTES.slide;
+  }
+
   function render() {
     if (!ctx || !state.chart || !state.width) return;
     const w=state.width, h=state.height, dpr=state.dpr;
@@ -749,15 +801,16 @@
       const leftA=x1+pathPad, leftB=x2+pathPad;
       const rightA=x1+widthA-pathPad, rightB=x2+widthB-pathPad;
       const dy=(y2-y1)*.48;
+      const slidePalette=paletteForNote(a);
       ctx.save(); ctx.lineJoin='round';
-      if(state.glow){ctx.shadowColor=a.critical?'#ffd36b':'#6af1da';ctx.shadowBlur=15;}
+      if(state.glow){ctx.shadowColor=slidePalette.glow;ctx.shadowBlur=15;}
       ctx.beginPath();
       ctx.moveTo(leftA,y1);
       ctx.bezierCurveTo(leftA,y1+dy,leftB,y2-dy,leftB,y2);
       ctx.lineTo(rightB,y2);
       ctx.bezierCurveTo(rightB,y2-dy,rightA,y1+dy,rightA,y1);
       ctx.closePath();
-      ctx.fillStyle=a.decoration?'rgba(193,168,255,.48)':(a.critical?'rgba(255,211,107,.70)':'rgba(101,242,211,.68)');
+      ctx.fillStyle=a.decoration?'rgba(193,168,255,.38)':slidePalette.ribbon;
       ctx.fill();
       ctx.shadowBlur=0; ctx.strokeStyle='rgba(239,255,255,.66)'; ctx.lineWidth=1.0; ctx.stroke();
       ctx.restore();
@@ -769,9 +822,10 @@
       const sx=fieldW/192, sy=pps/360;
       const tx=fieldLeft-40*sx;
       const ty=hitY-(sp.segmentStart+sp.segmentDuration-state.time)*pps-32*sy;
+      const pathPalette=paletteForSlidePath(sp.className);
       ctx.save(); ctx.translate(tx,ty); ctx.scale(sx,sy);
-      if(state.glow){ctx.shadowColor=sp.className.includes('critical')?'#ffd36b':'#73efdc';ctx.shadowBlur=18/sx;}
-      ctx.fillStyle=sp.className.includes('critical')?'rgba(255,209,104,.76)':(sp.className.includes('decoration')?'rgba(188,157,255,.40)':'rgba(104,239,214,.66)');
+      if(state.glow){ctx.shadowColor=pathPalette.glow;ctx.shadowBlur=18/sx;}
+      ctx.fillStyle=sp.className.includes('decoration')?'rgba(188,157,255,.34)':pathPalette.ribbon;
       ctx.fill(sp.path);
       ctx.restore();
     }
@@ -787,12 +841,13 @@
       if(n.kind==='slide' && n.source!=='svg' && n.noteType!==1 && n.noteType!==2 && n.noteType!==3) continue;
       const isFlick=n.kind==='flick' || n.isFlick === true;
       const isSlide=n.kind==='slide';
-      const color=n.critical?'#ffd36e':(n.kind==='damage'?'#ff617b':(isFlick?'#ff91c7':(n.trend?'#83efb0':'#71efd5')));
+      const palette=paletteForNote(n);
       const grad=ctx.createLinearGradient(x,y-11,x,y+11);
-      grad.addColorStop(0,n.critical?'#fff0b4':(isFlick?'#ffd1e5':'#d7fff5'));
-      grad.addColorStop(.46,color); grad.addColorStop(1,n.critical?'#dc963e':(isFlick?'#db5c9d':'#28bda9'));
+      grad.addColorStop(0,palette.top);
+      grad.addColorStop(.46,palette.main);
+      grad.addColorStop(1,palette.bottom);
       ctx.save();
-      if(state.glow){ctx.shadowColor=color;ctx.shadowBlur=n.critical?20:13;}
+      if(state.glow){ctx.shadowColor=palette.glow;ctx.shadowBlur=n.critical?20:13;}
       const hh=isSlide?14:17;
       roundedRect(ctx,x,y-hh/2,noteW,hh,Math.min(8,hh/2));
       ctx.fillStyle=grad; ctx.fill();
