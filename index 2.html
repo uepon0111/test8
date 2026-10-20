@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f3ff">
+<title>SEKAI CHART STUDIO — 譜面ビューアー</title>
+<style>
+  :root{color-scheme:light;--ink:#28233a;--muted:#807990;--line:#e9e4f2;--paper:#fff;--bg:#f7f5fc;--purple:#7653c8;--purple-dark:#5e3fab;--purple-pale:#efe9ff;--mint:#dff8ed;--mint-ink:#168466;--pink:#fde7f1;--yellow:#fff4c7;--shadow:0 12px 38px rgba(60,38,100,.07)}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(180deg,#fbfaff 0,#f6f4fc 420px,#f6f7fb 100%);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",Meiryo,sans-serif;color:var(--ink)}
+  button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}
+  .page{max-width:1320px;margin:0 auto;padding:28px 24px 50px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:25px}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:46px;height:46px;border-radius:16px;background:linear-gradient(140deg,#9c7ae8,#7553c9);display:grid;place-items:center;color:white;box-shadow:0 7px 18px #8e6dd338}.brand-mark svg{width:25px;height:25px}.brand-name{font-size:17px;font-weight:850;letter-spacing:.08em}.brand-sub{font-size:12px;color:var(--muted);margin-top:3px}.top-right{display:flex;gap:8px;align-items:center}.status-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid #e7e0f5;border-radius:999px;background:#fff;color:#685a83;font-size:12px;font-weight:650}.status-dot{width:7px;height:7px;border-radius:50%;background:#48bb91;box-shadow:0 0 0 3px #e6faf2}
+  .hero{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;color:var(--purple);text-transform:uppercase;margin-bottom:8px}.hero h1{font-size:clamp(28px,4vw,42px);line-height:1.13;letter-spacing:-.04em;margin:0 0 10px;font-weight:850}.hero p{color:var(--muted);margin:0;line-height:1.7;font-size:14px;max-width:720px}.hero-note{min-width:180px;border:1px solid #e7e0f5;background:#fff;border-radius:16px;padding:13px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 18px #39275b08}.hero-note-icon{width:36px;height:36px;border-radius:12px;background:#e7fbf2;display:grid;place-items:center;color:#168466}.hero-note strong{display:block;font-size:13px}.hero-note span{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+  .workspace{display:grid;grid-template-columns:minmax(310px,370px) minmax(0,1fr);gap:20px;align-items:start}.panel{background:var(--paper);border:1px solid #ebe7f3;border-radius:22px;box-shadow:var(--shadow);overflow:hidden}.panel-head{padding:20px 22px 16px;border-bottom:1px solid #f0edf6}.panel-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800}.step{width:29px;height:29px;border-radius:10px;background:#eee8fd;color:var(--purple);display:grid;place-items:center;font-size:12px;font-weight:900}.panel-sub{font-size:12px;color:var(--muted);margin:7px 0 0 39px;line-height:1.6}.panel-body{padding:20px 22px 22px}
+  .field{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}.field label{font-size:12px;font-weight:750;color:#514964}.field-hint{font-size:11px;color:var(--muted);line-height:1.5}.control{width:100%;min-width:0;padding:11px 12px;border:1px solid #e4deee;border-radius:12px;background:#fff;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s}.control:focus{border-color:#a58ae4;box-shadow:0 0 0 3px #8d6be81a}.select-wrap{position:relative}.select-wrap select{appearance:none;padding-right:34px}.select-wrap:after{content:"";position:absolute;right:15px;top:50%;width:7px;height:7px;border-right:1.8px solid #8c839d;border-bottom:1.8px solid #8c839d;transform:translateY(-70%) rotate(45deg);pointer-events:none}.song-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:end}.song-row .field{margin-bottom:16px}.song-id{border:1px solid var(--line);background:#faf9fd;color:#756b87;border-radius:12px;padding:11px 10px;font-size:11px;white-space:nowrap;min-width:62px;text-align:center}.difficulty-row{display:grid;grid-template-columns:minmax(0,1fr) 93px;gap:9px}.level-box{border-radius:12px;background:#f1ecff;border:1px solid #e5dcff;text-align:center;padding:8px}.level-box span{display:block;font-size:10px;color:#7b67af;font-weight:750}.level-box strong{display:block;color:#6547ae;font-size:22px;line-height:1.2;margin-top:2px}
+  .song-card{display:flex;gap:13px;align-items:center;border:1px solid #eee9f6;background:linear-gradient(115deg,#fbf9ff,#fff);padding:12px;border-radius:16px;margin:3px 0 19px}.jacket{width:76px;height:76px;flex:0 0 76px;object-fit:cover;border-radius:12px;background:#eee8f5;box-shadow:0 4px 12px #3d2f5810}.song-info{min-width:0;flex:1}.song-title{font-size:15px;font-weight:800;line-height:1.5;overflow-wrap:anywhere}.song-read{font-size:11px;color:var(--muted);margin-top:1px}.meta-line{font-size:11px;color:#716981;margin-top:6px;line-height:1.5;overflow-wrap:anywhere}.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.stat{background:#faf9fd;border:1px solid #f0edf6;border-radius:12px;padding:11px 12px}.stat span{font-size:10px;color:var(--muted);display:block}.stat strong{font-size:18px;display:block;margin-top:4px;letter-spacing:-.02em}.stat small{font-size:10px;color:var(--muted);font-weight:500}
+  .source-tabs{display:grid;grid-template-columns:1fr 1fr;background:#f5f2fb;border-radius:13px;padding:4px;gap:4px;margin-bottom:17px}.tab{border:0;background:transparent;border-radius:10px;color:#777087;padding:10px 8px;font-size:12px;font-weight:750;display:flex;align-items:center;justify-content:center;gap:8px}.tab.active{background:#fff;color:#5f42a8;box-shadow:0 2px 7px #30204412}.tab svg{width:15px;height:15px}.source-pane[hidden]{display:none}.url-field{display:flex;gap:8px}.url-field .control{flex:1;min-width:0;font-size:11px}.icon-btn{flex:0 0 42px;display:grid;place-items:center;border:1px solid #e5def1;border-radius:12px;background:#faf8fe;color:#7154ba}.icon-btn svg{width:17px;height:17px}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px 15px;font-size:12px;font-weight:800;transition:transform .15s,background .15s}.btn:active{transform:translateY(1px)}.btn-primary{background:var(--purple);color:white;box-shadow:0 5px 12px #7853c829}.btn-primary:hover{background:var(--purple-dark)}.btn-secondary{background:#f0ebfb;color:#6245ac}.btn-quiet{background:#fff;color:#706680;border:1px solid #e9e4f2}.btn-block{width:100%}.btn svg{width:16px;height:16px}.source-actions{display:flex;gap:8px;margin-top:10px}.source-actions .btn-primary{flex:1}.textarea{width:100%;min-height:205px;resize:vertical;font:11px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#fbfaff}.textarea::placeholder{color:#aaa2ba}.paste-actions{display:flex;gap:8px;margin-top:10px}.paste-actions .btn{flex:1}.input-notice{display:flex;gap:9px;align-items:flex-start;background:#faf8ff;border:1px solid #efe9fb;border-radius:12px;padding:11px;margin-top:14px;color:#726785;font-size:11px;line-height:1.6}.input-notice svg{flex:0 0 16px;width:16px;height:16px;color:#9275d4;margin-top:1px}
+  .right-column{display:grid;gap:18px;min-width:0}.preview-panel{min-width:0}.preview-head{padding:18px 20px;border-bottom:1px solid #f0edf6;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.preview-heading{display:flex;align-items:center;gap:11px;min-width:0}.preview-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e7fbf2;color:#198669;flex:0 0 38px}.preview-icon svg{width:20px;height:20px}.preview-title{font-size:15px;font-weight:850}.preview-desc{font-size:11px;color:var(--muted);margin-top:4px}.toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.tool-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;min-width:34px;padding:0 10px;background:#fff;border:1px solid #e9e4f2;border-radius:10px;color:#726783;font-size:11px;font-weight:750}.tool-btn svg{width:14px;height:14px}.zoom-value{font-size:11px;color:#746b85;min-width:39px;text-align:center;font-variant-numeric:tabular-nums}.chart-status{display:flex;align-items:center;gap:9px;padding:10px 18px;background:#fcfbfe;border-bottom:1px solid #f1eef7;font-size:11px;color:#756d84;min-height:38px}.status-light{width:7px;height:7px;border-radius:50%;background:#b8a3e8;flex:0 0 7px}.chart-status.success .status-light{background:#3bb18a}.chart-status.error .status-light{background:#e59b56}.chart-status.error{color:#9c6231}.chart-viewport{height:620px;overflow:auto;background:#f3f0f9;position:relative;overscroll-behavior:contain}.chart-viewport.checker{background-color:#f8f6fc;background-image:linear-gradient(45deg,#f1edf8 25%,transparent 25%),linear-gradient(-45deg,#f1edf8 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f1edf8 75%),linear-gradient(-45deg,transparent 75%,#f1edf8 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.chart-stage{min-width:100%;min-height:100%;display:flex;justify-content:flex-start;align-items:flex-start;padding:20px;position:relative}.chart-stage svg{display:block;flex:0 0 auto;max-width:none}.chart-image{display:block;flex:0 0 auto;width:auto;max-width:none;height:auto;box-shadow:0 5px 18px #2f23410a}.empty-state{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;pointer-events:none}.empty-inner{max-width:370px}.empty-icon{margin:0 auto 13px;width:64px;height:64px;border-radius:20px;background:#ece5fb;color:#8b6bd2;display:grid;place-items:center}.empty-icon svg{width:29px;height:29px}.empty-state strong{display:block;font-size:14px}.empty-state p{font-size:12px;line-height:1.8;color:var(--muted);margin:7px 0 0}.empty-state[hidden]{display:none}.preview-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid #f0edf6;color:#837a94;font-size:10px}.preview-foot a{color:#7757bd;text-decoration:none;font-weight:750}.preview-foot a:hover{text-decoration:underline}
+  .legend-panel{padding:17px 20px}.legend-title{font-size:13px;font-weight:850;margin-bottom:13px}.legend-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.legend-item{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #f0edf6;border-radius:12px;background:#fdfcff;min-width:0}.legend-swatch{height:29px;width:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:8px;overflow:hidden;background:#faf5ff}.legend-swatch img{width:38px;height:auto;max-width:none}.legend-item span{font-size:11px;font-weight:700;line-height:1.4}.legend-item small{display:block;color:#9990a9;font-size:10px;font-weight:500;margin-top:2px}
+  .diagnostics{display:none;padding:16px 20px 18px;border-top:1px solid #f0edf6;background:#fcfbff}.diagnostics.open{display:block}.diag-title{font-size:12px;font-weight:850;margin-bottom:10px}.diag-stats{display:flex;gap:8px;flex-wrap:wrap}.diag-chip{background:#f0ebfb;color:#6649a9;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:700}.diag-warnings{margin:10px 0 0;padding-left:18px;font-size:11px;line-height:1.7;color:#8f6a43}.diag-warnings:empty{display:none}
+  .footer{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-top:24px;padding:18px 2px 0;color:#8b839b;font-size:10px;line-height:1.8}.footer a{color:#7255b8;text-decoration:none}.footer a:hover{text-decoration:underline}.footer-right{text-align:right}
+  @media(max-width:980px){.workspace{grid-template-columns:1fr}.left-column{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}.song-panel{grid-row:span 2}.legend-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.chart-viewport{height:560px}}
+  @media(max-width:680px){.page{padding:18px 12px 32px}.topbar{margin-bottom:22px}.brand-name{font-size:14px}.brand-sub{font-size:10px}.top-right .status-pill{display:none}.hero{display:block}.hero h1{font-size:31px}.hero p{font-size:13px}.hero-note{display:none}.left-column{display:flex;flex-direction:column}.panel{border-radius:18px;width:100%}.panel-head{padding:17px 17px 14px}.panel-body{padding:17px}.preview-head{padding:15px 14px}.preview-heading{gap:8px}.preview-desc{max-width:180px;line-height:1.4}.toolbar{gap:4px}.tool-btn{height:32px;min-width:32px;padding:0 8px}.toolbar .tool-label{display:none}.chart-viewport{height:490px}.chart-stage{padding:10px}.preview-foot{align-items:flex-start;flex-direction:column;gap:5px}.legend-panel{padding:16px}.legend-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.legend-item{padding:8px;gap:7px}.legend-item span{font-size:10px}.footer{flex-direction:column;gap:8px}.footer-right{text-align:left}}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l11-2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="6" cy="18" rx="3" ry="2.2" fill="currentColor"/><ellipse cx="17" cy="16" rx="3" ry="2.2" fill="currentColor"/></svg></div>
+      <div><div class="brand-name">SEKAI CHART STUDIO</div><div class="brand-sub">譜面データ解析・ビューアー</div></div>
+    </div>
+    <div class="top-right"><span class="status-pill"><span class="status-dot"></span>ブラウザー内で動作</span></div>
+  </header>
+
+  <section class="hero">
+    <div><div class="eyebrow">CHART EXPLORER</div><h1>譜面を、もっと自由に。</h1><p>楽曲と難易度を選んで譜面を表示。公開済みチャートURLの読み込みと、SUS形式テキストの貼り付けに対応したビューアーです。</p></div>
+    <div class="hero-note"><div class="hero-note-icon"><svg viewBox="0 0 24 24" width="19" height="19" fill="none"><path d="M12 3v18M3 12h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/></svg></div><div><strong>明るく見やすいUI</strong><span>PC・スマートフォン対応</span></div></div>
+  </section>
+
+  <main class="workspace">
+    <div class="left-column">
+      <section class="panel song-panel" aria-labelledby="songPanelTitle">
+        <div class="panel-head"><div class="panel-title" id="songPanelTitle"><span class="step">01</span>楽曲・難易度</div><p class="panel-sub">楽曲を選ぶと対応する譜面URLが自動入力されます。</p></div>
+        <div class="panel-body">
+          <div class="field"><label for="songSearch">楽曲検索</label><input class="control" id="songSearch" type="search" placeholder="曲名・読み方・作曲者・IDで検索" autocomplete="off"></div>
+          <div class="song-row">
+            <div class="field"><label for="songSelect">楽曲</label><div class="select-wrap"><select class="control" id="songSelect"><option value="304">なんです</option></select></div></div>
+            <div class="field"><label for="songId">楽曲ID</label><div class="song-id" id="songId">0304</div></div>
+          </div>
+          <div class="field"><label for="difficultySelect">難易度</label><div class="difficulty-row"><div class="select-wrap"><select class="control" id="difficultySelect"><option value="append">APPEND</option></select></div><div class="level-box"><span>PLAY LEVEL</span><strong id="playLevel">—</strong></div></div></div>
+          <div class="song-card"><img id="jacket" class="jacket" alt="楽曲ジャケット" src="https://storage.sekai.best/sekai-jp-assets/music/jacket/jacket_s_304/jacket_s_304.png"><div class="song-info"><div class="song-title" id="songTitle">なんです</div><div class="song-read" id="songPronunciation">楽曲マスター読み込み中…</div><div class="meta-line" id="songCredits">作詞 — · 作曲 — · 編曲 —</div></div></div>
+          <div class="stat-row"><div class="stat"><span>公式ノーツ数</span><strong id="officialNoteCount">— <small>notes</small></strong></div><div class="stat"><span>データソース</span><strong style="font-size:15px">Master DB</strong><small>JP</small></div></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="sourcePanelTitle">
+        <div class="panel-head"><div class="panel-title" id="sourcePanelTitle"><span class="step">02</span>譜面データを読み込む</div><p class="panel-sub">公開済み画像を表示するか、SUSテキストを解析します。</p></div>
+        <div class="panel-body">
+          <div class="source-tabs" role="tablist" aria-label="入力方式"><button class="tab active" type="button" role="tab" aria-selected="true" data-tab="url"><svg viewBox="0 0 24 24" fill="none"><path d="M10 13a5 5 0 0 0 7.1 0l3-3A5 5 0 0 0 13 2.9l-1.7 1.7M14 11a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 21.1l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>URL</button><button class="tab" type="button" role="tab" aria-selected="false" data-tab="paste"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4" width="14" height="17" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4.5h6a1.5 1.5 0 0 0-1.5-2h-3A1.5 1.5 0 0 0 9 4.5ZM8.5 10h7M8.5 14h7M8.5 18h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>TXT貼り付け</button></div>
+          <div class="source-pane" id="urlPane" role="tabpanel">
+            <div class="field"><label for="chartUrl">譜面URL</label><div class="url-field"><input class="control" id="chartUrl" type="url" spellcheck="false" value="https://storage.sekai.best/sekai-music-charts/jp/0304/append.svg" aria-describedby="urlHint"><button class="icon-btn" id="copyUrl" type="button" title="URLをコピー" aria-label="URLをコピー"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" stroke="currentColor" stroke-width="1.7"/></svg></button></div><div class="field-hint" id="urlHint">SVG / PNG は公開済みの描画結果を使用します。SUS/TXT URLなら取得後に解析します。</div></div>
+            <div class="source-actions"><button class="btn btn-primary" id="loadUrl" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 1 0 2.2-5.5M4 4v5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>譜面を読み込む</button><button class="btn btn-quiet" id="openUrl" type="button" title="別タブで開く"><svg viewBox="0 0 24 24" fill="none"><path d="M14 4h6v6M20 4l-9 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></div>
+          </div>
+          <div class="source-pane" id="pastePane" role="tabpanel" hidden>
+            <div class="field"><label for="susText">SUS形式の譜面テキスト</label><textarea class="control textarea" id="susText" spellcheck="false" placeholder="#TITLE "曲名"
+#ARTIST "アーティスト"
+#BPM 120
+#BPM01:120
+#00002:4
+#00012:10000000
+
+ここに譜面TXTを貼り付けてください"></textarea><div class="field-hint">#TITLE / #BPM / #mmm1x / #mmm3xy などを解析します。大きな譜面は読み込みに時間がかかる場合があります。</div></div>
+            <div class="paste-actions"><button class="btn btn-primary" id="parseText" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16M4 12h16M4 19h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m17 16 3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>解析して表示</button><button class="btn btn-secondary" id="sampleText" type="button">サンプル</button></div>
+          </div>
+          <div class="input-notice"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M12 11v5M12 7.5h.01" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg><div>URL読み込みに失敗する場合は、配信元のアクセス制限が原因のことがあります。その場合はTXTを直接貼り付けてください。</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="right-column">
+      <section class="panel preview-panel" aria-labelledby="previewTitle">
+        <div class="preview-head">
+          <div class="preview-heading"><div class="preview-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M7 8h10M7 12h10M7 16h10M9 5v14M15 5v14" stroke="currentColor" stroke-width="1.1" opacity=".65"/></svg></div><div><div class="preview-title" id="previewTitle">譜面プレビュー</div><div class="preview-desc" id="previewDesc">曲と難易度を選んで「譜面を読み込む」を押してください</div></div></div>
+          <div class="toolbar"><button class="tool-btn" id="zoomOut" type="button" title="縮小" aria-label="縮小">−</button><span class="zoom-value" id="zoomValue">100%</span><button class="tool-btn" id="zoomIn" type="button" title="拡大" aria-label="拡大">＋</button><button class="tool-btn" id="fitChart" type="button"><svg viewBox="0 0 24 24" fill="none"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tool-label">リセット</span></button><button class="tool-btn" id="downloadChart" type="button" title="表示中のSVGを保存"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tool-label">SVG保存</span></button></div>
+        </div>
+        <div class="chart-status" id="chartStatus" aria-live="polite"><span class="status-light"></span><span id="statusText">準備完了：曲と難易度を選んで譜面を読み込んでください。</span></div>
+        <div class="chart-viewport checker" id="chartViewport"><div class="chart-stage" id="chartStage"></div><div class="empty-state" id="emptyState"><div class="empty-inner"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5m0 14h16M8 15V9m4 6V5m4 10v-3m4 3V7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="7" r="1.5" fill="currentColor"/><circle cx="16" cy="9" r="1.5" fill="currentColor"/></svg></div><strong>譜面の準備ができています</strong><p>公開済み譜面のURLを読み込むか、SUSテキストを貼り付けるとここにプレビューが表示されます。</p></div></div></div>
+        <div class="preview-foot"><span id="previewFootLeft">表示倍率：100%</span><a id="sourceLink" href="https://storage.sekai.best/sekai-music-charts/jp/0304/append.svg" target="_blank" rel="noopener noreferrer">ソースを別タブで開く ↗</a></div>
+        <div class="diagnostics" id="diagnostics"><div class="diag-title">解析レポート</div><div class="diag-stats" id="diagStats"></div><ul class="diag-warnings" id="diagWarnings"></ul></div>
+      </section>
+
+      <section class="panel legend-panel" aria-labelledby="legendTitle"><div class="legend-title" id="legendTitle">ノーツの見分け方</div><div class="legend-grid">
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_2.png" alt="" loading="lazy"></div><span>通常ノーツ<small>Tap</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_0.png" alt="" loading="lazy"></div><span>CRITICAL<small>Critical</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_3.png" alt="" loading="lazy"></div><span>フリック<small>Directional</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_1.png" alt="" loading="lazy"></div><span>スライド<small>Slide</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_4.png" alt="" loading="lazy"></div><span>TREND<small>Trend</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_5.png" alt="" loading="lazy"></div><span>CRITICAL TREND<small>Critical Trend</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_flick_arrow_01.png" alt="" loading="lazy"></div><span>フリック方向<small>Flick Arrow</small></span></div>
+        <div class="legend-item"><div class="legend-swatch"><img src="https://asset3.pjsekai.moe/live/note/custom01/notes_long_among.png" alt="" loading="lazy"></div><span>スライド節点<small>Slide Tick</small></span></div>
+      </div></section>
+    </div>
+  </main>
+
+  <footer class="footer"><div>データソース：<a href="https://sekai-world.github.io/sekai-master-db-diff/musics.json" target="_blank" rel="noopener noreferrer">楽曲マスター</a> · <a href="https://sekai-world.github.io/sekai-master-db-diff/musicDifficulties.json" target="_blank" rel="noopener noreferrer">難易度マスター</a> · <a href="https://github.com/Team-Haruki/pjsekai-scores-rs" target="_blank" rel="noopener noreferrer">pjsekai-scores-rs</a></div><div class="footer-right">ファンメイドのビューアーです。公式運営とは関係ありません。<br>外部データ・画像素材の配信状況により表示できない場合があります。</div></footer>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const MASTER_MUSICS = 'https://sekai-world.github.io/sekai-master-db-diff/musics.json';
+  const MASTER_DIFFICULTIES = 'https://sekai-world.github.io/sekai-master-db-diff/musicDifficulties.json';
+  const CHART_BASE = 'https://storage.sekai.best/sekai-music-charts/jp';
+  const JACKET_BASE = 'https://storage.sekai.best/sekai-jp-assets/music/jacket/';
+  const NOTE_BASE = 'https://asset3.pjsekai.moe/live/note/custom01';
+  const DIFF_ORDER = ['easy','normal','hard','expert','master','append'];
+  const DIFF_LABELS = {easy:'EASY',normal:'NORMAL',hard:'HARD',expert:'EXPERT',master:'MASTER',append:'APPEND'};
+  const $ = id => document.getElementById(id);
+  const state = { musics:[], diffRows:[], selectedMusic:null, selectedDiff:null, currentSvg:'', currentImage:'', currentSourceUrl:'', mode:'url', zoom:1, lastParsed:null, mastersLoaded:false };
+
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+  function base36(c){ const s=String(c||'0'); const v=parseInt(s,36); return Number.isFinite(v)?v:0; }
+  function showStatus(message, kind=''){ $('statusText').textContent=message; $('chartStatus').className='chart-status'+(kind?' '+kind:''); }
+  function diffName(value){ const raw=String(value??'').toLowerCase(); if(DIFF_ORDER.includes(raw)) return raw; const n=Number(value); return ({0:'easy',1:'normal',2:'hard',3:'expert',4:'master',5:'append'})[n] || raw; }
+  function idPad(id){ return String(Number(id)||id).padStart(4,'0'); }
+  function jacketPad(id){ return String(Number(id)||id).padStart(3,'0'); }
+  function buildChartUrl(musicId,difficulty,extension='svg'){ return `${CHART_BASE}/${idPad(musicId)}/${encodeURIComponent(diffName(difficulty))}.${extension}`; }
+  function selectedDifficultyRecord(){ if(!state.selectedMusic||!state.selectedDiff) return null; return state.diffRows.find(d=>Number(d.musicId)===Number(state.selectedMusic.id)&&diffName(d.musicDifficulty)===state.selectedDiff) || null; }
+  function musicSearchText(m){ return `${m.id} ${m.title||''} ${m.pronunciation||''} ${m.lyricist||''} ${m.composer||''} ${m.arranger||''}`.toLowerCase(); }
+  function renderSongOptions(preserve=true){
+    const search=$('songSearch').value.trim().toLowerCase(); const chosen=preserve&&state.selectedMusic?String(state.selectedMusic.id):'';
+    const filtered=state.musics.filter(m=>!search||musicSearchText(m).includes(search)).slice(0,5000);
+    const placeholder=filtered.length?(search?'検索結果から楽曲を選択':'楽曲を選択してください'):'該当する楽曲がありません';
+    $('songSelect').innerHTML=`<option value="">${esc(placeholder)}</option>`+filtered.map(m=>`<option value="${esc(m.id)}">${esc(m.title||`楽曲 ${m.id}`)}</option>`).join('');
+    if(chosen&&filtered.some(m=>String(m.id)===chosen)) $('songSelect').value=chosen;
+    else $('songSelect').value='';
+  }
+  function renderDifficultyOptions(preferred){
+    const music=state.selectedMusic; let rows=music?state.diffRows.filter(d=>Number(d.musicId)===Number(music.id)):[];
+    rows.sort((a,b)=>DIFF_ORDER.indexOf(diffName(a.musicDifficulty))-DIFF_ORDER.indexOf(diffName(b.musicDifficulty)));
+    let names=[...new Set(rows.map(d=>diffName(d.musicDifficulty)).filter(d=>DIFF_ORDER.includes(d)))];
+    if(!names.length) names=DIFF_ORDER.slice();
+    $('difficultySelect').innerHTML=names.map(n=>`<option value="${esc(n)}">${DIFF_LABELS[n]||n.toUpperCase()}</option>`).join('');
+    const choice=(preferred&&names.includes(preferred))?preferred:(names.includes('append')?'append':names[names.length-1]);
+    $('difficultySelect').value=choice; state.selectedDiff=choice;
+  }
+  function updateMusicCard(){
+    const m=state.selectedMusic; if(!m) return;
+    const d=selectedDifficultyRecord();
+    $('songId').textContent=idPad(m.id); $('songTitle').textContent=m.title||`楽曲 ${m.id}`;
+    $('songPronunciation').textContent=m.pronunciation||'読み方データなし';
+    $('songCredits').textContent=`作詞 ${m.lyricist||'—'} · 作曲 ${m.composer||'—'} · 編曲 ${m.arranger||'—'}`;
+    $('playLevel').textContent=d?.playLevel??'—'; $('officialNoteCount').innerHTML=`${d?.totalNoteCount!=null?Number(d.totalNoteCount).toLocaleString():'—'} <small>notes</small>`;
+    const jacket=$('jacket'); jacket.src=`${JACKET_BASE}jacket_s_${jacketPad(m.id)}/jacket_s_${jacketPad(m.id)}.png`; jacket.alt=`${m.title||'楽曲'}のジャケット`;
+    jacket.onerror=()=>{jacket.onerror=null; jacket.src='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76"><rect width="100%" height="100%" rx="12" fill="#eee8f5"/><path d="M26 50V25l25-5v25" fill="none" stroke="#9a84c8" stroke-width="4" stroke-linecap="round"/><circle cx="20" cy="51" r="7" fill="#9a84c8"/><circle cx="44" cy="46" r="7" fill="#9a84c8"/></svg>'); };
+    $('chartUrl').value=buildChartUrl(m.id,state.selectedDiff||'master','svg'); $('sourceLink').href=$('chartUrl').value;
+    $('previewTitle').textContent=`${m.title||`楽曲 ${m.id}`} — ${DIFF_LABELS[state.selectedDiff]||state.selectedDiff?.toUpperCase()||''}`;
+    $('previewDesc').textContent=`楽曲ID ${m.id}${d?` · Lv.${d.playLevel} · ${Number(d.totalNoteCount).toLocaleString()} notes`:''}`;
+    if(!state.mastersLoaded) $('songPronunciation').textContent='マスターデータ未接続：表示URLは手動編集できます';
+  }
+  function selectMusic(id,preferredDiff){
+    const found=state.musics.find(m=>Number(m.id)===Number(id)); if(!found)return;
+    state.selectedMusic=found; renderSongOptions(true); $('songSelect').value=String(found.id); renderDifficultyOptions(preferredDiff||state.selectedDiff); updateMusicCard();
+  }
+  function toggleMode(mode){
+    state.mode=mode; document.querySelectorAll('[data-tab]').forEach(button=>{const active=button.dataset.tab===mode;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));});
+    $('urlPane').hidden=mode!=='url'; $('pastePane').hidden=mode!=='paste';
+  }
+  function setChartStage(html, empty=false){ $('chartStage').innerHTML=html; $('emptyState').hidden=!empty; $('chartViewport').classList.toggle('checker',empty); }
+  function resetZoom(){state.zoom=1;applyZoom();}
+  function applyZoom(){
+    $('zoomValue').textContent=`${Math.round(state.zoom*100)}%`; $('previewFootLeft').textContent=`表示倍率：${Math.round(state.zoom*100)}%`;
+    const svg=$('chartStage').querySelector('svg');
+    if(svg){const w=Number(svg.dataset.baseWidth||svg.getAttribute('width'))||svg.viewBox?.baseVal?.width||1000; const h=Number(svg.dataset.baseHeight||svg.getAttribute('height'))||svg.viewBox?.baseVal?.height||620; svg.style.width=`${w*state.zoom}px`; svg.style.height=`${h*state.zoom}px`;}
+    const img=$('chartStage').querySelector('img.chart-image');
+    if(img){img.style.width=`${img.dataset.baseWidth?Number(img.dataset.baseWidth)*state.zoom:1000*state.zoom}px`;img.style.height='auto';}
+  }
+  function renderImagePreview(imageUrl,sourceUrl,message){
+    state.currentSvg=''; state.currentImage=imageUrl; state.currentSourceUrl=sourceUrl; state.lastParsed=null;
+    $('sourceLink').href=sourceUrl; $('sourceLink').textContent='ソースを別タブで開く ↗';
+    setChartStage(`<img class="chart-image" id="chartImage" src="${esc(imageUrl)}" alt="譜面画像" data-base-width="1000">`);
+    $('chartImage').onload=()=>{const img=$('chartImage');img.dataset.baseWidth=String(img.naturalWidth||1000);applyZoom();showStatus(message,'success');};
+    $('chartImage').onerror=()=>{showStatus('画像を取得できません。URLが正しいか、公開元で配信されているか確認してください。','error');setChartStage('',true);};
+    $('chartImage').style.width=`${1000*state.zoom}px`; $('chartImage').style.height='auto'; $('emptyState').hidden=true; $('chartViewport').classList.remove('checker');
+    $('diagnostics').classList.remove('open'); $('previewDesc').textContent=message;
+  }
+  function sanitizeInlineSvg(svgText){
+    const parser=new DOMParser(); const doc=parser.parseFromString(svgText,'image/svg+xml'); const root=doc.documentElement;
+    if(root.localName!=='svg'||doc.querySelector('parsererror')) throw new Error('有効なSVGではありません');
+    root.querySelectorAll('script,foreignObject,iframe,object,embed').forEach(n=>n.remove());
+    root.querySelectorAll('*').forEach(node=>{
+      [...node.attributes].forEach(attr=>{
+        const name=attr.name.toLowerCase(), value=attr.value.trim();
+        if(name.startsWith('on')) node.removeAttribute(attr.name);
+        if((name==='href'||name.endsWith(':href')) && value && !value.startsWith('#') && !/^https:\/\//i.test(value) && !/^data:image\/(png|jpeg|webp);base64,/i.test(value)) node.removeAttribute(attr.name);
+      });
+    });
+    if(!root.getAttribute('xmlns'))root.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    return document.importNode(root,true);
+  }
+  async function loadUrl(){
+    const source=$('chartUrl').value.trim(); let url;
+    try{url=new URL(source);if(!['http:','https:'].includes(url.protocol))throw new Error('HTTP(S) URLを指定してください。');}catch(e){showStatus('有効なURLを入力してください。','error');return;}
+    $('sourceLink').href=url.href; $('sourceLink').textContent='ソースを別タブで開く ↗'; showStatus('URLからデータを取得しています…');
+    const path=url.pathname.toLowerCase();
+    if(/\.(txt|sus)$/i.test(path)){
+      try{const response=await fetch(url.href);if(!response.ok)throw new Error(`HTTP ${response.status}`);const text=await response.text();if(!text.trim())throw new Error('譜面テキストが空です');$('susText').value=text;toggleMode('paste');renderParsedChart(text,url.href);}
+      catch(e){showStatus(`TXTを取得できませんでした（${e.message}）。配信元のCORS制限がある場合はTXTを直接貼り付けてください。`,'error');}
+      return;
+    }
+    if(/\.svg$/i.test(path)){
+      // Prefer the paired PNG for exact public chart rendering: SVGs may reference external note textures.
+      const pngUrl=url.href.replace(/\.svg(?=([?#]|$))/i,'.png');
+      renderImagePreview(pngUrl,url.href,'公開済み譜面のPNG表示（元URLはSVG）');
+      return;
+    }
+    if(/\.(png|jpe?g|webp)$/i.test(path)){renderImagePreview(url.href,url.href,'公開済みの譜面画像を表示中');return;}
+    try{
+      const response=await fetch(url.href);if(!response.ok)throw new Error(`HTTP ${response.status}`);const text=await response.text();
+      if(text.trimStart().startsWith('<svg')){
+        state.currentSvg=text;state.currentImage='';state.currentSourceUrl=url.href;showSvg(text,url.href,'SVGを取得しました');
+      }else{ $('susText').value=text;toggleMode('paste');renderParsedChart(text,url.href); }
+    }catch(e){showStatus(`URLからデータを取得できませんでした（${e.message}）。SVG/PNGのURLか、TXTを直接貼り付けてください。`,'error');}
+  }
+  function openSourceUrl(){try{const u=new URL($('chartUrl').value.trim());if(['http:','https:'].includes(u.protocol))window.open(u.href,'_blank','noopener,noreferrer');else showStatus('HTTP(S) URLを入力してください。','error');}catch{showStatus('有効なURLを入力してください。','error');}}
+  async function copyUrl(){const text=$('chartUrl').value;try{await navigator.clipboard.writeText(text);showStatus('URLをコピーしました。','success');}catch{ $('chartUrl').focus();$('chartUrl').select();showStatus('URLを選択しました。コピーしてください。');}}
+  function showSvg(svgText,sourceUrl,message){
+    try{
+      const node=sanitizeInlineSvg(svgText);const vb=(node.getAttribute('viewBox')||'').split(/[ ,]+/).map(Number);const w=Number(node.getAttribute('width'))||vb[2]||1000;const h=Number(node.getAttribute('height'))||vb[3]||620;
+      node.dataset.baseWidth=String(w);node.dataset.baseHeight=String(h);node.style.flex='0 0 auto';node.style.maxWidth='none';
+      state.currentSvg=new XMLSerializer().serializeToString(node);state.currentImage='';state.currentSourceUrl=sourceUrl;state.lastParsed=null;setChartStage('');$('chartStage').appendChild(node);$('emptyState').hidden=true;$('chartViewport').classList.remove('checker');$('sourceLink').href=sourceUrl;$('previewDesc').textContent=message;$('diagnostics').classList.remove('open');applyZoom();showStatus(message,'success');
+    }catch(e){showStatus(`SVGを表示できませんでした：${e.message}`,'error');}
+  }
+  function renderParsedChart(text,sourceUrl='TXT貼り付け'){
+    try{
+      const parsed=parseSus(text); if(!parsed.notes.length)throw new Error('譜面ノーツを検出できませんでした。SUS形式か、#00011 / #0003x などの譜面行を含むか確認してください。');
+      const svg=buildChartSvg(parsed);state.currentSvg=svg;state.currentImage='';state.currentSourceUrl=sourceUrl;state.lastParsed=parsed;setChartStage(svg);$('emptyState').hidden=true;$('chartViewport').classList.remove('checker');$('previewTitle').textContent=parsed.meta.TITLE||'貼り付けた譜面';$('previewDesc').textContent=`SUS解析 · ${parsed.notes.length.toLocaleString()}個のデータ要素 · 約${parsed.bars}小節`;$('sourceLink').href=sourceUrl.startsWith('http')?sourceUrl:'#';$('sourceLink').textContent=sourceUrl.startsWith('http')?'ソースを別タブで開く ↗':'TXT入力';applyZoom();renderDiagnostics(parsed);showStatus(`SUSを解析しました。ノーツ／スライド制御点など ${parsed.notes.length.toLocaleString()} 件を検出。描画は簡易ブラウザー実装です。`,'success');
+    }catch(e){showStatus(`解析できませんでした：${e.message}`,'error');}
+  }
+  function renderDiagnostics(parsed){
+    const tapNotes=parsed.notes.filter(n=>n.kind==='tap');
+    const stats=[
+      `全データ要素 ${parsed.notes.length}`,
+      `通常 ${tapNotes.filter(n=>n.type===1).length}`,
+      `CRITICAL ${tapNotes.filter(n=>n.type===2).length}`,
+      `フリック ${tapNotes.filter(n=>n.type===3).length}`,
+      `DAMAGE ${tapNotes.filter(n=>n.type===4).length}`,
+      `TREND ${tapNotes.filter(n=>n.type===5).length}`,
+      `CRITICAL TREND ${tapNotes.filter(n=>n.type===6).length}`,
+      `CANCEL ${tapNotes.filter(n=>n.type===7).length}`,
+      `CRITICAL CANCEL ${tapNotes.filter(n=>n.type===8).length}`,
+      `スライド制御点 ${parsed.notes.filter(n=>n.kind==='slide').length}`,
+      `方向指定 ${parsed.notes.filter(n=>n.kind==='directional').length}`,
+      `BPM定義 ${Object.keys(parsed.bpmDefs).length}`
+    ];
+    $('diagStats').innerHTML=stats.map(s=>`<span class="diag-chip">${esc(s)}</span>`).join('');
+    $('diagWarnings').innerHTML=parsed.warnings.map(w=>`<li>${esc(w)}</li>`).join('');$('diagnostics').classList.add('open');
+  }
+
+  function parseSus(text){
+    const meta={}, bpmDefs={}, bpmRefs=[], notes=[], barLengths=new Map([[0,4]]), unknown=[];let maxBar=0, validLines=0;
+    const lines=String(text).replace(/^\uFEFF/,'').split(/\r?\n/);
+    function dataPairs(data){const out=[];const clean=data.trim().replace(/\s+/g,'');for(let i=0;i+1<clean.length;i+=2){const pair=clean.slice(i,i+2);if(pair!=='00')out.push({fraction:(i/clean.length),pair,index:i/2});}return out;}
+    function addNotes(bar,laneCode,data,kind,channel=0,decoration=false){
+      const lane=base36(laneCode), laneIndex=lane-2;
+      for(const token of dataPairs(data)){
+        const type=base36(token.pair[0]), widthCode=base36(token.pair[1]);if(!type)continue;
+        if(kind==='tap'&&![1,2,3,4,5,6,7,8].includes(type)){unknown.push(`小節${bar+1}：未知のタップ種別 ${token.pair[0]}`);continue;}
+        if(kind==='directional'&&![1,2,3,4,5,6].includes(type)){unknown.push(`小節${bar+1}：未知の方向指定 ${token.pair[0]}`);continue;}
+        if(kind==='slide'&&![1,2,3,5].includes(type)){unknown.push(`小節${bar+1}：未知のスライド種別 ${token.pair[0]}`);continue;}
+        if(laneIndex<0||laneIndex>11){unknown.push(`小節${bar+1}：レーン値 ${laneCode} が通常範囲外です`);}
+        notes.push({kind,type,width:Math.max(1,widthCode+1),rawWidth:widthCode,lane:Math.max(0,Math.min(11,laneIndex)),laneRaw:lane,bar,frac:token.fraction,channel,decoration});maxBar=Math.max(maxBar,bar+token.fraction);validLines++;
+      }
+    }
+    for(const raw of lines){
+      const line=raw.trim();if(!line||line.startsWith('//')||line.startsWith(';'))continue;
+      const metaMatch=line.match(/^#(\w+)\s+(.*)$/);
+      if(metaMatch){const key=metaMatch[1].toUpperCase();const val=metaMatch[2].trim().replace(/^(["'])(.*)\1$/,'$2');if(['TITLE','ARTIST','GENRE','DESIGNER','DIFFICULTY','PLAYLEVEL','BASEBPM','WAVEOFFSET'].includes(key))meta[key]=val;else if(key==='BPM')meta.BPM=Number(val)||120;continue;}
+      const scoreMatch=line.match(/^#([\w]+):\s*(.*)$/);if(!scoreMatch)continue;
+      const head=scoreMatch[1], data=scoreMatch[2].trim();
+      let m;
+      if((m=head.match(/^BPM(..)$/))){bpmDefs[m[1]]=Number(data)||120;continue;}
+      if((m=head.match(/^(\d{3})02$/))){barLengths.set(Number(m[1]),Number(data)||4);maxBar=Math.max(maxBar,Number(m[1]));continue;}
+      if((m=head.match(/^(\d{3})08$/))){for(const t of dataPairs(data))bpmRefs.push({bar:Number(m[1])+t.fraction,id:t.pair});maxBar=Math.max(maxBar,Number(m[1]));continue;}
+      if((m=head.match(/^(\d{3})1(.)$/))){addNotes(Number(m[1]),m[2],data,'tap');maxBar=Math.max(maxBar,Number(m[1]));continue;}
+      if((m=head.match(/^(\d{3})3(.)(.)$/))){addNotes(Number(m[1]),m[2],data,'slide',base36(m[3]),false);maxBar=Math.max(maxBar,Number(m[1]));continue;}
+      if((m=head.match(/^(\d{3})5(.)$/))){addNotes(Number(m[1]),m[2],data,'directional');maxBar=Math.max(maxBar,Number(m[1]));continue;}
+      if((m=head.match(/^(\d{3})9(.)(.)$/))){addNotes(Number(m[1]),m[2],data,'slide',base36(m[3]),true);maxBar=Math.max(maxBar,Number(m[1]));continue;}
+    }
+    notes.sort((a,b)=>(a.bar+a.frac)-(b.bar+b.frac)||a.lane-b.lane);
+    const bars=Math.max(1,Math.ceil(maxBar+0.001),...Array.from(barLengths.keys()).map(b=>b+1));
+    const warnings=[];
+    if(!meta.TITLE)warnings.push('譜面内に #TITLE がありません。');
+    if(!Object.keys(bpmDefs).length&&!meta.BPM)warnings.push('BPM定義が見つかりません。プレビューの縦位置は小節位置を基準にしています。');
+    if(notes.length>25000)throw new Error('安全のため25,000個を超えるデータ要素のプレビューは停止しました。');
+    if(unknown.length)warnings.push(...[...new Set(unknown)].slice(0,20));
+    if(notes.some(n=>n.kind==='slide'))warnings.push('スライドは同じチャンネルの開始点・中継点・終点から簡易的に結線しています。特殊な制御点は公式描画と一致しない場合があります。');
+    warnings.push('このTXTプレビューはブラウザー内の簡易SUSレンダラーです。公開済みSVG/PNGの表示が可能な場合はURLモードのほうが正確です。');
+    return {meta,bpmDefs,bpmRefs,barLengths,notes,bars,warnings,validLines};
+  }
+  function buildChartSvg(parsed){
+    const laneW=38,padL=38,padR=14,chartW=12*laneW+padL+padR,barH=104,top=26,bottom=20,segmentBars=4,gap=18;
+    const panelCount=Math.ceil(parsed.bars/segmentBars),panelH=barH*segmentBars+top+bottom,totalW=panelCount*chartW+Math.max(0,panelCount-1)*gap,totalH=panelH+46;
+    const css=`.bg{fill:#ab7ed3}.lane{stroke:#d8c6ec;stroke-width:1}.beat{stroke:#d7c7ea;stroke-width:1;opacity:.75}.bar{stroke:#fff;stroke-width:2.2;opacity:.9}.bar-no{fill:#fff;font-family:Arial,sans-serif;font-size:10px;font-weight:800}.panel-sep{fill:#ab7ed3}.slide{fill:#c9fce2;fill-opacity:.86}.slide-critical{fill:#fcf1c3;fill-opacity:.92}.decor{fill:#baf8dc;fill-opacity:.45;stroke:#d9fff0;stroke-width:1.2}.note{image-rendering:auto}.meta{fill:#675080;font-family:Arial,sans-serif;font-size:11px}.footer{fill:#fff;font-family:Arial,sans-serif;font-size:11px;font-weight:700}`;
+    const parts=[`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}" role="img" aria-label="SUS解析譜面"><style>${css}</style><rect width="100%" height="100%" fill="#f4effa"/>`];
+    const paneX=index=>index*(chartW+gap), paneForBar=bar=>Math.floor(bar/segmentBars), yFor=(bar,frac=0)=>top+(bar%segmentBars+frac)*barH;
+    for(let i=0;i<panelCount;i++){
+      const px=paneX(i);parts.push(`<g transform="translate(${px},0)"><rect class="bg" x="0" y="0" width="${chartW}" height="${panelH}"/>`);
+      for(let lane=0;lane<=12;lane++){const x=padL+lane*laneW;parts.push(`<line class="lane" x1="${x}" y1="${top}" x2="${x}" y2="${panelH-bottom}"/>`);}
+      for(let b=0;b<segmentBars;b++){const absBar=i*segmentBars+b;const y=top+b*barH;parts.push(`<line class="bar" x1="0" y1="${y}" x2="${chartW}" y2="${y}"/><text class="bar-no" x="5" y="${y+12}">${String(absBar+1).padStart(2,'0')}</text>`);for(let beat=1;beat<4;beat++){const by=y+beat*barH/4;parts.push(`<line class="beat" x1="${padL}" y1="${by}" x2="${chartW-padR}" y2="${by}"/>`);}}
+      parts.push(`<line class="bar" x1="0" y1="${panelH-bottom}" x2="${chartW}" y2="${panelH-bottom}"/>`);
+      const thisStart=i*segmentBars, thisEnd=thisStart+segmentBars;
+      // Draw slide bands behind all head notes.
+      const groups=new Map();for(const n of parsed.notes.filter(n=>n.kind==='slide'&&n.bar+ n.frac>=thisStart-0.001&&n.bar+n.frac<thisEnd+0.001)){const k=`${n.decoration?'d':'s'}-${n.channel}`;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(n);}
+      for(const [key,group] of groups){group.sort((a,b)=>(a.bar+a.frac)-(b.bar+b.frac));let start=null;for(const n of group){if(n.type===1){start=n;}else if(n.type===2&&start){const sy=yFor(start.bar,start.frac),ey=yFor(n.bar,n.frac);const sx=a=>padL+a.lane*laneW; const x0=sx(start),x1=sx(n);if(ey>sy){const mid=(sy+ey)/2,ww0=start.width*laneW,ww1=n.width*laneW;const path=`M ${x0} ${sy} C ${x0} ${mid} ${x1} ${mid} ${x1} ${ey} L ${x1+ww1} ${ey} C ${x1+ww1} ${mid} ${x0+ww0} ${mid} ${x0+ww0} ${sy} Z`;parts.push(`<path class="${start.decoration?'decor':(hasCriticalAt(parsed,start)?'slide-critical':'slide')}" d="${path}"/>`);}start=null;}}}
+      // Draw tap, directional and slide heads.
+      for(const n of parsed.notes){const absolute=n.bar+n.frac;if(absolute<thisStart-0.0001||absolute>=thisEnd+0.0001)continue;
+        const x=padL+n.lane*laneW+(laneW*n.width-laneW)/2;const y=yFor(n.bar,n.frac);const nx=padL+n.lane*laneW+laneW/2;const noteW=laneW*n.width;const noteH=16;
+        if(n.kind==='slide'){
+          if(n.type!==1&&n.type!==2)continue;
+          const num=hasCriticalAt(parsed,n)?0:1;
+          parts.push(`<image class="note" href="${NOTE_BASE}/notes_${num}.png" x="${x}" y="${y-noteH/2}" width="${noteW}" height="${noteH}" preserveAspectRatio="none"/>`);
+          continue;
+        }
+        if(n.kind==='tap'){
+          if(n.type===7||n.type===8)continue;
+          const dir=findDirectional(parsed,n);const trend=n.type===5||n.type===6;const crit=n.type===2||n.type===6||n.type===8||(dir&&hasCriticalAt(parsed,n));
+          let num=trend?(crit?5:(dir?6:4)):(crit?0:(dir||n.type===3?3:2));
+          if(trend){const fx=nx-laneW*.38;parts.push(`<image href="${NOTE_BASE}/${crit?'notes_friction_among_crtcl':'notes_friction_among_long'}.png" x="${fx}" y="${y-laneW*.38}" width="${laneW*.76}" height="${laneW*.76}"/>`);}
+          parts.push(`<image class="note" href="${NOTE_BASE}/notes_${num}.png" x="${x}" y="${y-noteH/2}" width="${noteW}" height="${noteH}" preserveAspectRatio="none"/>`);
+          if(n.type===3||dir){const d=dir?.type||1;addFlickArrow(parts,nx,y,n.width,d,crit,laneW);}
+          continue;
+        }
+        if(n.kind==='directional'){
+          const paired=findTap(parsed,n);const crit=paired&&(paired.type===2||paired.type===6);const num=3;
+          parts.push(`<image class="note" href="${NOTE_BASE}/notes_${num}.png" x="${x}" y="${y-noteH/2}" width="${noteW}" height="${noteH}" preserveAspectRatio="none"/>`);addFlickArrow(parts,nx,y,n.width,n.type,!!crit,laneW);
+        }
+      }
+      // Small title and BPM label in each panel.
+      const title=parsed.meta.TITLE||'SUS chart';parts.push(`<text class="meta" x="${padL}" y="${panelH+19}">${esc(String(title).slice(0,70))}</text><text class="meta" x="${chartW-padR}" y="${panelH+19}" text-anchor="end">BARS ${thisStart+1}–${Math.min(parsed.bars,thisEnd)}</text></g>`);
+    }
+    parts.push(`<rect x="0" y="${totalH-22}" width="${totalW}" height="22" fill="#fff" fill-opacity=".85"/><text class="footer" x="10" y="${totalH-7}" fill="#7c679b">SUS Preview · notes use Project SEKAI note textures</text></svg>`);
+    return parts.join('');
+  }
+  function addFlickArrow(parts,cx,y,width,type,critical,laneW){
+    if(![1,3,4].includes(type))return;
+    const w=Math.max(1,Math.min(width,6)),diag=type===3||type===4,flip=type===4;
+    const suffix=`${critical?'_crtcl':''}_${String(w).padStart(2,'0')}${diag?'_diagonal':''}.png`;
+    const iw=laneW*1.7,ih=laneW*.72,x=cx-iw/2+(type===3?-laneW*.2:type===4?laneW*.2:0);
+    parts.push(`<image href="${NOTE_BASE}/notes_flick_arrow${suffix}" x="${x}" y="${y-ih*.88}" width="${iw}" height="${ih}"${flip?` transform="translate(${2*cx} 0) scale(-1 1)"`:''}/>`);
+  }
+  function findDirectional(parsed,n){return parsed.notes.find(x=>x.kind==='directional'&&Math.abs(x.bar-n.bar)<.0001&&Math.abs(x.frac-n.frac)<.0001&&x.lane===n.lane);}
+  function findTap(parsed,n){return parsed.notes.find(x=>x.kind==='tap'&&Math.abs(x.bar-n.bar)<.0001&&Math.abs(x.frac-n.frac)<.0001&&x.lane===n.lane);}
+  function hasCriticalAt(parsed,n){const tap=findTap(parsed,n);return !!tap&&[2,6,8].includes(tap.type);}
+  function sampleSus(){return `#TITLE "SUSプレビューサンプル"
+#ARTIST "Chart Studio"
+#BPM 145
+#BPM01:145
+#00002:4
+#00012:1000200030004000
+#000320:10000000
+#002320:20000000
+#00052:10000000
+#00053:30000000
+#00112:20000000
+#00115:50000000
+#00212:60000000
+#00312:30000000
+#00352:40000000
+`;}
+  function exportSvg(){
+    if(!state.currentSvg){showStatus('保存できるSVGプレビューがありません。TXTを解析した場合のみSVGを直接保存できます。','error');return;}
+    if(state.currentImage&&!state.lastParsed){showStatus('公開済みSVG/PNGはソースリンクから開いてください。TXT解析プレビューのみSVG保存できます。','error');return;}
+    const blob=new Blob([state.currentSvg],{type:'image/svg+xml;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='sekai-chart-preview.svg';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);showStatus('SVGを書き出しました。','success');
+  }
+  async function fetchWithTimeout(url, timeoutMs=9000){
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try{return await fetch(url,{signal:controller.signal});}finally{clearTimeout(timer);}
+  }
+  async function loadMasters(){
+    showStatus('楽曲・難易度マスターを読み込み中…');
+    try{
+      const [mRes,dRes]=await Promise.all([fetchWithTimeout(MASTER_MUSICS),fetchWithTimeout(MASTER_DIFFICULTIES)]);
+      if(!mRes.ok||!dRes.ok)throw new Error('マスターデータの取得に失敗しました');
+      const [musics,diffs]=await Promise.all([mRes.json(),dRes.json()]);
+      if(!Array.isArray(musics)||!Array.isArray(diffs))throw new Error('マスターデータ形式が正しくありません');
+      state.musics=musics.filter(m=>m&&m.id!=null&&m.title).sort((a,b)=>a.title.localeCompare(b.title,'ja'));state.diffRows=diffs.filter(d=>d&&d.musicId!=null&&d.musicDifficulty!=null);state.mastersLoaded=true;
+      const target=state.musics.find(m=>Number(m.id)===304)||state.musics[0];$('songSearch').value='';state.selectedMusic=target;renderSongOptions(false);$('songSelect').value=String(target.id);renderDifficultyOptions('append');updateMusicCard();showStatus(`マスターデータ読込完了：${state.musics.length.toLocaleString()}曲`,'success');
+    }catch(e){
+      state.musics=[{id:304,title:'なんです',pronunciation:'',lyricist:'',composer:'',arranger:''}];state.diffRows=[];state.selectedMusic=state.musics[0];$('songSearch').value='';renderSongOptions(false);$('songSelect').value='304';renderDifficultyOptions('append');updateMusicCard();showStatus('マスターデータに接続できません。URLの手入力とTXT貼り付けは引き続き利用できます。','error');
+    }
+  }
+  function init(){
+    document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>toggleMode(b.dataset.tab)));
+    $('songSearch').addEventListener('input',()=>renderSongOptions(true));
+    $('songSelect').addEventListener('change',()=>{const id=$('songSelect').value;if(id)selectMusic(id);});
+    $('difficultySelect').addEventListener('change',()=>{state.selectedDiff=$('difficultySelect').value;updateMusicCard();});
+    $('loadUrl').addEventListener('click',loadUrl);$('openUrl').addEventListener('click',openSourceUrl);$('copyUrl').addEventListener('click',copyUrl);
+    $('chartUrl').addEventListener('keydown',e=>{if(e.key==='Enter')loadUrl();});
+    $('parseText').addEventListener('click',()=>renderParsedChart($('susText').value));$('sampleText').addEventListener('click',()=>{$('susText').value=sampleSus();renderParsedChart($('susText').value);});
+    $('zoomIn').addEventListener('click',()=>{state.zoom=Math.min(2.5,state.zoom+.1);applyZoom();});$('zoomOut').addEventListener('click',()=>{state.zoom=Math.max(.3,state.zoom-.1);applyZoom();});$('fitChart').addEventListener('click',resetZoom);$('downloadChart').addEventListener('click',exportSvg);
+    $('chartUrl').addEventListener('change',()=>{$('sourceLink').href=$('chartUrl').value;});
+    loadMasters();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
