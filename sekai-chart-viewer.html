@@ -43,7 +43,7 @@ button.g{background:#e8f1fb;color:var(--ink)}.row{display:flex;gap:6px;margin:6p
   <textarea id="txt" placeholder="#BPM01: 120&#10;#00008: 01&#10;#00012: 11000000 …"></textarea>
   <div class="row"><button id="goT">貼り付けから描画</button><button id="smp" class="g">サンプル</button></div></section>
  <section class="p"><h2>③ 表示</h2><div class="mut">拡大（1拍あたり px）：<b id="zv">36</b></div><input id="zm" type="range" min="16" max="400" value="36">
-  <div class="mut" style="margin-top:6px">1列あたりの小節数</div><select id="bpc"><option>4</option><option selected>8</option><option>12</option><option>16</option></select><div class="mut" style="margin-top:10px">範囲表示（別タブ）：開始小節／小節数／間隔px</div><div class="row"><input id="r0" type="number" min="0" value="0"><input id="rn" type="number" min="1" value="4"><input id="rz" type="number" min="8" max="1000" value="120"></div><button id="goR">別タブで開く</button></section>
+  <div class="mut" style="margin-top:6px">1列あたりの小節数</div><select id="bpc"><option>4</option><option selected>8</option><option>12</option><option>16</option></select><div class="mut" style="margin-top:10px">拡大表示（別タブ）：全体を、上の「拡大」と「1列あたりの小節数」のとおりに分割して表示</div><button id="goR" style="margin-top:6px">拡大表示を別タブで開く</button></section>
 </aside>
 <section id="view"><div id="bar"></div><div id="legend"></div><div id="chart"><div id="msg">左で曲と難易度を選ぶか、SUSを貼り付けてください。</div></div></section>
 </main>
@@ -95,7 +95,8 @@ const body=(x,y,w,k,a=1,h=14)=>{const c=C[k];return`<g opacity="${a}"><rect x="$
 const gem=(x,y,k)=>{const f=k==='crit'?['#f8d24f','#d9981a']:k==='flick'?['#f598b1','#d85a82']:['#6fe3b8','#27b185'];return`<polygon points="${x},${y-7} ${x+6.5},${y} ${x},${y+7} ${x-6.5},${y}" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.5"/><polygon points="${x},${y-7} ${x-6.5},${y} ${x},${y}" fill="#fff" opacity=".8"/>`};
 const arrow=(cx,y,w,dir,k)=>{const f=k==='crit'?['#f7c21f','#e29408']:['#f0728f','#d93f66'],a=8+Math.min(w,6)*3.2,b=7+Math.min(w,6)*1.6;return`<g transform="translate(${cx+dir*LW/3} ${y-9}) rotate(${dir*28})"><polygon points="${-a},0 0,${-b} ${a},0 ${a},6 0,${6-b} ${-a},6" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.6" stroke-linejoin="round"/></g>`};
 const trc=(x,y,w,cr,fl,d=0)=>{const c=cr?['#fff3c2','#e0a21a']:fl?['#ffe3ec','#ee7a98']:['#dff7ec','#27b185'];return`<rect x="${x}" y="${y-4}" width="${w}" height="8" rx="4" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${gem(x+w/2,y,cr?'crit':fl?'flick':'long')}${fl?`<path d="M${x+w/2-7} ${y-9}l7-6 7 6" fill="none" stroke="${cr?'#ee4a6e':'#d93f66'}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="rotate(${d*28} ${x+w/2} ${y})"/>`:''}`};
-const dirOf=n=>{const d=n.k==='dir'?n:n.dir;return!d?null:d.t===3?-1:d.t===4?1:d.t===1?0:d.t===2?0:null};
+/* 方向: 1,2=上 / 3,5=左 / 4,6=右（5,6は左右へ広がるワイドフリックで使われる）。未知の種別も矢印は必ず出す */
+const dirOf=n=>{const d=n.k==='dir'?n:n.dir;return!d?null:d.t===3||d.t===5?-1:d.t===4||d.t===6?1:0};
 /* ---------- レイアウト & SVG生成 ---------- */
 function render(S,ppb,BPC,R0=0,RN=0){
  const{notes,ev}=S;let maxBar=0;notes.forEach(n=>maxBar=Math.max(maxBar,n.bar));ev.forEach(e=>maxBar=Math.max(maxBar,e.bar));
@@ -118,14 +119,14 @@ function render(S,ppb,BPC,R0=0,RN=0){
   const fl=k==='dir'||(k==='sl'&&n.t===2&&!!n.dir);if(tr)cols[c].a.push(trc(x,y,w,cr,fl,fl&&d||0));else cols[c].n.push(body(x,y,w,kind));
   if(d!==null&&!tr&&(k==='dir'||(k==='sl'&&n.t===2)))cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))});
  /* 列ごとに組み立て */
- let out='';for(let c=0;c<nc;c++){const b0=m0+c*BPC,b1=Math.min(b0+BPC,m1),o=cols[c],ox=c*COLW;let g='';
+ let out='';const cs=[];for(let c=0;c<nc;c++){const b0=m0+c*BPC,b1=Math.min(b0+BPC,m1),o=cols[c],ox=c*COLW;let g='';
   for(let i=0;i<12;i++)g+=`<rect x="${PL+i*LW}" y="${TOP}" width="${LW}" height="${colH}" fill="${i%2?'#eef5fd':'#f8fbff'}"/>`;
   for(let i=0;i<=12;i++)g+=`<line x1="${PL+i*LW}" x2="${PL+i*LW}" y1="${TOP}" y2="${bot}" stroke="#cfdcf0" stroke-width="${i%12?1:1.5}"/>`;
   for(let b=b0;b<=b1;b++){const y=Y(c,b);g+=`<line x1="${PL-4}" x2="${PL+12*LW}" y1="${y}" y2="${y}" stroke="#9db4d6" stroke-width="1.6"/>`;if(b<b1||b===m1)g+=`<text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" font-weight="700" fill="#5b7194">${b}</text>`;
    if(b<b1)for(let k=1;k<len[b];k++){const yy=Y(c,b+k/len[b]);g+=`<line x1="${PL}" x2="${PL+12*LW}" y1="${yy}" y2="${yy}" stroke="#dbe6f5" stroke-width="1"/>`}}
   ev.forEach(e=>{if(e.bar<b0||e.bar>=b1+(c===nc-1?1:0)||(!e.bpm&&!e.text))return;const y=Y(c,e.bar);if(e.bpm)g+=`<text x="${PL+12*LW+6}" y="${y-3}" font-size="11" font-weight="700" fill="#d98a00">♩${+(+e.bpm).toFixed(2)}</text>`;if(e.text)g+=`<text x="${PL+12*LW+6}" y="${y+12}" font-size="10" font-weight="700" fill="${e.text==='SKILL'?'#2fa6e8':e.text[0]==='F'?'#ee4a6e':'#a94fe0'}">${e.text}</text>`});
-  out+=`<g transform="translate(${ox} 0)"><clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${o.p.join('')}</g>${o.n.join('')}${o.a.join('')}<text x="${PL}" y="16" font-size="11" fill="#74829f">小節 ${b0}–${b1-1}</text></g>`}
- return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total};
+  const inner=`<clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${o.p.join('')}</g>${o.n.join('')}${o.a.join('')}<text x="${PL}" y="16" font-size="11" fill="#74829f">小節 ${b0}–${b1-1}</text>`;cs.push(inner);out+=`<g transform="translate(${ox} 0)">${inner}</g>`}
+ return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total,cs,w:COLW,h:H};
 }
 /* ---------- UI ---------- */
 let songs=[],diffs={},cur=null,curD=null,auto='';
@@ -174,9 +175,9 @@ $('#list').onclick=e=>{const b=e.target.closest('.it');if(b)pick(b.dataset.id)};
 $('#dif').onclick=e=>{const s=e.target.closest('.dc');if(s)setDiff(s.dataset.d)};
 $('#q').oninput=drawList;$('#goU').onclick=loadURL;$('#goT').onclick=()=>draw($('#txt').value);
 $('#zm').oninput=()=>{$('#zv').textContent=$('#zm').value;if(view==='svg')zoomSVG()};
-$('#goR').onclick=()=>{const t=$('#txt').value;if(!t.trim()||view==='svg'){st('範囲表示にはSUSの解析が必要です（SVG画像表示では使えません）');return}
- const a=Math.max(0,+$('#r0').value||0),n=Math.max(1,+$('#rn').value||1),z=Math.min(1000,Math.max(8,+$('#rz').value||120)),w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
- try{const R=render(parseSUS(t),z,n,a,n),T=`小節 ${a}–${a+n-1}（${z}px/拍）`;w.document.write(`<!doctype html><meta charset="utf-8"><title>${T}</title><body style="margin:0;background:#f7fbff;font:13px system-ui;color:#27324a"><div style="padding:8px 14px;background:#fff;border-bottom:2px solid #2fbfae">${T}</div><div style="max-width:760px;margin:auto">${R.svg.replace('<svg ','<svg style="width:100%;height:auto;display:block" ')}</div>`);w.document.close()}catch(e){w.close();st('解析エラー: '+e.message)}};
+$('#goR').onclick=()=>{const t=$('#txt').value;if(!t.trim()||view==='svg'){st('拡大表示にはSUSの解析が必要です（SVG画像表示では使えません）');return}
+ const z=+$('#zm').value,n=+$('#bpc').value,w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
+ try{const R=render(parseSUS(t),z,n),T=`拡大表示（全${R.total}小節・${n}小節/列・${z}px/拍）`;w.document.write(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${T}</title><body style="margin:0;background:#f7fbff;font:13px system-ui;color:#27324a"><div style="padding:8px 14px;background:#fff;border-bottom:2px solid #2fbfae;position:sticky;top:0;z-index:2">${T}</div><div style="max-width:760px;margin:auto">${R.cs.map(x=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${R.w} ${R.h}" style="width:100%;height:auto;display:block;margin-bottom:12px" font-family="system-ui,sans-serif">${x}</svg>`).join('')}</div>`);w.document.close()}catch(e){w.close();st('解析エラー: '+e.message)}};
 $('#zm').onchange=$('#bpc').onchange=()=>{if(view==='svg')zoomSVG();else if($('#txt').value.trim())draw($('#txt').value)};
 $('#src').onchange=()=>{if(cur&&curD)setDiff(curD)};
 $('#smp').onclick=()=>{$('#txt').value=SAMPLE;draw(SAMPLE)};
