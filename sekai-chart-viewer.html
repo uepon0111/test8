@@ -42,8 +42,8 @@ button.g{background:#e8f1fb;color:var(--ink)}.row{display:flex;gap:6px;margin:6p
   <div class="mut">またはテキストを貼り付け</div>
   <textarea id="txt" placeholder="#BPM01: 120&#10;#00008: 01&#10;#00012: 11000000 …"></textarea>
   <div class="row"><button id="goT">貼り付けから描画</button><button id="smp" class="g">サンプル</button></div></section>
- <section class="p"><h2>③ 表示</h2><div class="mut">拡大（1拍あたり px）</div><input id="zm" type="range" min="16" max="80" value="36">
-  <div class="mut" style="margin-top:6px">1列あたりの小節数</div><select id="bpc"><option>4</option><option selected>8</option><option>12</option><option>16</option></select></section>
+ <section class="p"><h2>③ 表示</h2><div class="mut">拡大（1拍あたり px）：<b id="zv">36</b></div><input id="zm" type="range" min="16" max="400" value="36">
+  <div class="mut" style="margin-top:6px">1列あたりの小節数</div><select id="bpc"><option>4</option><option selected>8</option><option>12</option><option>16</option></select><div class="mut" style="margin-top:10px">範囲表示（別タブ）：開始小節／小節数／間隔px</div><div class="row"><input id="r0" type="number" min="0" value="0"><input id="rn" type="number" min="1" value="4"><input id="rz" type="number" min="8" max="1000" value="120"></div><button id="goR">別タブで開く</button></section>
 </aside>
 <section id="view"><div id="bar"></div><div id="legend"></div><div id="chart"><div id="msg">左で曲と難易度を選ぶか、SUSを貼り付けてください。</div></div></section>
 </main>
@@ -81,7 +81,7 @@ function parseSUS(text){
  raw.forEach((s,i)=>{if(del.has(i)||s.k!=='sl')return;s.head??=s;
   for(const j of by[s.bk]){const t=raw[j];if(!del.has(j)&&t.k==='tap'&&same(t,s)){del.add(j);s.tap=t}}
   for(const j of by[s.bk]){const d=raw[j];if(!del.has(j)&&d.k==='dir'&&same(d,s)){del.add(j);s.dir=d;if(d.tap)s.tap=d.tap}}
-  if(s.t!==2)for(let j=i+1;j<raw.length;j++){const n=raw[j];if(del.has(j)||n.k!=='sl'||n.ch!==s.ch||n.deco!==s.deco)continue;s.next=n;n.head=s.head;break}});
+  if(s.t!==2)for(let j=i+1;j<raw.length;j++){const n=raw[j];if(del.has(j)||n.k!=='sl'||n.t===1||n.ch!==s.ch||n.deco!==s.deco)continue;s.next=n;n.head=s.head;break}});
  return{meta,ev:ev.sort((a,b)=>a.bar-b.bar),notes:raw.filter((_,i)=>!del.has(i))};
 }
 const crit=n=>n.k==='tap'?[2,6,8].includes(n.t):n.k==='dir'?!!(n.tap&&crit(n.tap)):!!((n.tap&&crit(n.tap))||(n.dir&&crit(n.dir))||(n.head!==n&&crit(n.head)));
@@ -94,43 +94,44 @@ const C={tap:['#eaf0ff','#9c8be8','#8fa4f7'],long:['#e5fbee','#4fd9a0','#4fd9a0'
 const body=(x,y,w,k,a=1,h=14)=>{const c=C[k];return`<g opacity="${a}"><rect x="${x-2}" y="${y-h/2-2}" width="${w+4}" height="${h+4}" rx="8" fill="${c[1]}" opacity=".25"/><rect x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="6" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${k==='tap'&&h>8?`<rect x="${x+2}" y="${y+h/2-3.5}" width="${w-4}" height="3" rx="1.5" fill="#43dcf3"/>`:''}${h>8?`<rect x="${x+3}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/><rect x="${x+w-7}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/>`:''}</g>`};
 const gem=(x,y,k)=>{const f=k==='crit'?['#f8d24f','#d9981a']:k==='flick'?['#f598b1','#d85a82']:['#6fe3b8','#27b185'];return`<polygon points="${x},${y-7} ${x+6.5},${y} ${x},${y+7} ${x-6.5},${y}" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.5"/><polygon points="${x},${y-7} ${x-6.5},${y} ${x},${y}" fill="#fff" opacity=".8"/>`};
 const arrow=(cx,y,w,dir,k)=>{const f=k==='crit'?['#f7c21f','#e29408']:['#f0728f','#d93f66'],a=8+Math.min(w,6)*3.2,b=7+Math.min(w,6)*1.6;return`<g transform="translate(${cx+dir*LW/3} ${y-9}) rotate(${dir*28})"><polygon points="${-a},0 0,${-b} ${a},0 ${a},6 0,${6-b} ${-a},6" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.6" stroke-linejoin="round"/></g>`};
+const trc=(x,y,w,cr,fl,d=0)=>{const c=cr?['#fff3c2','#e0a21a']:fl?['#ffe3ec','#ee7a98']:['#dff7ec','#27b185'];return`<rect x="${x}" y="${y-4}" width="${w}" height="8" rx="4" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${gem(x+w/2,y,cr?'crit':fl?'flick':'long')}${fl?`<path d="M${x+w/2-7} ${y-9}l7-6 7 6" fill="none" stroke="${cr?'#ee4a6e':'#d93f66'}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="rotate(${d*28} ${x+w/2} ${y})"/>`:''}`};
 const dirOf=n=>{const d=n.k==='dir'?n:n.dir;return!d?null:d.t===3?-1:d.t===4?1:d.t===1?0:d.t===2?0:null};
 /* ---------- レイアウト & SVG生成 ---------- */
-function render(S,ppb,BPC){
+function render(S,ppb,BPC,R0=0,RN=0){
  const{notes,ev}=S;let maxBar=0;notes.forEach(n=>maxBar=Math.max(maxBar,n.bar));ev.forEach(e=>maxBar=Math.max(maxBar,e.bar));
  const total=Math.floor(maxBar+1e-9)+1,len=[],cum=[0];let cl=4,ei=0;const lens=ev.filter(e=>e.len).sort((a,b)=>a.bar-b.bar);
  for(let b=0;b<=total;b++){while(ei<lens.length&&lens[ei].bar<=b)cl=lens[ei++].len;len[b]=cl;cum[b+1]=cum[b]+cl}
- const cb=B=>{const m=Math.min(Math.floor(B+1e-9),total);return cum[m]+(B-m)*len[m]},nc=Math.ceil(total/BPC);
- let colH=0;for(let c=0;c<nc;c++)colH=Math.max(colH,(cb(Math.min((c+1)*BPC,total))-cb(c*BPC))*ppb);
- const bot=TOP+colH,H=bot+26,Y=(c,B)=>bot-(cb(B)-cb(c*BPC))*ppb,X=n=>PL+(n.lane-2)*LW,col=n=>Math.min(nc-1,Math.floor(n.bar/BPC+1e-9));
+ const cb=B=>{const m=Math.min(Math.floor(B+1e-9),total);return cum[m]+(B-m)*len[m]},m0=Math.min(Math.max(0,Math.floor(R0)),total-1),m1=RN?Math.min(total,m0+Math.floor(RN)):total,nc=Math.max(1,Math.ceil((m1-m0)/BPC));
+ let colH=0;for(let c=0;c<nc;c++)colH=Math.max(colH,(cb(Math.min(m0+(c+1)*BPC,m1))-cb(m0+c*BPC))*ppb);
+ const bot=TOP+colH,H=bot+26,Y=(c,B)=>bot-(cb(B)-cb(m0+c*BPC))*ppb,X=n=>PL+(n.lane-2)*LW,col=n=>Math.max(0,Math.min(nc-1,Math.floor((n.bar-m0)/BPC+1e-9)));
  /* ロング（スライド）の経路 */
  const chains=[];notes.filter(n=>n.k==='sl'&&n.t===1).forEach(s=>{let a=s;const segs=[],gems=[];while(a.t!==2&&a.next){let b=a.next;const mid=[];for(;;){if(b.t===3)mid.push(b);if(isPath(b)||!b.next)break;b=b.next}segs.push([a,b]);gems.push(...mid);a=b}if(segs.length)chains.push({s,segs,gems,c0:s.bar,c1:segs[segs.length-1][1].bar})});
  const cnt={tap:0,crit:0,flick:0,hold:0,relay:0,trace:0,dmg:0};let combo=0;const cols=Array.from({length:nc},()=>({g:[],p:[],n:[],m:[],a:[],t:[]}));
- chains.forEach(ch=>{const cr=crit(ch.s);for(let c=Math.floor(ch.c0/BPC+1e-9);c<=Math.min(nc-1,Math.floor(ch.c1/BPC+1e-9));c++){let L='',R='';ch.segs.forEach(([a,b],i)=>{const y0=Y(c,a.bar),y1=Y(c,b.bar),d=(y1-y0)/3,l0=X(a),r0=l0+a.w*LW,l1=X(b),r1=l1+b.w*LW;L+=(i?'':`M${l0} ${y0}`)+`C${l0} ${y0+d} ${l1} ${y0+2*d} ${l1} ${y1}`;R=`C${r1} ${y0+2*d} ${r0} ${y0+d} ${r0} ${y0}`+R;if(i===ch.segs.length-1)R=`L${r1} ${y1}`+R});cols[c].p.push(`<path d="${L+R}Z" fill="${cr?'#fcefb4':'#bff5da'}" opacity=".78"/>`)}
-  ch.gems.forEach(m=>{if(none(m)||m.deco)return;const c=col(m),seg=ch.segs.find(([a,b])=>a.bar<=m.bar&&m.bar<=b.bar)||ch.segs[0],[a,b]=seg,y0=Y(c,a.bar),y1=Y(c,b.bar),ym=Y(c,m.bar),f=y1===y0?0:(ym-y0)/(y1-y0),s=f*f*(3-2*f),xa=X(a)+a.w*LW/2,xb=X(b)+b.w*LW/2;cols[c].a.push(gem(xa+(xb-xa)*s,ym,crit(m)?'crit':'long'))})});
- notes.forEach(n=>{if(n.deco||none(n))return;const c=col(n),y=Y(c,n.bar),x=X(n)+1,w=n.w*LW-2,cr=crit(n),tr=trend(n),k=n.k,d=dirOf(n);let kind;
+ chains.forEach(ch=>{const cr=crit(ch.s);for(let c=Math.max(0,Math.floor((ch.c0-m0)/BPC+1e-9));c<=Math.min(nc-1,Math.floor((ch.c1-m0)/BPC+1e-9));c++){let L='',R='';ch.segs.forEach(([a,b],i)=>{const y0=Y(c,a.bar),y1=Y(c,b.bar),d=(y1-y0)/3,l0=X(a),r0=l0+a.w*LW,l1=X(b),r1=l1+b.w*LW;L+=(i?'':`M${l0} ${y0}`)+`C${l0} ${y0+d} ${l1} ${y0+2*d} ${l1} ${y1}`;R=`C${r1} ${y0+2*d} ${r0} ${y0+d} ${r0} ${y0}`+R;if(i===ch.segs.length-1)R=`L${r1} ${y1}`+R});cols[c].p.push(`<path d="${L+R}Z" fill="${cr?'#fcefb4':'#bff5da'}" opacity=".78"/>`)}
+  ch.gems.forEach(m=>{if(none(m)||m.deco||m.bar<m0-1e-9||m.bar>m1+1e-9)return;const c=col(m),seg=ch.segs.find(([a,b])=>a.bar<=m.bar&&m.bar<=b.bar)||ch.segs[0],[a,b]=seg,y0=Y(c,a.bar),y1=Y(c,b.bar),ym=Y(c,m.bar),f=y1===y0?0:(ym-y0)/(y1-y0),s=f*f*(3-2*f),xa=X(a)+a.w*LW/2,xb=X(b)+b.w*LW/2;{const xc=xa+(xb-xa)*s,wi=(a.w+(b.w-a.w)*s)*LW-2,cm=crit(m);cols[c].a.push(trend(m)?trc(xc-wi/2,ym,wi,cm,false):gem(xc,ym,cm?'crit':'long'))}})});
+ notes.forEach(n=>{if(n.deco||none(n)||n.bar<m0-1e-9||n.bar>m1+1e-9)return;const c=col(n),y=Y(c,n.bar),x=X(n)+1,w=n.w*LW-2,cr=crit(n),tr=trend(n),k=n.k,d=dirOf(n);let kind;
   if(k==='tap'){if(n.t===4){kind='dmg';cnt.dmg++}else if(tr){kind=cr?'crit':'tap';cnt.trace++;combo++}else{kind=cr?'crit':'tap';cnt[cr?'crit':'tap']++;combo++}}
   else if(k==='dir'){kind=cr?'crit':'flick';if(tr)cnt.trace++;else cnt.flick++;combo++}
-  else{if(n.t===5||n.t===0)return;if(n.t===3&&!n.tap&&!n.dir){cnt.relay++;combo++;return}
-   if(n.t===3){cnt.relay++;combo++}else{combo++;if(n.t===1)cnt.hold++}
+  else{if(n.t===5||n.t===0)return;if(n.t===3){cnt.relay++;combo++;if(tr)cnt.trace++;return}
+   combo++;if(n.t===1)cnt.hold++;
    kind=cr?'crit':n.t===2&&n.dir?'flick':'long';if(tr)cnt.trace++;else if(n.dir&&n.t===2)cnt.flick++}
-  cols[c].n.push(body(x,y,w,kind,tr?.55:1,tr?6:14));if(tr)cols[c].a.push(gem(X(n)+n.w*LW/2,y,cr?'crit':k==='dir'||n.dir?'flick':'long'));
-  if(d!==null&&!tr)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))});
+  const fl=k==='dir'||(k==='sl'&&n.t===2&&!!n.dir);if(tr)cols[c].a.push(trc(x,y,w,cr,fl,fl&&d||0));else cols[c].n.push(body(x,y,w,kind));
+  if(d!==null&&!tr&&(k==='dir'||(k==='sl'&&n.t===2)))cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))});
  /* 列ごとに組み立て */
- let out='';for(let c=0;c<nc;c++){const b0=c*BPC,b1=Math.min(b0+BPC,total),o=cols[c],ox=c*COLW;let g='';
+ let out='';for(let c=0;c<nc;c++){const b0=m0+c*BPC,b1=Math.min(b0+BPC,m1),o=cols[c],ox=c*COLW;let g='';
   for(let i=0;i<12;i++)g+=`<rect x="${PL+i*LW}" y="${TOP}" width="${LW}" height="${colH}" fill="${i%2?'#eef5fd':'#f8fbff'}"/>`;
   for(let i=0;i<=12;i++)g+=`<line x1="${PL+i*LW}" x2="${PL+i*LW}" y1="${TOP}" y2="${bot}" stroke="#cfdcf0" stroke-width="${i%12?1:1.5}"/>`;
-  for(let b=b0;b<=b1;b++){const y=Y(c,b);g+=`<line x1="${PL-4}" x2="${PL+12*LW}" y1="${y}" y2="${y}" stroke="#9db4d6" stroke-width="1.6"/>`;if(b<b1||b===total)g+=`<text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" font-weight="700" fill="#5b7194">${b}</text>`;
+  for(let b=b0;b<=b1;b++){const y=Y(c,b);g+=`<line x1="${PL-4}" x2="${PL+12*LW}" y1="${y}" y2="${y}" stroke="#9db4d6" stroke-width="1.6"/>`;if(b<b1||b===m1)g+=`<text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" font-weight="700" fill="#5b7194">${b}</text>`;
    if(b<b1)for(let k=1;k<len[b];k++){const yy=Y(c,b+k/len[b]);g+=`<line x1="${PL}" x2="${PL+12*LW}" y1="${yy}" y2="${yy}" stroke="#dbe6f5" stroke-width="1"/>`}}
   ev.forEach(e=>{if(e.bar<b0||e.bar>=b1+(c===nc-1?1:0)||(!e.bpm&&!e.text))return;const y=Y(c,e.bar);if(e.bpm)g+=`<text x="${PL+12*LW+6}" y="${y-3}" font-size="11" font-weight="700" fill="#d98a00">♩${+(+e.bpm).toFixed(2)}</text>`;if(e.text)g+=`<text x="${PL+12*LW+6}" y="${y+12}" font-size="10" font-weight="700" fill="${e.text==='SKILL'?'#2fa6e8':e.text[0]==='F'?'#ee4a6e':'#a94fe0'}">${e.text}</text>`});
   out+=`<g transform="translate(${ox} 0)"><clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${o.p.join('')}</g>${o.n.join('')}${o.a.join('')}<text x="${PL}" y="16" font-size="11" fill="#74829f">小節 ${b0}–${b1-1}</text></g>`}
- return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total};
+ return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total};
 }
 /* ---------- UI ---------- */
 let songs=[],diffs={},cur=null,curD=null,auto='';
 const st=t=>$('#st').textContent=t,jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
 const LEG=(()=>{const f=(w,k,dr)=>`<svg width="${w*LW+20}" height="34"><g transform="translate(10 0)">${body(1,24,w*LW-2,k)}${dr===undefined?'':arrow(w*LW/2,24,w,dr,k==='crit'?'crit':'flick')}</g></svg>`;
- return[['タップ',f(2,'tap')],['クリティカル',f(2,'crit')],['フリック',f(2,'flick',0)],['ロング',f(2,'long')],['中継点',`<svg width="30" height="34"><g>${gem(15,20,'long')}</g></svg>`],['トレース',`<svg width="52" height="34"><g>${body(6,20,40,'tap',.55,6)}${gem(26,20,'long')}</g></svg>`],['ダメージ',f(2,'dmg')]].map(([n,s])=>`<span style="display:inline-flex;align-items:center;font-size:11px;margin-right:6px">${s}${n}</span>`).join('')})();
+ return[['タップ',f(2,'tap')],['クリティカル',f(2,'crit')],['フリック',f(2,'flick',0)],['ロング',f(2,'long')],['中継点',`<svg width="30" height="34"><g>${gem(15,20,'long')}</g></svg>`],['トレース',`<svg width="46" height="34">${trc(4,20,38,0,0)}</svg>`],['フリックトレース',`<svg width="46" height="34">${trc(4,22,38,0,1)}</svg>`],['クリティカルトレース',`<svg width="46" height="34">${trc(4,20,38,1,0)}</svg>`],['クリティカルフリックトレース',`<svg width="46" height="34">${trc(4,22,38,1,1)}</svg>`],['ダメージ',f(2,'dmg')]].map(([n,s])=>`<span style="display:inline-flex;align-items:center;font-size:11px;margin-right:6px">${s}${n}</span>`).join('')})();
 $('#legend').innerHTML=LEG;
 function drawList(){const k=$('#q').value.trim().toLowerCase(),hit=songs.filter(s=>!k||[s.id,s.title,s.pronunciation,s.lyricist,s.composer,s.arranger].join('\n').toLowerCase().includes(k));
  $('#list').innerHTML=hit.slice(0,120).map(s=>`<button class="it ${cur&&cur.id===s.id?'on':''}" data-id="${s.id}"><img loading="lazy" src="${jacket(s)}" alt=""><span><b>${esc(s.title)}</b><small>#${s.id} ／ ${esc(s.composer||'')}</small></span></button>`).join('')+(hit.length>120?`<p class="mut">他 ${hit.length-120} 件… 検索で絞り込んでください</p>`:'')}
@@ -172,7 +173,10 @@ function draw(text){view='sus';try{const S=parseSUS(text),R=render(S,+$('#zm').v
 $('#list').onclick=e=>{const b=e.target.closest('.it');if(b)pick(b.dataset.id)};
 $('#dif').onclick=e=>{const s=e.target.closest('.dc');if(s)setDiff(s.dataset.d)};
 $('#q').oninput=drawList;$('#goU').onclick=loadURL;$('#goT').onclick=()=>draw($('#txt').value);
-$('#zm').oninput=()=>{if(view==='svg')zoomSVG()};
+$('#zm').oninput=()=>{$('#zv').textContent=$('#zm').value;if(view==='svg')zoomSVG()};
+$('#goR').onclick=()=>{const t=$('#txt').value;if(!t.trim()||view==='svg'){st('範囲表示にはSUSの解析が必要です（SVG画像表示では使えません）');return}
+ const a=Math.max(0,+$('#r0').value||0),n=Math.max(1,+$('#rn').value||1),z=Math.min(1000,Math.max(8,+$('#rz').value||120)),w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
+ try{const R=render(parseSUS(t),z,n,a,n),T=`小節 ${a}–${a+n-1}（${z}px/拍）`;w.document.write(`<!doctype html><meta charset="utf-8"><title>${T}</title><body style="margin:0;background:#f7fbff;font:13px system-ui;color:#27324a"><div style="padding:8px 14px;background:#fff;border-bottom:2px solid #2fbfae">${T}</div><div style="max-width:760px;margin:auto">${R.svg.replace('<svg ','<svg style="width:100%;height:auto;display:block" ')}</div>`);w.document.close()}catch(e){w.close();st('解析エラー: '+e.message)}};
 $('#zm').onchange=$('#bpc').onchange=()=>{if(view==='svg')zoomSVG();else if($('#txt').value.trim())draw($('#txt').value)};
 $('#src').onchange=()=>{if(cur&&curD)setDiff(curD)};
 $('#smp').onclick=()=>{$('#txt').value=SAMPLE;draw(SAMPLE)};
