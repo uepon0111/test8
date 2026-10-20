@@ -24,8 +24,9 @@ button.g{background:#e8f1fb;color:var(--ink)}.row{display:flex;gap:6px;margin:6p
 #view{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
 #bar{padding:8px 12px;border-bottom:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .ch{background:#eef6ff;border-radius:999px;padding:2px 10px;font-size:12px}.ok{background:#dcf7e8}.ng{background:#fff0d6}
-#chart{flex:1;overflow:auto;background:#f7fbff}#chart .remote-svg{display:block;width:auto;height:auto;max-width:none}#legend{padding:4px 12px;border-bottom:1px solid var(--ln)}
+#chart{flex:1;overflow:auto;background:#f7fbff}#legend{padding:4px 12px;border-bottom:1px solid var(--ln)}
 #msg{padding:30px;color:var(--mut)}
+#chart img.sv{display:block;height:auto;background:#fff}
 @media(max-width:860px){main{grid-template-columns:1fr;height:auto}#chart{height:70vh}}
 </style></head><body>
 <header><h1>♪ プロセカ 譜面ビューア</h1><span id="st">楽曲データ取得中…</span></header>
@@ -33,9 +34,11 @@ button.g{background:#e8f1fb;color:var(--ink)}.row{display:flex;gap:6px;margin:6p
 <aside>
  <section class="p"><h2>① 楽曲を選ぶ</h2><input id="q" placeholder="曲名・読み・作詞作曲編曲・ID で検索"><div id="list"></div></section>
  <section class="p" id="sel" hidden><div id="card"><img id="jk" alt=""><div><h3 id="tt"></h3><div class="mut" id="pr"></div><div class="mut" id="cr"></div></div></div><div id="dif"></div></section>
- <section class="p"><h2>② 譜面データ（SUS / SVG）</h2>
-  <div class="mut">URL（曲と難易度の選択で自動入力。SUS取得に失敗した場合はSVG画像を試します）</div>
-  <div class="row"><input id="url" placeholder="SUS/TXT URL または SVG URL"><button id="goU">読込</button></div>
+ <section class="p"><h2>② 譜面データ（SUS）</h2>
+  <div class="mut">URL（曲と難易度の選択で自動入力）</div>
+  <div class="row"><input id="url" placeholder="https://…/master.txt または …/master.svg"><button id="goU">読込</button></div>
+  <div class="mut">取得方法</div>
+  <select id="src"><option value="auto" selected>自動（SUS取得→失敗時はSVG画像に切替）</option><option value="sus">SUS（txt）のみ</option><option value="svg">SVG画像（pjsekai.moe）</option></select>
   <div class="mut">またはテキストを貼り付け</div>
   <textarea id="txt" placeholder="#BPM01: 120&#10;#00008: 01&#10;#00012: 11000000 …"></textarea>
   <div class="row"><button id="goT">貼り付けから描画</button><button id="smp" class="g">サンプル</button></div></section>
@@ -51,7 +54,10 @@ const MASTER='https://sekai-world.github.io/sekai-master-db-diff/',DIFFS=['easy'
 const DCOL={easy:'#4fc95b',normal:'#34a9ee',hard:'#f09a1a',expert:'#ec4264',master:'#a94fe0',append:'#ee6fbd'};
 const pad=(n,l)=>String(n).padStart(l,'0');
 const jacket=m=>{const a=m.assetbundleName||'jacket_s_'+pad(m.id,3);return`https://storage.sekai.best/sekai-jp-assets/music/jacket/${a}/${a}.png`};
-const baseURL=(id,d)=>`https://storage.sekai.best/sekai-jp-assets/music/music_score/${pad(id,4)}_01/${d}`;
+/* SUSの取得先（ミラーを足す場合は SUSBASES に追記）とSVG画像URL */
+const id4=i=>pad(i,4),SUSBASES=['https://storage.sekai.best/sekai-jp-assets/music/music_score/','https://asset3.pjsekai.moe/music/music_score/'],SVGBASE='https://asset3.pjsekai.moe/music/music_score/';
+const susURLs=(id,d)=>SUSBASES.flatMap(b=>['.txt','.sus',''].map(e=>`${b}${id4(id)}_01/${d}${e}`)),svgURL=(id,d)=>`${SVGBASE}${id4(id)}_01/${d}.svg`;
+const isSVG=u=>/\.svg(?:[?#].*)?$/i.test(u),isSUS=t=>!/^\s*</.test(t)&&/^#(?:BPM\w\w|\d{3}\w{2,3}):/mi.test(t);
 /* ---------- SUS parser (pjsekai.scores と同じ解釈) ---------- */
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 function pairs(d,m){const n=Math.floor(d.length/2),o=[];for(let i=0;i<n;i++){const v=d.substr(2*i,2);if(v==='00')continue;const g=gcd(i,n);o.push({v,bar:m+i/n,bk:m+':'+i/g+'/'+n/g})}return o}
@@ -121,7 +127,7 @@ function render(S,ppb,BPC){
  return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total};
 }
 /* ---------- UI ---------- */
-let songs=[],diffs={},cur=null,curD=null,auto='',externalSvgMode=false,loadSeq=0;
+let songs=[],diffs={},cur=null,curD=null,auto='';
 const st=t=>$('#st').textContent=t,jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
 const LEG=(()=>{const f=(w,k,dr)=>`<svg width="${w*LW+20}" height="34"><g transform="translate(10 0)">${body(1,24,w*LW-2,k)}${dr===undefined?'':arrow(w*LW/2,24,w,dr,k==='crit'?'crit':'flick')}</g></svg>`;
  return[['タップ',f(2,'tap')],['クリティカル',f(2,'crit')],['フリック',f(2,'flick',0)],['ロング',f(2,'long')],['中継点',`<svg width="30" height="34"><g>${gem(15,20,'long')}</g></svg>`],['トレース',`<svg width="52" height="34"><g>${body(6,20,40,'tap',.55,6)}${gem(26,20,'long')}</g></svg>`],['ダメージ',f(2,'dmg')]].map(([n,s])=>`<span style="display:inline-flex;align-items:center;font-size:11px;margin-right:6px">${s}${n}</span>`).join('')})();
@@ -132,69 +138,44 @@ function pick(id){cur=songs.find(s=>s.id==id);$('#sel').hidden=false;$('#jk').sr
  $('#cr').textContent=`作詞 ${cur.lyricist||'-'} ／ 作曲 ${cur.composer||'-'} ／ 編曲 ${cur.arranger||'-'}`;const ds=diffs[id]||{};
  $('#dif').innerHTML=DIFFS.filter(d=>ds[d]).map(d=>`<span class="dc" data-d="${d}" style="background:${DCOL[d]};color:#fff"><button style="all:unset;cursor:pointer">${d.toUpperCase()} Lv${ds[d].playLevel}・${ds[d].totalNoteCount}</button></span>`).join('')||'<span class="mut">難易度情報なし</span>';
  drawList();const first=DIFFS.filter(d=>ds[d]).pop();if(first)setDiff(first)}
-function setDiff(d){curD=d;document.querySelectorAll('.dc').forEach(e=>e.classList.toggle('on',e.dataset.d===d));auto=baseURL(cur.id,d)+'.txt';$('#url').value=auto;loadURL()}
-const uniqueURLs=xs=>[...new Set(xs.filter(Boolean))];
-function susCandidates(u){
- const clean=u.split(/[?#]/)[0],hasExt=/\.(txt|sus)$/i.test(clean),base=clean.replace(/\.(txt|sus)$/i,'');
- if(hasExt)return uniqueURLs([u,base+'.txt',base+'.sus',base]);
- return uniqueURLs([u+'.txt',u+'.sus',u]);
-}
-function svgCandidates(u){
- if(/\.svg(?:[?#]|$)/i.test(u))return [u];
- const out=[];
- try{
-  const parsed=new URL(u,location.href),m=parsed.pathname.match(/\/music\/music_score\/([^/]+)\/([^/]+?)(?:\.(?:txt|sus|svg))?$/i);
-  if(m){
-   const folder=m[1],diff=m[2].replace(/\.(?:txt|sus|svg)$/i,'');
-   out.push(`https://asset3.pjsekai.moe/music/music_score/${folder}/${diff}.svg`);
-   out.push(new URL(parsed.pathname.replace(/\.(?:txt|sus)$/i,'.svg'),parsed.origin).href);
-  }
- }catch(e){}
- if(cur&&curD)out.push(`https://asset3.pjsekai.moe/music/music_score/${pad(cur.id,4)}_01/${curD}.svg`);
- const clean=u.split(/[?#]/)[0];
- if(/\.(txt|sus)$/i.test(clean))out.push(clean.replace(/\.(txt|sus)$/i,'.svg'));
- return uniqueURLs(out);
-}
-function showSvg(urls,seq=loadSeq){
- if(seq!==loadSeq)return;
- externalSvgMode=true;$('#bar').innerHTML='<span class="ch">SVG譜面画像を表示中（この画像からのノーツ集計・小節分割・独自ズームはできません）</span>';
- $('#legend').innerHTML='';$('#chart').replaceChildren();
- const img=document.createElement('img');img.className='remote-svg';img.alt='外部SVG譜面';let i=0;
- const next=()=>{
-  if(seq!==loadSeq)return;
-  if(i>=urls.length){
-   const box=document.createElement('div');box.id='msg';box.textContent='譜面データを取得できませんでした。URLが正しいか確認するか、SUSテキストを貼り付けてください。';
-   if(urls[0]){const a=document.createElement('a');a.href=urls[0];a.target='_blank';a.rel='noopener noreferrer';a.textContent='候補URLを別タブで開く';box.append(document.createElement('br'),a)}
-   $('#chart').replaceChildren(box);st('取得失敗（SUS / SVG ともに読み込めません）');return;
-  }
-  const candidate=urls[i++];img.onload=()=>{if(seq!==loadSeq)return;$('#url').value=candidate;$('#chart').replaceChildren(img);st(`SVG譜面を表示しました（${new URL(candidate,location.href).host}）`)};img.onerror=next;img.src=candidate;
- };
- if(!urls.length){next();return}next();
-}
-async function loadURL(){
- const u=$('#url').value.trim();if(!u)return;const seq=++loadSeq;
- if(/\.svg(?:[?#]|$)/i.test(u)){showSvg([u],seq);return}
- st('SUS譜面を取得中…');
- for(const c of susCandidates(u)){
-  if(seq!==loadSeq)return;
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),7000);
-  try{
-   const r=await fetch(c,{cache:'no-cache',signal:controller.signal});if(!r.ok)continue;
-   const t=await r.text();if(!/^\s*#/m.test(t)||!/^\s*#.*:/m.test(t))continue;
-   if(seq!==loadSeq)return;$('#txt').value=t;if(draw(t)){st(`SUSを取得して描画しました（${new URL(c,location.href).host}）`);return}
-  }catch(e){}finally{clearTimeout(timer)}
- }
- if(seq===loadSeq){st('SUS取得に失敗。SVG画像を試しています…');showSvg(svgCandidates(u),seq)}
-}
-function draw(text){externalSvgMode=false;$('#legend').innerHTML=LEG;try{const S=parseSUS(text),R=render(S,+$('#zm').value,+$('#bpc').value),o=cur&&curD&&diffs[cur.id]&&diffs[cur.id][curD],c=R.cnt;
+let rid=0,view='sus',cancel=()=>{};
+function setDiff(d){curD=d;document.querySelectorAll('.dc').forEach(e=>e.classList.toggle('on',e.dataset.d===d));auto=$('#src').value==='svg'?svgURL(cur.id,d):susURLs(cur.id,d)[0];$('#url').value=auto;loadURL()}
+/* SVG画像表示：<img>はCORSの影響を受けないので、txtが取れない場合の保険になる */
+const zoomSVG=()=>{const i=document.querySelector('#chart img.sv');if(i)i.style.width=+$('#zm').value/36*100+'%'};
+function showSVG(u,note){view='svg';$('#url').value=u;const img=new Image();img.className='sv';img.alt='譜面';img.referrerPolicy='no-referrer';
+ img.onload=()=>img.isConnected&&st(note||'SVG画像を表示しました（ノーツ解析は行いません）');
+ img.onerror=()=>img.isConnected&&st('SVG画像を取得できませんでした（URL違い／未配信の可能性）。ブラウザで直接開いて確認してください');
+ img.src=u;$('#chart').replaceChildren(img);zoomSVG();st('SVG画像を読み込み中…');
+ $('#bar').innerHTML=`<span class="ch">SVG画像表示</span><a class="ch" href="${esc(u)}" target="_blank" rel="noopener">元のSVGを開く</a>`}
+/* 候補URLを並列取得し、最初に正しいSUSを返したものを採用（各15秒でタイムアウト） */
+async function fetchSUS(urls){const ctl=[],fails=[];cancel=()=>ctl.forEach(c=>c.abort());
+ try{const hit=await Promise.any(urls.map(async u=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),15000);ctl.push(c);
+   try{let r;try{r=await fetch(u,{signal:c.signal,credentials:'omit',referrerPolicy:'no-referrer'})}catch(e){fails.push('通信/CORS/時間切れ');throw e}
+    if(!r.ok){fails.push('HTTP '+r.status);throw 0}
+    const x=await r.text();if(!isSUS(x)){fails.push('SUS以外');throw 0}
+    return{t:x,u}}finally{clearTimeout(t)}}));
+  ctl.forEach(c=>c.abort());return{hit,fails}}catch(e){return{hit:null,fails}}}
+async function loadURL(){const u=$('#url').value.trim();if(!u)return;
+ if(!/^https?:\/\//i.test(u)){st('URLは http:// または https:// で始めてください');return}
+ const my=++rid;cancel();const mode=$('#src').value,isAuto=u===auto&&cur&&curD;
+ if(isSVG(u)){showSVG(u);return}
+ st('譜面を取得中…');
+ const{hit,fails}=await fetchSUS(isAuto?susURLs(cur.id,curD):[u]);if(my!==rid)return;
+ if(hit){$('#url').value=hit.u;$('#txt').value=hit.t;draw(hit.t);return}
+ if(isAuto&&mode==='auto'){showSVG(svgURL(cur.id,curD),'SUSを取得できなかったためSVG画像を表示しています（CORS制限の可能性）。ノーツ解析・列数変更は使えません');return}
+ const tl=[...fails.reduce((m,w)=>m.set(w,(m.get(w)||0)+1),new Map())].map(([w,n])=>`${w}×${n}`).join('・');
+ st(`取得できませんでした（${tl||'不明'}）。URL違い／CORS制限の可能性。「取得方法」でSVG画像を選ぶか、ブラウザで開いて保存→貼り付けも可`)}
+function draw(text){view='sus';try{const S=parseSUS(text),R=render(S,+$('#zm').value,+$('#bpc').value),o=cur&&curD&&diffs[cur.id]&&diffs[cur.id][curD],c=R.cnt;
  const sum=c.tap+c.crit+c.flick+c.hold+c.relay+c.trace;
  $('#bar').innerHTML=[['タップ',c.tap],['クリティカル',c.crit],['フリック',c.flick],['ロング',c.hold],['中継点',c.relay],['トレース',c.trace],['ダメージ',c.dmg]].map(([n,v])=>`<span class="ch">${n} <b>${v}</b></span>`).join('')+`<span class="ch">小節 <b>${R.total}</b></span>`+(o?`<span class="ch ${o.totalNoteCount===R.combo?'ok':'ng'}">解析コンボ数 <b>${R.combo}</b> ／ 公式 ${o.totalNoteCount}</span>`:`<span class="ch">コンボ数(推定) <b>${R.combo}</b></span>`);
- $('#chart').innerHTML=R.svg;st(`描画しました（ノーツ ${S.notes.length}）`);return true}catch(e){st('解析エラー: '+e.message);console.error(e);return false}}
+ $('#chart').innerHTML=R.svg;st(`描画しました（ノーツ ${S.notes.length}）`)}catch(e){st('解析エラー: '+e.message);console.error(e)}}
 $('#list').onclick=e=>{const b=e.target.closest('.it');if(b)pick(b.dataset.id)};
 $('#dif').onclick=e=>{const s=e.target.closest('.dc');if(s)setDiff(s.dataset.d)};
-$('#q').oninput=drawList;$('#goU').onclick=loadURL;$('#goT').onclick=()=>{loadSeq++;draw($('#txt').value)};
-$('#zm').onchange=$('#bpc').onchange=()=>{if(!externalSvgMode&&$('#txt').value.trim())draw($('#txt').value)};
-$('#smp').onclick=()=>{loadSeq++;$('#txt').value=SAMPLE;draw(SAMPLE)};
+$('#q').oninput=drawList;$('#goU').onclick=loadURL;$('#goT').onclick=()=>draw($('#txt').value);
+$('#zm').oninput=()=>{if(view==='svg')zoomSVG()};
+$('#zm').onchange=$('#bpc').onchange=()=>{if(view==='svg')zoomSVG();else if($('#txt').value.trim())draw($('#txt').value)};
+$('#src').onchange=()=>{if(cur&&curD)setDiff(curD)};
+$('#smp').onclick=()=>{$('#txt').value=SAMPLE;draw(SAMPLE)};
 const SAMPLE=`#TITLE "SAMPLE"
 #REQUEST "ticks_per_beat 480"
 #BPM01: 120
