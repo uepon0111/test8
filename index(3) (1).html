@@ -35,7 +35,7 @@
   </head>
   <body>
     <header>
-      <h1>♪ プロセカ 譜面ビューア <small style="font-size:11px;color:#74829f;font-weight:500">v4.1 / フリック矢印SVG内製・速度イベント表示</small></h1>
+      <h1>♪ プロセカ 譜面ビューア <small style="font-size:11px;color:#74829f;font-weight:500">v4.0 / 速度イベント表示・透明度設定</small></h1>
       <span id="st">楽曲データ取得中…</span>
     </header>
     <main>
@@ -320,68 +320,21 @@
       const C={tap:['#eaf0ff','#9c8be8','#8fa4f7'],long:['#e5fbee','#4fd9a0','#4fd9a0'],flick:['#ffeaf0','#ee7a98','#f4a3b6'],crit:['#fff7da','#f1b42e','#f6c84a'],dmg:['#efe5fa','#6f43a8','#8d63c4'],unknown:['#ffe0e0','#dc5555','#b82e2e']};
       const body=(x,y,w,k,a=1,h=14)=>{const c=C[k];return`<g opacity="${a}"><rect x="${x-2}" y="${y-h/2-2}" width="${w+4}" height="${h+4}" rx="8" fill="${c[1]}" opacity=".25"/><rect x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="6" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${k==='tap'&&h>8?`<rect x="${x+2}" y="${y+h/2-3.5}" width="${w-4}" height="3" rx="1.5" fill="#43dcf3"/>`:''}${h>8?`<rect x="${x+3}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/><rect x="${x+w-7}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/>`:''}</g>`};
       const gem=(x,y,k)=>{const f=k==='crit'?['#f8d24f','#d9981a']:k==='flick'?['#f598b1','#d85a82']:['#6fe3b8','#27b185'];return`<polygon points="${x},${y-7} ${x+6.5},${y} ${x},${y+7} ${x-6.5},${y}" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.5"/><polygon points="${x},${y-7} ${x-6.5},${y} ${x},${y}" fill="#fff" opacity=".8"/>`};
-      /* ---------- フリック矢印（外部画像を使わないSVG描画） ----------
-         添付の矢印素材を基準に、幅1〜6・縦/斜めの外形をSVGパス化。
-         PNG/CDNへの参照は行わず、塗り・縁取り・光彩・影をSVGで描画する。 */
-      const FLICK_ARROW_SHAPES={
-       vertical:[
-        {w:144,h:158,p:[[22,49],[19,118],[25,128],[36,131],[71,116],[107,131],[121,126],[125,115],[125,62],[116,44],[78,19],[67,18]]},
-        {w:188,h:174,p:[[20,66],[18,125],[20,138],[26,144],[46,142],[92,116],[151,146],[162,143],[167,136],[165,64],[98,18],[84,19]]},
-        {w:248,h:194,p:[[20,86],[18,154],[31,167],[81,143],[121,116],[131,118],[203,163],[216,167],[227,160],[227,86],[131,19],[114,20]]},
-        {w:312,h:216,p:[[20,110],[21,182],[31,188],[88,160],[155,116],[271,186],[286,186],[292,178],[291,108],[161,18],[143,22],[36,94]]},
-        {w:374,h:236,p:[[19,134],[19,198],[29,208],[39,207],[96,175],[183,116],[194,118],[275,174],[334,207],[345,208],[354,197],[355,140],[351,127],[188,17],[172,23],[22,126]]},
-        {w:436,h:258,p:[[19,218],[25,228],[32,230],[108,189],[213,117],[226,119],[328,189],[396,229],[410,228],[416,218],[413,148],[252,36],[218,17],[205,21],[21,149]]}
-       ],
-       diagonal:[
-        {w:176,h:160,p:[[20,58],[22,79],[54,130],[72,129],[94,105],[134,113],[148,111],[145,106],[151,91],[121,38],[107,28],[48,18]]},
-        {w:228,h:182,p:[[18,86],[31,116],[57,152],[69,151],[78,144],[107,106],[184,121],[191,118],[189,113],[195,103],[160,40],[67,17],[58,19]]},
-        {w:298,h:212,p:[[19,112],[25,134],[45,169],[58,181],[75,175],[125,106],[235,131],[249,131],[246,125],[255,116],[247,93],[218,49],[91,18],[76,19],[69,26]]},
-        {w:376,h:242,p:[[18,149],[51,207],[64,211],[96,178],[141,107],[297,142],[313,139],[316,119],[299,86],[277,58],[99,17],[78,38],[24,128]]},
-        {w:444,h:270,p:[[18,175],[51,235],[64,240],[71,237],[103,196],[159,107],[357,152],[374,150],[371,145],[377,130],[350,81],[337,68],[117,17],[108,21]]},
-        {w:514,h:300,p:[[18,208],[49,262],[58,269],[69,267],[108,216],[169,114],[178,107],[420,163],[433,161],[431,155],[436,151],[437,141],[413,96],[396,78],[132,17],[115,34],[19,196]]}
-       ]
-      };
-      let flickArrowSeq=0;
-      const roundedArrowPath=(points,radius)=>{
-       const n=points.length,before=[],after=[];
-       for(let i=0;i<n;i++){
-        const p=points[i],prev=points[(i+n-1)%n],next=points[(i+1)%n];
-        const d1=Math.hypot(prev[0]-p[0],prev[1]-p[1]),d2=Math.hypot(next[0]-p[0],next[1]-p[1]);
-        const cut=Math.min(radius,d1*.24,d2*.24);
-        before.push([p[0]+(prev[0]-p[0])*cut/d1,p[1]+(prev[1]-p[1])*cut/d1]);
-        after.push([p[0]+(next[0]-p[0])*cut/d2,p[1]+(next[1]-p[1])*cut/d2]);
-       }
-       const f=p=>`${p[0].toFixed(2)} ${p[1].toFixed(2)}`;
-       let d=`M${f(before[0])}`;
-       for(let i=0;i<n;i++)d+=` Q${f(points[i])} ${f(after[i])} L${f(before[(i+1)%n])}`;
-       return d+' Z';
-      };
+      /* Official-style flick arrow art used by the pjsekai-scores renderer.
+         The CDN supplies separate normal/critical and vertical/diagonal PNGs;
+         right-diagonal arrows are mirrored, matching the reference renderer. */
+      const FLICK_ASSET_BASE='https://asset3.pjsekai.moe/live/note/custom01';
       const arrow=(cx,y,w,angle,k,alpha=1)=>{
        const width=Math.max(0,Math.min(6,Math.trunc(Number(w)||0)));
-       const shapeWidth=Math.max(1,width);
        const scale=LW/16,fh=24*scale,noteSize=16*scale;
        const h=fh*Math.pow((width+3)/3,.75),iw=fh*1.5*Math.pow((width+.5)/3,.75);
-       const diagonal=Math.abs(Number(angle)||0)>.1,right=(Number(angle)||0)>0;
+       const diagonal=Math.abs(Number(angle)||0)>0.1,right=(Number(angle)||0)>0;
        const bias=diagonal?(right?1:-1)*noteSize/4:0;
-       const shape=FLICK_ARROW_SHAPES[diagonal?'diagonal':'vertical'][shapeWidth-1];
+       const critical=k==='crit';
+       const src=`${FLICK_ASSET_BASE}/notes_flick_arrow${critical?'_crtcl':''}_${String(width).padStart(2,'0')}${diagonal?'_diagonal':''}.png`;
        const ix=cx-iw/2+bias,iy=y+noteSize/4-h;
-       const critical=k==='crit',id=++flickArrowSeq;
-       const palette=critical
-        ?{base:'#ffc834',top:'#ffe45a',bottom:'#ffbd24',white:'#fff8cf',glow:'#ffb21e'}
-        :{base:'#ed7db4',top:'#f58fbe',bottom:'#e96eaa',white:'#fff1f7',glow:'#ff65aa'};
-       const path=roundedArrowPath(shape.p,Math.min(5,shape.w*.025));
-       /* 矢印のV字のくぼみから下へ落ちる薄い影も、図形として描画する。 */
-       let notch=null;
-       for(let i=0;i<shape.p.length;i++){
-        const p=shape.p[i],prev=shape.p[(i+shape.p.length-1)%shape.p.length],next=shape.p[(i+1)%shape.p.length];
-        if(p[1]>shape.h*.42&&p[1]<prev[1]-2&&p[1]<next[1]-2){notch=p;break}
-       }
-       if(!notch)notch=[shape.w*.5,shape.h*.72];
-       const shadowY=Math.min(shape.h-2,notch[1]+5),shadowX=notch[0];
-       const shadow=`M${(shadowX-10).toFixed(2)} ${shadowY.toFixed(2)} L${(shadowX+10).toFixed(2)} ${shadowY.toFixed(2)} L${shape.w} ${shape.h} L0 ${shape.h} Z`;
-       const inset=.955,tx=shape.w*(1-inset)/2,ty=shape.h*(1-inset)/2;
-       const flip=right?`translate(${shape.w} 0) scale(-1 1)`:'';
-       return `<g opacity="${alpha}"><svg x="${ix.toFixed(2)}" y="${iy.toFixed(2)}" width="${iw.toFixed(2)}" height="${h.toFixed(2)}" viewBox="0 0 ${shape.w} ${shape.h}" preserveAspectRatio="none" overflow="visible"><defs><linearGradient id="flickFill${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${palette.top}"/><stop offset="100%" stop-color="${palette.bottom}"/></linearGradient><linearGradient id="flickShadow${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f3eaff" stop-opacity="0"/><stop offset="32%" stop-color="#f1e8ff" stop-opacity=".34"/><stop offset="68%" stop-color="#dce5f8" stop-opacity=".16"/><stop offset="100%" stop-color="#dce5f8" stop-opacity="0"/></linearGradient></defs><g${flip?` transform="${flip}"`:''}><path d="${shadow}" fill="url(#flickShadow${id})"/><path d="${path}" fill="${palette.base}" stroke="${palette.glow}" stroke-width="8" stroke-linejoin="round" opacity=".34" style="filter:drop-shadow(0 0 3px ${palette.glow}) drop-shadow(0 0 5px ${palette.glow})"/><path d="${path}" fill="url(#flickFill${id})" stroke="${palette.white}" stroke-width="3.5" stroke-linejoin="round" transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${inset})"/></g></svg></g>`;
+       const flip=right?` transform="translate(${2*(cx+bias)} 0) scale(-1 1)"`:'';
+       return`<g opacity="${alpha}"><image href="${src}" x="${ix.toFixed(2)}" y="${iy.toFixed(2)}" width="${iw.toFixed(2)}" height="${h.toFixed(2)}"${flip}/></g>`;
       };
       /* Trace body only; flick-trace arrows are rendered with the same sprite
          as ordinary flick notes so the silhouette and direction match. */
