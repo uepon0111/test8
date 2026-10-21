@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>プロセカ 譜面ビューア</title>
+<meta name="theme-color" content="#f3f8ff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<script>/[?&]chart=/.test(location.search)&&document.documentElement.classList.add('vm')</script>
+<style>
+:root{--bg:#f3f8ff;--ink:#12304f;--mut:#64809f;--line:#dbe7f4;--blue:#2e7cf6;--blue-s:#e6f0ff;--green:#14b58f;--green-s:#dff7ef;--grad:linear-gradient(115deg,#2e7cf6,#14c5a0);--sh:0 1px 2px rgba(20,60,110,.06),0 10px 28px -12px rgba(20,60,110,.2);--ease:cubic-bezier(.22,1,.36,1);--vbh:58px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scrollbar-gutter:stable;scroll-behavior:smooth}html:has(dialog[open]){overflow:hidden}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 14px/1.65 "Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",Meiryo,system-ui,sans-serif;line-break:strict;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+@supports(word-break:auto-phrase){body{word-break:auto-phrase}}
+h1,h2,h3,p,dl,dd,ol{margin:0}h1,h2,h3{text-wrap:balance}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid rgba(46,124,246,.45);outline-offset:2px}
+.ic{width:20px;height:20px;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border-radius:13px;border:1px solid var(--line);background:#fff;font-weight:700;white-space:nowrap;transition:transform .25s var(--ease),box-shadow .25s,border-color .25s}
+.btn:hover{border-color:#b9d0ee;box-shadow:var(--sh)}.btn:active{transform:scale(.97)}
+@keyframes up{from{opacity:0;transform:translateY(14px)}}
+@keyframes spin{to{transform:rotate(1turn)}}
+@keyframes shine{to{background-position:-200% 0}}
+/* ヘッダー */
+.hd{position:relative;overflow:hidden;padding:clamp(20px,4.5vw,46px) clamp(16px,4vw,40px) clamp(22px,3.5vw,36px);background:linear-gradient(180deg,#e3efff,#ecf9f5 72%,var(--bg))}
+.hd-in{position:relative;z-index:1;max-width:1280px;margin:0 auto;display:flex;align-items:center;gap:clamp(12px,2vw,18px);animation:up .8s var(--ease) both}
+.logo{width:clamp(44px,6vw,56px);aspect-ratio:1;border-radius:16px;background:var(--grad);display:grid;place-items:center;color:#fff;flex:none;box-shadow:0 10px 24px -8px rgba(46,124,246,.6)}.logo .ic{width:52%;height:52%}
+.ht{flex:1;min-width:0}.ht h1{font-size:clamp(20px,3.4vw,32px);font-weight:900;line-height:1.25}.ht p{color:var(--mut);margin-top:4px;font-size:clamp(12px,1.5vw,14px)}
+.hd .btn{background:rgba(255,255,255,.88);backdrop-filter:blur(8px)}
+.lanes{position:absolute;right:0;top:0;height:100%;width:min(62%,660px);pointer-events:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 45%);mask-image:linear-gradient(90deg,transparent,#000 45%)}
+.lanes rect{animation:fall 7s linear infinite;animation-delay:var(--d)}@keyframes fall{to{transform:translateY(220px)}}
+/* ツールバー */
+.tools{position:sticky;top:0;z-index:30;padding:10px clamp(16px,4vw,40px);background:rgba(243,248,255,.84);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);animation:up .8s .12s var(--ease) both}
+.tin{max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fld{position:relative;display:flex;align-items:center;height:44px;background:#fff;border:1px solid var(--line);border-radius:14px;min-width:0;transition:border-color .2s,box-shadow .2s}
+.fld:focus-within{border-color:var(--blue);box-shadow:0 0 0 4px rgba(46,124,246,.14)}
+.fld>.ic{position:absolute;left:13px;color:var(--mut);pointer-events:none}.fld>.chev{left:auto;right:11px;width:18px;height:18px}
+.fld input,.fld select{-webkit-appearance:none;appearance:none;border:0;background:transparent;height:100%;width:100%;min-width:0;padding:0 34px 0 42px;outline:0;text-overflow:ellipsis;cursor:pointer}
+.fld input{cursor:text;padding-right:14px}
+.grow{flex:1 1 260px}.w-unit{flex:0 1 232px}.w-sort{flex:0 1 150px}
+.dot{position:absolute;left:15px;width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+.rv{flex:none;max-width:0;opacity:0;overflow:hidden;margin-left:-10px;transition:max-width .45s var(--ease),opacity .3s,margin .45s var(--ease)}
+.rv.on{max-width:190px;opacity:1;margin-left:0}.rv .fld{width:170px}.rv .fld:focus-within{box-shadow:none}
+.ord{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px 0 12px;border:1px solid var(--line);border-radius:14px;background:#fff;font-weight:700;white-space:nowrap;transition:border-color .2s,box-shadow .2s}
+.ord:hover{border-color:#b9d0ee;box-shadow:var(--sh)}.ord .ic{transition:transform .4s var(--ease);color:var(--blue)}.ord[data-d=desc] .ic{transform:rotate(180deg)}.ord span{min-width:2.2em}
+.cnt{margin-left:auto;color:var(--mut);font-weight:700;white-space:nowrap}
+/* 一覧 */
+main{max-width:1280px;margin:0 auto;padding:12px clamp(16px,4vw,40px) 28px;min-height:62vh}
+#grid{position:relative}
+.card{position:absolute;display:block;padding:0;border:0;border-radius:18px;background:#fff;text-align:left;overflow:hidden;box-shadow:var(--sh);transition:box-shadow .35s}
+.card:hover{box-shadow:0 0 0 2px var(--blue),0 16px 34px -14px rgba(46,124,246,.5)}
+.card.fresh{animation:up .55s var(--ease) both;animation-delay:calc(var(--i)*24ms)}
+.jk{display:block;aspect-ratio:1;overflow:hidden;background:linear-gradient(110deg,#e6eff9 30%,#f5f9fe 50%,#e6eff9 70%) 0 0/200% 100%;animation:shine 1.5s linear infinite}
+.jk.ok{animation:none;background:#e6eff9}
+.jk img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s,transform .6s var(--ease)}.jk.ok img{opacity:1}.card:hover .jk img{transform:scale(1.06)}
+.mt{display:block;height:108px;padding:10px 12px 0}
+.tt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:2.7em;font-size:14px;line-height:1.35;font-weight:700}
+.cp{display:block;margin-top:3px;height:16px;line-height:16px;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv{display:flex;gap:3px;margin-top:8px}
+.lv i{flex:1 1 0;max-width:28px;min-width:0;height:20px;border-radius:7px;background:var(--c);color:#fff;font:900 11px/20px "Zen Kaku Gothic New",sans-serif;text-align:center;text-shadow:0 1px 1px rgba(0,0,0,.28);transition:opacity .3s}
+.lv i.dim{opacity:.28}.lv i.on{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--c)}
+.sk{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:14px}
+.sk i{aspect-ratio:172/282;border-radius:18px;background:linear-gradient(110deg,#e6eff9 30%,#f5f9fe 50%,#e6eff9 70%) 0 0/200% 100%;animation:shine 1.5s linear infinite}
+.msg{display:grid;justify-items:center;gap:8px;padding:56px 16px;text-align:center;color:var(--mut);animation:up .6s var(--ease) both}
+.msg>.ic{width:44px;height:44px;color:var(--blue)}.msg b{color:var(--ink);font-size:17px}.msg .btn{margin-top:10px}
+.ft{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 36px;color:var(--mut);font-size:12px}
+/* ダイアログ */
+dialog{position:fixed;border:0;padding:0;border-radius:26px;width:min(780px,calc(100vw - 20px));max-height:calc(100dvh - 24px);overflow:auto;background:#fff;color:var(--ink);box-shadow:0 30px 80px -20px rgba(15,50,100,.5)}
+dialog[open]{animation:pop .45s var(--ease)}dialog::backdrop{background:rgba(18,48,79,.4);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fade .3s}
+@keyframes pop{from{opacity:0;transform:translateY(20px) scale(.96)}}@keyframes fade{from{opacity:0}}
+.x{position:absolute;top:14px;right:14px;z-index:2;width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:12px;background:var(--blue-s);color:var(--blue);transition:transform .3s var(--ease),background .2s}.x:hover{background:#d4e5ff;transform:rotate(90deg)}
+.sd{display:grid;grid-template-columns:clamp(96px,28%,190px) minmax(0,1fr);gap:clamp(14px,3vw,24px);padding:clamp(18px,4vw,28px);padding-right:clamp(18px,4vw,28px);background:linear-gradient(180deg,#eef5ff,#fff)}
+.sjk img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:18px;background:#e6eff9;box-shadow:0 14px 30px -12px rgba(20,60,110,.45)}
+.si{min-width:0;padding-right:44px}.si h2{font-size:clamp(18px,3vw,25px);font-weight:900;line-height:1.3}.rd{color:var(--mut);font-size:12px;margin-top:2px}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin-top:14px}dt{color:var(--mut);font-weight:700;white-space:nowrap}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.meta span{display:inline-flex;align-items:center;gap:6px;padding:3px 12px;border-radius:99px;background:#fff;border:1px solid var(--line);font-size:12px;font-weight:700}
+.meta .tg{background:var(--blue-s);border-color:transparent;color:#1f5fc9}.meta .ic{width:15px;height:15px;color:var(--mut)}
+.dsel{padding:clamp(16px,3vw,24px) clamp(18px,4vw,28px) clamp(20px,4vw,30px)}.dsel h3{font-size:15px;font-weight:900;margin-bottom:12px}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.dc{position:relative;display:flex;align-items:center;gap:12px;padding:12px 14px 12px 20px;border:1px solid var(--line);border-radius:16px;background:#fff;color:inherit;text-decoration:none;overflow:hidden;animation:up .5s var(--ease) both;animation-delay:calc(var(--i)*60ms + 120ms);transition:transform .3s var(--ease),box-shadow .3s,border-color .3s}
+.dc::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--c)}
+.dc:hover{transform:translateY(-2px);border-color:var(--c);box-shadow:0 14px 26px -14px var(--c)}
+.dc>span:first-child{flex:1;min-width:0}.nm{display:block;font-size:14px;font-weight:900;letter-spacing:.05em}
+.dc small{display:flex;align-items:center;gap:4px;color:var(--mut);font-size:12px;white-space:nowrap}.dc small .ic{width:13px;height:13px}
+.lvn{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--c);color:#fff;font-size:20px;font-weight:900;text-shadow:0 1px 2px rgba(0,0,0,.28)}
+.dc .go{color:var(--mut);width:18px;height:18px;transition:transform .3s var(--ease)}.dc:hover .go{transform:translate(2px,-2px);color:var(--c)}
+/* 設定 */
+.sp{padding:clamp(18px,4vw,30px)}.sp h2{font-size:20px;font-weight:900}.sub{color:var(--mut);margin-top:2px}
+.sgrid{display:grid;grid-template-columns:minmax(0,270px) minmax(0,1fr);gap:26px;margin-top:20px;align-items:start}
+.pv{position:sticky;top:0}.pvb{border-radius:18px;overflow:hidden;box-shadow:0 14px 30px -14px rgba(10,30,60,.65)}.pvb svg{display:block;width:100%;height:auto}
+.leg{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:10px;font-size:12px;color:var(--mut)}.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.f{margin-bottom:20px}.fh{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:9px;font-weight:700}.fh output{color:var(--blue);font-weight:900;white-space:nowrap}
+.seg{display:flex;flex-wrap:wrap;gap:6px}.seg button{min-width:46px;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:11px;background:#fff;font-weight:700;transition:background .25s,color .25s,box-shadow .25s,transform .2s var(--ease)}.seg button:active{transform:scale(.94)}
+.seg button[aria-pressed=true]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 8px 16px -8px rgba(46,124,246,.8)}
+input[type=range]{-webkit-appearance:none;appearance:none;display:block;width:100%;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--green)) no-repeat,#dbe7f4;background-size:var(--p,0%) 100%,100% 100%;outline-offset:8px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--blue);box-shadow:0 3px 8px rgba(20,60,110,.3);transition:transform .2s var(--ease)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--blue);box-shadow:0 3px 8px rgba(20,60,110,.3)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
+.sf{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.saved{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-weight:700;opacity:0;transform:translateY(4px);transition:opacity .3s,transform .3s var(--ease)}.saved.on{opacity:1;transform:none}
+/* 譜面ビューア（新しいタブ） */
+html:not(.vm) #vw,.vm #app{display:none}
+.vb{position:fixed;inset:0 0 auto 0;height:var(--vbh);z-index:10;display:flex;align-items:center;gap:12px;padding:0 clamp(10px,2vw,18px);background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.vb .btn{height:38px;padding:0 14px;border-radius:12px}
+.vt{display:flex;align-items:center;gap:10px;min-width:0;flex:1}.vt b{min-width:0;font-size:15px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlv{flex:none;padding:2px 11px;border-radius:99px;color:#fff;font-size:12px;font-weight:900;letter-spacing:.04em;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.28)}
+.vchip{display:flex;gap:6px;flex:none}.vchip span{padding:3px 10px;border-radius:99px;background:var(--blue-s);color:#1f5fc9;font-size:12px;font-weight:700;white-space:nowrap}.vchip .ok{background:var(--green-s);color:#0b8a6c}.vchip .ng{background:#fff0d9;color:#a45d00}
+.vz{display:flex;align-items:center;gap:10px;flex:none}.vz input{width:clamp(80px,14vw,160px)}.vz output{min-width:3.4em;text-align:right;font-weight:700}
+#vbox{position:fixed;inset:var(--vbh) 0 0 0;overflow:auto;padding:14px;background:#111827;overscroll-behavior:contain}#vbox>svg,#vbox>img{display:block;max-width:none}
+#ld{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:radial-gradient(800px 420px at 8% 0,#dcebff,transparent),radial-gradient(700px 420px at 100% 100%,#d6f5ea,transparent),var(--bg);transition:opacity .6s,visibility .6s}#ld.out{opacity:0;visibility:hidden}
+.ldc{width:min(460px,100%);padding:clamp(20px,5vw,30px);border:1px solid var(--line);border-radius:28px;background:#fff;box-shadow:var(--sh);animation:up .7s var(--ease) both}
+.lh{display:flex;gap:16px;align-items:center}.lh img{width:76px;height:76px;flex:none;border-radius:18px;object-fit:cover;background:#e6eff9;box-shadow:var(--sh)}.lh b{display:block;margin-bottom:6px;font-size:17px;font-weight:900;line-height:1.35}
+.pct{display:flex;align-items:baseline;gap:4px;margin:22px 0 10px}.pct strong{font-size:48px;font-weight:900;line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}.pct span{font-size:18px;font-weight:900;color:var(--mut)}.pct em{margin-left:auto;max-width:58%;font-style:normal;font-size:12px;color:var(--mut);text-align:right}
+.pbar{height:12px;border-radius:99px;background:#e2edf8;overflow:hidden}.pbar i{position:relative;display:block;width:0;height:100%;border-radius:inherit;background:var(--grad);overflow:hidden;transition:width .4s var(--ease)}
+.pbar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);animation:sh 1.3s linear infinite}@keyframes sh{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.stp{list-style:none;display:grid;gap:10px;padding:0;margin-top:20px}.stp li{display:flex;align-items:center;gap:10px;color:var(--mut);transition:color .3s}
+.st{display:grid;place-items:center;width:22px;height:22px;flex:none;border:2px solid var(--line);border-radius:50%;color:#fff;transition:background .3s,border-color .3s}.st .ic{width:13px;height:13px;transform:scale(0);transition:transform .4s cubic-bezier(.3,1.7,.5,1)}
+.stp li.act{color:var(--ink);font-weight:700}.stp li.act .st{border-color:var(--blue) var(--blue) var(--blue) transparent;animation:spin .8s linear infinite}
+.stp li.done{color:var(--ink)}.stp li.done .st{background:var(--green);border-color:var(--green)}.stp li.done .st .ic{transform:scale(1)}
+.stp li.fail{color:#d63355;font-weight:700}.stp li.fail .st{border-color:#ee4466;animation:none}
+.errb{display:none;gap:10px;margin-top:22px}#ld.bad .errb{display:flex}#ld.bad .pbar i{background:#ee4466}.errb .btn{flex:1}
+@media(max-width:760px){.vchip,.vz output,#vfit span,#vclose span{display:none}.vb .btn{padding:0 11px}}
+@media(max-width:640px){.sgrid{grid-template-columns:1fr}.pv{position:static}.w-unit,.w-sort{flex:1 1 calc(50% - 5px)}.hd .btn span{display:none}.hd .btn{padding:0 12px}.cnt{margin-left:0;flex:1 1 100%}}
+@media(prefers-reduced-motion:reduce){*,::before,::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div id="app">
+ <header class="hd">
+  <svg class="lanes" viewBox="0 0 520 140" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+   <path d="M20 0v140M80 0v140M140 0v140M200 0v140M260 0v140M320 0v140M380 0v140M440 0v140M500 0v140" stroke="#2e7cf6" stroke-opacity=".12"/>
+   <rect x="82" y="-16" width="56" height="12" rx="6" fill="#2e7cf6" opacity=".3" style="--d:-1s"/><rect x="322" y="-16" width="56" height="12" rx="6" fill="#14c5a0" opacity=".34" style="--d:-3.5s"/>
+   <rect x="202" y="-16" width="56" height="12" rx="6" fill="#2e7cf6" opacity=".22" style="--d:-5.2s"/><rect x="442" y="-16" width="56" height="12" rx="6" fill="#14c5a0" opacity=".28" style="--d:-2.2s"/>
+   <rect x="142" y="-16" width="56" height="12" rx="6" fill="#14c5a0" opacity=".24" style="--d:-6.2s"/>
+  </svg>
+  <div class="hd-in">
+   <span class="logo"><i data-ic="music"></i></span>
+   <div class="ht"><h1>プロセカ 譜面ビューア</h1><p>曲と難易度を選ぶと、新しいタブで譜面が全画面表示されます。</p></div>
+   <button id="open-set" class="btn" type="button"><i data-ic="gear"></i><span>設定</span></button>
+  </div>
+ </header>
+ <div class="tools"><div class="tin">
+  <label class="fld grow"><i data-ic="search"></i><input id="q" type="search" placeholder="曲名・作詞・作曲・編曲で検索" autocomplete="off" aria-label="曲名・作詞・作曲・編曲で検索"></label>
+  <label class="fld w-unit"><i data-ic="tag"></i><select id="unit" aria-label="ユニットで絞り込み"><option value="">すべてのユニット</option></select><i data-ic="chev" class="chev"></i></label>
+  <label class="fld w-sort"><i data-ic="sort"></i><select id="sort" aria-label="並び替え"><option value="date">公開日順</option><option value="title">タイトル順</option><option value="level">レベル順</option></select><i data-ic="chev" class="chev"></i></label>
+  <div class="rv" id="rv"><label class="fld"><i class="dot" id="dot"></i><select id="diff" aria-label="レベル順の難易度"></select><i data-ic="chev" class="chev"></i></label></div>
+  <button id="ord" class="ord" type="button" aria-label="昇順と降順を切り替え"><i data-ic="up"></i><span id="ol">降順</span></button>
+  <span id="cnt" class="cnt" aria-live="polite"></span>
+ </div></div>
+ <main><div id="state" hidden></div><div id="grid"></div></main>
+ <footer class="ft">楽曲データは sekai-world、ジャケット画像と譜面データは sekai.best の配信を利用しています。</footer>
+</div>
+
+<dialog id="sd" aria-label="難易度を選択"></dialog>
+<dialog id="set" aria-label="設定">
+ <button class="x" data-close aria-label="閉じる"><i data-ic="x"></i></button>
+ <div class="sp">
+  <h2>表示設定</h2><p class="sub">変更はこのブラウザに自動で保存されます。</p>
+  <div class="sgrid">
+   <div class="pv"><div class="pvb"><svg id="pv" viewBox="0 0 264 176"></svg></div><div class="leg"><span><i style="background:#55dfa7"></i>ロングノーツ</span><span><i style="background:#f0c45c"></i>ガイドノーツ</span></div></div>
+   <div>
+    <div class="f"><div class="fh">1列あたりの小節数</div><div class="seg" id="seg"></div></div>
+    <div id="ranges"></div>
+    <div class="sf"><button id="reset" class="btn" type="button"><i data-ic="reset"></i>初期値に戻す</button><span id="saved" class="saved"><i data-ic="check"></i>保存しました</span></div>
+   </div>
+  </div>
+ </div>
+</dialog>
+
+<div id="vw">
+ <header class="vb">
+  <button id="vclose" class="btn" type="button" aria-label="閉じる"><i data-ic="x"></i><span>閉じる</span></button>
+  <div class="vt"><b id="vt"></b><span class="dlv"></span></div>
+  <div class="vchip" id="vchip"></div>
+  <div class="vz"><button id="vfit" class="btn" type="button" aria-label="画面に合わせる"><i data-ic="fit"></i><span>画面に合わせる</span></button><input id="vzoom" type="range" min="10" max="200" step="5" aria-label="表示倍率"><output id="vzo"></output></div>
+ </header>
+ <div id="vbox"></div>
+ <div id="ld"><div class="ldc">
+  <div class="lh"><img id="ljk" alt=""><div><b id="lt"></b><span class="dlv"></span></div></div>
+  <div class="pct"><strong id="pn">0</strong><span>%</span><em id="pm">準備しています…</em></div>
+  <div class="pbar"><i id="pb"></i></div>
+  <ol class="stp"><li><span class="st"><i data-ic="check"></i></span>譜面データを取得</li><li><span class="st"><i data-ic="check"></i></span>譜面を解析</li><li><span class="st"><i data-ic="check"></i></span>譜面を描画</li><li><span class="st"><i data-ic="check"></i></span>ノーツ画像を読み込み</li></ol>
+  <div class="errb"><button class="btn" id="lretry" type="button"><i data-ic="reset"></i>再試行</button><button class="btn" id="lclose" type="button">閉じる</button></div>
+ </div></div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),pad=(n,l)=>String(n).padStart(l,'0');
+const MASTER='https://sekai-world.github.io/sekai-master-db-diff/';
+      /* ---------- Chart source resolution ----------
+         sekai-music-charts は完成SVGを配信し、元データは _01_rip/*.txt。
+         _01 のasset3配信も旧ミラーとして順に試す。
+      */
+      const id4=i=>pad(i,4);
+      const susGroups=(id,d)=>[
+        [`https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01_rip/${d}.txt`],
+        [
+          `https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01_rip/${d}.sus`,
+          `https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01/${d}.txt`,
+          `https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01/${d}.sus`,
+          `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}.txt`,
+          `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}.sus`,
+          `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}`
+        ]
+      ];
+      const susURLs=(id,d)=>susGroups(id,d).flat();
+      const svgURLs=(id,d)=>[
+        `https://storage.sekai.best/sekai-music-charts/jp/${id4(id)}/${d}.svg`,
+        `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}.svg`
+      ];
+      const svgURL=(id,d)=>svgURLs(id,d)[0];
+      const isSVG=u=>/\.svg(?:[?#].*)?$/i.test(u);
+      const stripBOM=t=>String(t??'').replace(/^\uFEFF/,'');
+      const isSUS=t=>{
+        const x=stripBOM(t).replace(/\r/g,'');
+        return !/^\s*</.test(x)&&/^#(?:BPM[0-9A-Z]{2}|\d{3}(?:02|08|1[0-9A-Z]|3[0-9A-Z]{2}|5[0-9A-Z]|9[0-9A-Z]{2})): /mi.test(x.replace(/:([^\n]*)/g,': $1'));
+      };
+      const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+      const b36=c=>{const n=parseInt(String(c),36);return Number.isFinite(n)?n:-1};
+      function scorePairs(data,measure,warnings,lineNo){
+        const d=String(data).toUpperCase(),L=d.length,out=[];
+        if(!L)return out;
+        if(L%2)warnings.push(`行${lineNo}: データ長が奇数のため末尾1文字を無視しました`);
+        for(let i=0;i+1<L;i+=2){
+          const v=d.slice(i,i+2);if(v==='00')continue;
+          const type=b36(v[0]),width=b36(v[1]);
+          if(type<0||width<0){warnings.push(`行${lineNo}: 不正なBase36値「${v}」`);continue}
+          /* SUSのタイミングは行データ全体の文字数を分母にした正確な有理数。 */
+          const num=measure*L+i,den=L,g=gcd(num,den)||1;
+          out.push({v,t:type,w:width,bar:num/den,bk:`${num/g}/${den/g}`});
+        }
+        return out;
+      }
+      function parseSUS(text){
+        text=stripBOM(text);
+        const bpmDef=new Map(),tilDefs=new Map(),ev=[],raw=[],meta={},warnings=[];
+        const usedHiSpeedIds=new Set(),usedMeasureSpeedIds=new Set();
+        let ticksPerBeat=480,activeHiSpeedId=null,lineNo=0,unhandled=0,seq=0;
+        const registerHiSpeedData=()=>{if(activeHiSpeedId!==null)usedHiSpeedIds.add(activeHiSpeedId)};
+        for(const l0 of text.split(/\r?\n/)){
+          lineNo++;const l=l0.trim();if(!l||l[0]!=='#')continue;
+          if(/^#NOSPEED$/i.test(l)){meta.NOSPEED='';activeHiSpeedId=null;continue}
+          let m=l.match(/^#([A-Za-z0-9_]+)\s+(.*)$/);
+          if(m){
+            const key=m[1].toUpperCase(),value=m[2].replace(/^\"|\"$/g,'').trim();meta[key]=value;
+            if(key==='REQUEST'){
+              const q=value.match(/ticks_per_beat\s+(\d+)/i);if(q&&+q[1]>0)ticksPerBeat=+q[1];
+            }else if(key==='HISPEED'){
+              const id=b36(value);if(id>=0)activeHiSpeedId=id
+            }else if(key==='MEASUREHS'){
+              const id=b36(value);if(id>=0)usedMeasureSpeedIds.add(id);
+            }
+            continue;
+          }
+          m=l.match(/^#([A-Za-z0-9_]+):\s*(.*)$/);if(!m)continue;
+          const h=m[1],d=m[2];let x,base;
+          if((x=h.match(/^(\d{3})02$/))){
+            const len=Number(d);if(Number.isFinite(len)&&len>0)ev.push({bar:+x[1],len});else warnings.push(`行${lineNo}: 小節長が不正です`);
+          }else if((x=h.match(/^BPM([0-9A-Z]{2})$/i))){
+            const bpm=Number(d),id=b36(x[1][0])*36+b36(x[1][1]);if(Number.isFinite(bpm)&&bpm>0)bpmDef.set(id,bpm);else warnings.push(`行${lineNo}: BPM定義が不正です`);
+          }else if((x=h.match(/^TIL([0-9A-Z]{2})$/i))){
+            const id=b36(x[1][0])*36+b36(x[1][1]),def=[];
+            const value=d.replace(/^\"|\"$/g,'');
+            for(const token of value.split(',')){
+              const q=token.trim().match(/^(\d+)\s*['.]\s*(\d+)\s*:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/);
+              if(!q){if(token.trim())warnings.push(`行${lineNo}: TIL定義「${token.trim()}」を解析できません`);continue}
+              const measure=+q[1],tick=+q[2],speed=Number(q[3]);
+              if(Number.isFinite(speed))def.push({measure,tick,speed});
+            }
+            tilDefs.set(id,def);
+          }else if((x=h.match(/^(\d{3})08$/))){
+            scorePairs(d,+x[1],warnings,lineNo).forEach(p=>ev.push({bar:p.bar,bpmId:b36(p.v[0])*36+b36(p.v[1])}));
+          }else if((x=h.match(/^(\d{3})1([0-9A-Z])$/i))){
+            base={k:'tap',lane:b36(x[2]),ch:null,deco:false};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
+          }else if((x=h.match(/^(\d{3})5([0-9A-Z])$/i))){
+            base={k:'dir',lane:b36(x[2]),ch:null,deco:false};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
+          }else if((x=h.match(/^(\d{3})3([0-9A-Z])([0-9A-Z])$/i))||(x=h.match(/^(\d{3})9([0-9A-Z])([0-9A-Z])$/i))){
+            const deco=h.charAt(3)==='9';base={k:'sl',lane:b36(x[2]),ch:b36(x[3]),deco};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
+          }else if(/^ATR[0-9A-Z]{2}$/i.test(h)||/^(ATTRIBUTE|NOATTRIBUTE)$/i.test(h)){
+            /* ノーツ属性定義は現在の表示対象外。 */
+          }else if(/^\d{3}/.test(h)||/^BPM|^TIL/i.test(h)){
+            unhandled++;if(unhandled<=8)warnings.push(`行${lineNo}: 未対応の譜面行「${h}」`);
+          }
+        }
+        if(unhandled>8)warnings.push(`ほか${unhandled-8}行の未対応データがあります`);
+        ev.forEach(e=>{if(e.bpmId!==undefined){e.bpm=bpmDef.get(e.bpmId);if(e.bpm===undefined)warnings.push(`小節${e.bar.toFixed(4)}: BPM ID ${e.bpmId} の定義がありません`)}});
+        /* TIL: measure'tick:speed. A speed definition is only active when
+           referenced by HISPEED or MEASUREHS. One measure contains
+           (measure length in beats * ticksPerBeat) ticks. */
+        const measureLengthAt=measure=>{
+          let beats=4;for(const e of ev.filter(v=>v.len).sort((a,b)=>a.bar-b.bar)){if(e.bar<=measure+1e-9)beats=e.len;else break}return beats;
+        };
+        const speedEventKeys=new Set();
+        const appendSpeedEvents=(ids,mode)=>{
+          for(const id of ids){
+            const entries=tilDefs.get(id);
+            if(!entries){warnings.push(`TIL${id.toString(36).toUpperCase().padStart(2,'0')} の速度定義が見つかりません`);continue}
+            for(const entry of entries){
+              const bar=entry.measure+entry.tick/(ticksPerBeat*measureLengthAt(entry.measure));
+              const key=`${mode}|${bar.toFixed(8)}|${entry.speed}`;if(speedEventKeys.has(key))continue;speedEventKeys.add(key);
+              ev.push({bar,speed:entry.speed,eventType:'speed',speedMode:mode});
+            }
+          }
+        };
+        appendSpeedEvents(usedHiSpeedIds,'note');
+        appendSpeedEvents(usedMeasureSpeedIds,'measure');
+        raw.sort((a,b)=>a.bar-b.bar||a.seq-b.seq);
+
+        /* まず有効レーンを索引化し、同時刻・同じ幅の重なりだけを結合する。 */
+        const deleted=new Set(),byBar=new Map(),sameSlot=(a,b)=>a.bk===b.bk&&a.lane===b.lane&&a.w===b.w;
+        raw.forEach((n,i)=>{
+          if(!(n.lane>=2&&n.lane<14)){
+            deleted.add(i);ev.push({bar:n.bar,text:n.lane===0?'SKILL':n.t===1?'FEVER CHANCE!':'SUPER FEVER!!',eventType:'info'});return;
+          }
+          const a=byBar.get(n.bk)||[];a.push(i);byBar.set(n.bk,a);
+        });
+        /* 1st pass: directional -> tap */
+        raw.forEach((d,i)=>{
+          if(deleted.has(i)||d.k!=='dir')return;
+          for(const j of byBar.get(d.bk)||[]){const t=raw[j];if(!deleted.has(j)&&t.k==='tap'&&sameSlot(t,d)){deleted.add(j);d.tap=t}}
+        });
+        /* 2nd pass: every slide point may own a tap and/or directional attachment.
+           In particular, SlideType 5 (invisible relay) must not be skipped:
+           it is a valid path node and its directional attachment controls the
+           segment that starts at that node. */
+        raw.forEach((s,i)=>{
+          if(deleted.has(i)||s.k!=='sl')return;
+          s.head=s;
+          for(const j of byBar.get(s.bk)||[]){
+            const t=raw[j];
+            if(!deleted.has(j)&&t.k==='tap'&&sameSlot(t,s)){
+              deleted.add(j);s.tap=t;
+            }
+          }
+          for(const j of byBar.get(s.bk)||[]){
+            const d=raw[j];
+            if(!deleted.has(j)&&d.k==='dir'&&sameSlot(d,s)){
+              deleted.add(j);s.dir=d;
+              if(d.tap)s.tap=d.tap;
+            }
+          }
+        });
+        /* 3rd pass: same channel + same guide/slide family forms a path. */
+        const slideIndexes=raw.map((n,i)=>({n,i})).filter(({n,i})=>!deleted.has(i)&&n.k==='sl');
+        for(const {n:s,i} of slideIndexes){
+          if(!s.head)s.head=s;if(s.t===2){s.next=null;continue}
+          const next=slideIndexes.find(({n,i:j})=>j>i&&n.ch===s.ch&&n.deco===s.deco);
+          if(next){s.next=next.n;next.n.head=s.head}
+        }
+        const active=raw.filter((_,i)=>!deleted.has(i));
+        const chainStarts=active.filter(n=>n.k==='sl'&&n.t===1);
+        let orphanStarts=0,orphanEnds=0,orphanDirections=0;
+        active.filter(n=>n.k==='dir').forEach(n=>{if(!n.tap)orphanDirections++});
+        chainStarts.forEach(start=>{let p=start,seen=new Set([p]);while(p.next&&!seen.has(p.next)){p=p.next;seen.add(p)}if(p.t!==2)orphanStarts++});
+        active.filter(n=>n.k==='sl'&&n.t===2).forEach(end=>{const hasStart=chainStarts.some(start=>{let p=start,seen=new Set();while(p&&!seen.has(p)){if(p===end)return true;seen.add(p);p=p.next}return false});if(!hasStart)orphanEnds++});
+        if(orphanStarts)warnings.push(`${orphanStarts}本のスライド経路で終点を確認できません`);
+        if(orphanEnds)warnings.push(`${orphanEnds}個のスライド終点に始点がありません`);
+        if(orphanDirections)warnings.push(`${orphanDirections}個の方向指定が同位置のノーツに結合されていません`);
+        const unsupported=active.filter(n=>n.k==='tap'&&!([1,2,3,4,5,6,7,8].includes(n.t))||n.k==='sl'&&!([0,1,2,3,5].includes(n.t))||n.k==='dir'&&!([1,2,3,4,5,6].includes(n.t))).length;
+        if(unsupported)warnings.push(`${unsupported}個の未定義ノーツ種別を検出しました`);
+        return{
+          meta,ev:ev.sort((a,b)=>a.bar-b.bar),notes:active,allNotes:raw,
+          stats:{raw:raw.length,active:active.length,attached:deleted.size,chains:chainStarts.length,orphanStarts,orphanEnds,orphanDirections,unsupported,warnings}
+        };
+      }
+      const crit=n=>n.k==='tap'?[2,6,8].includes(n.t):n.k==='dir'?!!(n.tap&&crit(n.tap)):!!((n.tap&&crit(n.tap))||(n.dir&&crit(n.dir))||(n.head&&n.head!==n&&crit(n.head)));
+      const trend=n=>n.k==='tap'?[5,6].includes(n.t):n.k==='dir'?!!(n.tap&&trend(n.tap)):!!((n.tap&&trend(n.tap))||(n.dir&&trend(n.dir)));
+      const none=n=>n.k==='tap'?[7,8].includes(n.t):n.k==='sl'?!!(n.tap&&none(n.tap)):false;
+      /* Project SEKAI's path rule: type 3 relays with a tap but no
+         directional attachment are pass-through markers; a directional
+         attachment promotes that relay to an actual path control point. */
+      const isPath=s=>s.t===0?false:s.t!==3?true:!!s.dir||(!s.tap&&!s.dir);
+      const nextSlidePathNode=first=>{
+        let node=first;const relays=[],seen=new Set();
+        while(node&&!seen.has(node)){
+          seen.add(node);
+          if(node.t===3)relays.push(node);
+          if(isPath(node)||!node.next)break;
+          node=node.next;
+        }
+        return{node,relays};
+      };
+      /* ---------- ノーツ描画（ゲーム内デザインを再現したSVG） ---------- */
+      const LW=20,PL=46,PR=250,COLW=PL+12*LW+PR,TOP=30;
+      const C={tap:['#eaf0ff','#9c8be8','#8fa4f7'],long:['#e5fbee','#4fd9a0','#4fd9a0'],flick:['#ffeaf0','#ee7a98','#f4a3b6'],crit:['#fff7da','#f1b42e','#f6c84a'],dmg:['#efe5fa','#6f43a8','#8d63c4'],unknown:['#ffe0e0','#dc5555','#b82e2e']};
+      const body=(x,y,w,k,a=1,h=14)=>{const c=C[k];return`<g opacity="${a}"><rect x="${x-2}" y="${y-h/2-2}" width="${w+4}" height="${h+4}" rx="8" fill="${c[1]}" opacity=".25"/><rect x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="6" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${k==='tap'&&h>8?`<rect x="${x+2}" y="${y+h/2-3.5}" width="${w-4}" height="3" rx="1.5" fill="#43dcf3"/>`:''}${h>8?`<rect x="${x+3}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/><rect x="${x+w-7}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/>`:''}</g>`};
+      const gem=(x,y,k)=>{const f=k==='crit'?['#f8d24f','#d9981a']:k==='flick'?['#f598b1','#d85a82']:['#6fe3b8','#27b185'];return`<polygon points="${x},${y-7} ${x+6.5},${y} ${x},${y+7} ${x-6.5},${y}" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.5"/><polygon points="${x},${y-7} ${x-6.5},${y} ${x},${y}" fill="#fff" opacity=".8"/>`};
+      /* Official-style flick arrow art used by the pjsekai-scores renderer.
+         The CDN supplies separate normal/critical and vertical/diagonal PNGs;
+         right-diagonal arrows are mirrored, matching the reference renderer. */
+      const FLICK_ASSET_BASE='https://asset3.pjsekai.moe/live/note/custom01';
+      const arrow=(cx,y,w,angle,k,alpha=1)=>{
+       const width=Math.max(0,Math.min(6,Math.trunc(Number(w)||0)));
+       const scale=LW/16,fh=24*scale,noteSize=16*scale;
+       const h=fh*Math.pow((width+3)/3,.75),iw=fh*1.5*Math.pow((width+.5)/3,.75);
+       const diagonal=Math.abs(Number(angle)||0)>0.1,right=(Number(angle)||0)>0;
+       const bias=diagonal?(right?1:-1)*noteSize/4:0;
+       const critical=k==='crit';
+       const src=`${FLICK_ASSET_BASE}/notes_flick_arrow${critical?'_crtcl':''}_${String(width).padStart(2,'0')}${diagonal?'_diagonal':''}.png`;
+       const ix=cx-iw/2+bias,iy=y+noteSize/4-h;
+       const flip=right?` transform="translate(${2*(cx+bias)} 0) scale(-1 1)"`:'';
+       return`<g opacity="${alpha}"><image href="${src}" x="${ix.toFixed(2)}" y="${iy.toFixed(2)}" width="${iw.toFixed(2)}" height="${h.toFixed(2)}"${flip}/></g>`;
+      };
+      /* Trace body only; flick-trace arrows are rendered with the same sprite
+         as ordinary flick notes so the silhouette and direction match. */
+      const trc=(x,y,w,cr,fl,d=0,alpha=1)=>{const c=cr?['#fff3c2','#e0a21a']:fl?['#ffe3ec','#ee7a98']:['#dff7ec','#27b185'];return`<g opacity="${alpha}"><rect x="${x}" y="${y-4}" width="${w}" height="8" rx="4" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${gem(x+w/2,y,cr?'crit':fl?'flick':'long')}</g>`};
+      /* SUS directional は「見た目のフリック」と「スライド曲線制御」を兼ねる。
+         1/3/4 は表示するフリック矢印、2/5/6 はスライド区間の曲線制御。
+         曲線制御の方向値を、画面上の矢印角度として誤表示しない。 */
+      const directionTypeOf=n=>{const d=n&&n.k==='dir'?n:n&&n.dir;return d?d.t:null};
+      const flickAngleOf=n=>{const t=directionTypeOf(n);return t===1?0:t===3?-30:t===4?30:null};
+      const cubicPoint=(curve,t)=>{const u=1-t,u2=u*u,t2=t*t;return[
+        curve[0][0]*u2*u+3*curve[1][0]*u2*t+3*curve[2][0]*u*t2+curve[3][0]*t2*t,
+        curve[0][1]*u2*u+3*curve[1][1]*u2*t+3*curve[2][1]*u*t2+curve[3][1]*t2*t
+      ]};
+      /* 時間軸が上下どちら向きでも、指定Yに対応するBezier上のXを二分探索する。 */
+      const cubicXAtY=(curve,y)=>{
+        const y0=curve[0][1],y1=curve[3][1];
+        if(Math.abs(y1-y0)<1e-9)return(curve[0][0]+curve[3][0])/2;
+        let lo=0,hi=1;
+        for(let i=0;i<36;i++){
+          const mid=(lo+hi)/2,py=cubicPoint(curve,mid)[1];
+          if((y1>y0&&py<y)||(y1<y0&&py>y))lo=mid;else hi=mid;
+        }
+        return cubicPoint(curve,(lo+hi)/2)[0];
+      };
+      const slideChainPath=edges=>{
+        if(!edges.length)return'';
+        const f=v=>Number(v.toFixed(3));
+        let d=`M${f(edges[0].left[0][0])},${f(edges[0].left[0][1])}`;
+        for(const e of edges){const p=e.left;d+=`C${f(p[1][0])},${f(p[1][1])} ${f(p[2][0])},${f(p[2][1])} ${f(p[3][0])},${f(p[3][1])}`}
+        const last=edges[edges.length-1].right;d+=`L${f(last[3][0])},${f(last[3][1])}`;
+        for(let i=edges.length-1;i>=0;i--){const p=edges[i].right;d+=`C${f(p[2][0])},${f(p[2][1])} ${f(p[1][0])},${f(p[1][1])} ${f(p[0][0])},${f(p[0][1])}`}
+        return d+'Z';
+      };
+      /* ---------- レイアウト & SVG生成 ---------- */
+      function render(S,ppb,BPC,R0=0,RN=0,settings={}){
+       const slideOpacity=Math.max(0,Math.min(1,Number(settings.slideOpacity??.34)));
+       const guideOpacity=Math.max(0,Math.min(1,Number(settings.guideOpacity??.12)));
+       const{notes,ev}=S;let maxBar=0;notes.forEach(n=>maxBar=Math.max(maxBar,n.bar));ev.forEach(e=>maxBar=Math.max(maxBar,e.bar));
+       const total=Math.floor(maxBar+1e-9)+1,len=[],cum=[0];let cl=4,ei=0;const lens=ev.filter(e=>e.len).sort((a,b)=>a.bar-b.bar);
+       for(let b=0;b<=total;b++){while(ei<lens.length&&lens[ei].bar<=b)cl=lens[ei++].len;len[b]=cl;cum[b+1]=cum[b]+cl}
+       const cb=B=>{const m=Math.min(Math.floor(B+1e-9),total);return cum[m]+(B-m)*len[m]},m0=Math.min(Math.max(0,Math.floor(R0)),total-1),m1=RN?Math.min(total,m0+Math.floor(RN)):total,nc=Math.max(1,Math.ceil((m1-m0)/BPC));
+       let colH=0;for(let c=0;c<nc;c++)colH=Math.max(colH,(cb(Math.min(m0+(c+1)*BPC,m1))-cb(m0+c*BPC))*ppb);
+       const bot=TOP+colH,H=bot+26,Y=(c,B)=>bot-(cb(B)-cb(m0+c*BPC))*ppb,X=n=>PL+(n.lane-2)*LW,col=n=>Math.max(0,Math.min(nc-1,Math.floor((n.bar-m0)/BPC+1e-9)));
+       /* Slide topology and rendering geometry are deliberately separated.
+          Directional attachments on invisible relays are valid control data:
+          they are not rendered as independent flick notes. */
+       const chains=[];
+       notes.filter(n=>n.k==='sl'&&n.t===1).forEach(start=>{
+        let current=start;const segs=[],relays=[],seen=new Set([start]);
+        while(current&&current.t!==2&&current.next&&!seen.has(current.next)){
+          const step=nextSlidePathNode(current.next);
+          if(!step.node)break;
+          segs.push([current,step.node]);
+          relays.push(...step.relays);
+          current=step.node;seen.add(current);
+        }
+        if(segs.length)chains.push({s:start,segs,relays,c0:start.bar,c1:segs[segs.length-1][1].bar});
+       });
+       const cnt={tap:0,crit:0,flick:0,hold:0,relay:0,trace:0,dmg:0,longTick:0};let combo=0;
+       const cols=Array.from({length:nc},()=>({g:[],p:[],n:[],m:[],a:[],t:[]}));
+       const drawnRelays=new Set();
+       const makeSlideEdge=(a,b,c)=>{
+        const y0=Y(c,a.bar),y1=Y(c,b.bar),midY=(y0+y1)/2;
+        const curveDir=a.dir?.t??null;
+        /* Match the reference renderer:
+           Down(2) eases in at the segment start; LowerLeft/Right(5/6)
+           ease out at the segment end. The control belongs to point a,
+           therefore it affects a -> b, not the segment arriving at a. */
+        const easeIn=curveDir===2,easeOut=curveDir===5||curveDir===6;
+        const padding=a.deco?0:-1;
+        const l0=X(a)-padding,l1=X(b)-padding;
+        const r0=X(a)+a.w*LW+padding,r1=X(b)+b.w*LW+padding;
+        return{
+          a,b,
+          left:[[l0,y0],[l0,easeIn?midY:y0],[l1,easeOut?midY:y1],[l1,y1]],
+          right:[[r0,y0],[r0,easeIn?midY:y0],[r1,easeOut?midY:y1],[r1,y1]]
+        };
+       };
+       chains.forEach(ch=>{
+        /*
+         * Project SEKAI hold-combo rule:
+         * add one invisible automatic judgment at each 1/8-measure grid
+         * strictly after the hold head and strictly before its tail.
+         * The head/tail and authored relay points are counted separately
+         * in the note pass below. Guide/deco paths never contribute combo.
+         * This mirrors the reference chart parser's Long Auto generation.
+         */
+        const chainTail=ch.segs[ch.segs.length-1]?.[1];
+        if(!ch.s.deco && chainTail?.t===2){
+          let tickIndex=Math.floor((ch.s.bar+1e-9)*8)+1;
+          while(tickIndex/8 < chainTail.bar-1e-9){
+            cnt.longTick++;
+            combo++;
+            tickIndex++;
+          }
+        }
+        const cr=crit(ch.s);
+        for(let c=Math.max(0,Math.floor((ch.c0-m0)/BPC+1e-9));c<=Math.min(nc-1,Math.floor((ch.c1-m0)/BPC+1e-9));c++){
+          const edges=ch.segs.map(([a,b])=>makeSlideEdge(a,b,c));
+          const path=slideChainPath(edges);
+          if(path)cols[c].p.push(`<path d="${path}" fill="${cr?'#f0c45c':'#55dfa7'}" opacity="${ch.s.deco?guideOpacity:slideOpacity}"/>`);
+          /* Visible relays are placed by evaluating the actual Bézier edges.
+             This also covers a relay which itself carries curve-control data. */
+          ch.relays.forEach(m=>{
+            if(none(m)||m.deco||m.bar<m0-1e-9||m.bar>m1+1e-9||col(m)!==c)return;
+            const edge=edges.find(e=>e.a.bar<=m.bar+1e-9&&m.bar<=e.b.bar+1e-9);
+            if(!edge)return;
+            const ym=Y(c,m.bar),xl=cubicXAtY(edge.left,ym),xr=cubicXAtY(edge.right,ym);
+            const xc=(xl+xr)/2,cm=crit(m);
+            drawnRelays.add(m);
+            /* A relay control point is a path marker, never a red flick body. */
+            cols[c].a.push(gem(xc,ym,cm?'crit':'long'));
+          });
+        }
+       });
+       notes.forEach(n=>{
+        if(none(n)||n.bar<m0-1e-9||n.bar>m1+1e-9)return;
+        const c=col(n),y=Y(c,n.bar),x=X(n)+1,w=Math.max(4,n.w*LW-2),cr=crit(n),tr=trend(n),k=n.k,d=flickAngleOf(n);let kind;
+        /* Guide(9xy)は透明な経路だけでなく、重ねられたTap/Directionalも描画する。 */
+        if(n.deco){
+          /* Upstream renderer draws the decoration path itself; note art exists only when a tap is attached. */
+          if(!n.tap)return;
+          const at=n.tap,atType=at.t,showDirection=d!==null,defaultFlick=atType===3&&!showDirection;
+          /* ガイド経路の薄さは上の経路パスだけに適用する。
+             ガイド点に重なっている実ノーツは通常ノーツと同じ不透明度で描画し、
+             ガイド経路の属性がノーツ本体・矢印・トレースへ伝播しないようにする。 */
+          /* Guideノーツの付属ノーツは見た目だけ。通常ノーツと同じ濃さで描くが、
+             実ノーツ数・カテゴリ数・コンボ数には加算しない。 */
+          if(tr){cols[c].a.push(trc(x,y,w,cr,showDirection,d??0));if(showDirection||defaultFlick)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,showDirection?d:0,cr?'crit':'flick'))}
+          else if(atType===4){cols[c].n.push(body(x,y,w,'dmg'));if(showDirection)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))}
+          else if(atType===3){cols[c].n.push(body(x,y,w,'flick'));if(showDirection||defaultFlick)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,showDirection?d:0,cr?'crit':'flick'))}
+          else{kind=cr?'crit':'tap';cols[c].n.push(body(x,y,w,kind));if(showDirection)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))}
+          return;
+        }
+        if(k==='tap'){
+          if(n.t===4){kind='dmg';cnt.dmg++}
+          else if(n.t===3){kind='flick';cnt.flick++;combo++}
+          else if(tr){kind=cr?'crit':'tap';cnt.trace++;combo++}
+          else if([1,2].includes(n.t)){kind=cr?'crit':'tap';cnt[cr?'crit':'tap']++;combo++}
+          else{kind='unknown';cols[c].n.push(body(x,y,w,kind));return}
+        }else if(k==='dir'){
+          kind=cr?'crit':'flick';if(tr)cnt.trace++;else cnt.flick++;combo++;
+        }else{
+          if(n.t===5||n.t===0||n.t===4)return;
+          if(n.t===3){
+            cnt.relay++;combo++;if(tr)cnt.trace++;
+            if(!drawnRelays.has(n))cols[c].a.push(gem(X(n)+n.w*LW/2,y,cr?'crit':'long'));
+            return;
+          }
+          if(n.t!==1&&n.t!==2)return;
+          combo++;if(n.t===1)cnt.hold++;
+          /* The reference renderer uses flick note art for a slide end
+             carrying a directional attachment. Lower directions 5/6 affect
+             the path only; they do not add an arrow glyph. */
+          const directionalEnd=n.t===2&&!!n.dir;
+          kind=cr?'crit':directionalEnd?'flick':'long';
+          if(tr)cnt.trace++;else if(directionalEnd)cnt.flick++;
+        }
+        const defaultTapFlick=k==='tap'&&n.t===3,showDirection=d!==null;
+        const directionalSlideEnd=k==='sl'&&n.t===2&&!!n.dir;
+        const fl=(k==='dir'&&showDirection)||defaultTapFlick||(directionalSlideEnd&&showDirection);
+        if(tr)cols[c].a.push(trc(x,y,w,cr,fl,fl?(showDirection?d:0):0));else cols[c].n.push(body(x,y,w,kind));
+        if(fl)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,showDirection?d:0,cr?'crit':'flick'))
+       });
+       /* 列ごとに組み立て */
+       let out='';const cs=[];for(let c=0;c<nc;c++){const b0=m0+c*BPC,b1=Math.min(b0+BPC,m1),o=cols[c],ox=c*COLW;let g=`<rect x="0" y="0" width="${COLW}" height="${H}" fill="#111827"/>`;
+        for(let i=0;i<12;i++)g+=`<rect x="${PL+i*LW}" y="${TOP}" width="${LW}" height="${colH}" fill="${i%2?'#19263a':'#1d2c42'}"/>`;
+        for(let i=0;i<=12;i++)g+=`<line x1="${PL+i*LW}" x2="${PL+i*LW}" y1="${TOP}" y2="${bot}" stroke="#394b63" stroke-width="${i%12?1:1.5}"/>`;
+        for(let b=b0;b<=b1;b++){const y=Y(c,b);g+=`<line x1="${PL-4}" x2="${PL+12*LW}" y1="${y}" y2="${y}" stroke="#7b91ad" stroke-width="1.6"/>`;if(b<b1||b===m1)g+=`<text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" font-weight="700" fill="#d0dbea">${b}</text>`;
+         if(b<b1)for(let k=1;k<len[b];k++){const yy=Y(c,b+k/len[b]);g+=`<line x1="${PL}" x2="${PL+12*LW}" y1="${yy}" y2="${yy}" stroke="#2e4058" stroke-width="1"/>`}}
+        /* Event labels are separated into fixed BPM / scroll-speed / skill-FEVER
+           lanes. Labels in the same lane are vertically packed with leader lines
+           so dense event clusters do not draw over one another. */
+        const evInColumn=ev.filter(e=>e.bar>=b0-1e-9&&e.bar<b1+(c===nc-1?1:0)&&
+          (e.bpm!==undefined||e.speed!==undefined||e.text));
+        const eventLanes=[
+          {key:'bpm',x:PL+12*LW+8,w:60,bg:'#4a3b1e',stroke:'#d4a94e',color:'#ffe09a',items:evInColumn.filter(e=>e.bpm!==undefined).map(e=>({e,y:Y(c,e.bar),label:`BPM ${(+e.bpm).toFixed(2)}`}))},
+          {key:'speed',x:PL+12*LW+74,w:82,bg:'#203b54',stroke:'#63a9db',color:'#aee0ff',items:evInColumn.filter(e=>e.speed!==undefined).map(e=>({e,y:Y(c,e.bar),label:`${e.speedMode==='measure'?'BAR':'HS'} ×${Number(e.speed.toFixed(3))}`}))},
+          {key:'info',x:PL+12*LW+162,w:80,bg:'#382b4b',stroke:'#a98bd0',color:'#e2cffc',items:evInColumn.filter(e=>!!e.text).map(e=>({e,y:Y(c,e.bar),label:e.text}))}
+        ];
+        eventLanes.forEach(lane=>{
+          const items=lane.items.sort((a,b)=>a.y-b.y);if(!items.length)return;
+          const topY=TOP+8,bottomY=Math.max(TOP+8,bot-8),gap=12;
+          const effectiveGap=items.length>1?Math.min(gap,(bottomY-topY)/(items.length-1)):gap;
+          let last=topY-effectiveGap;
+          items.forEach(item=>{item.labelY=Math.max(item.y,last+effectiveGap,topY);last=item.labelY});
+          if(items[items.length-1].labelY>bottomY){
+            const shift=items[items.length-1].labelY-bottomY;items.forEach(item=>item.labelY-=shift);
+          }
+          if(items[0].labelY<topY){
+            const step=items.length>1?(bottomY-topY)/(items.length-1):0;items.forEach((item,i)=>item.labelY=topY+i*step);
+          }
+          items.forEach(item=>{
+            const yy=item.y,ly=item.labelY,short= Math.abs(yy-ly)>1;
+            if(short)g+=`<path d="M${lane.x-3} ${yy} L${lane.x} ${ly}" stroke="${lane.stroke}" stroke-width="1" opacity=".8"/>`;
+            g+=`<circle cx="${lane.x-3}" cy="${yy}" r="2" fill="${lane.stroke}"/>`;
+            g+=`<rect x="${lane.x}" y="${ly-5.5}" width="${lane.w}" height="11" rx="3" fill="${lane.bg}" stroke="${lane.stroke}" stroke-width=".6"/>`;
+            g+=`<text x="${lane.x+4}" y="${ly+3}" font-size="8.5" font-weight="700" fill="${lane.color}">${esc(item.label)}</text>`;
+          });
+        });
+        const inner=`<clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${o.p.join('')}</g>${o.n.reverse().join('')}${o.a.reverse().join('')}<text x="${PL}" y="16" font-size="11" fill="#a9bdd8">小節 ${b0}–${b1-1}</text><text x="${PL+12*LW+8}" y="16" font-size="9" fill="#d4a94e">BPM</text><text x="${PL+12*LW+82}" y="16" font-size="9" fill="#63a9db">速度</text><text x="${PL+12*LW+170}" y="16" font-size="9" fill="#a98bd0">演出</text>`;cs.push(inner);out+=`<g transform="translate(${ox} 0)">${inner}</g>`}
+       return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total,cs,w:COLW,h:H};
+      }
+
+/* ================= UI ================= */
+const DIFFS=['easy','normal','hard','expert','master','append'];
+const DCOL={easy:'#66dd11',normal:'#33bbee',hard:'#ffaa00',expert:'#ee4466',master:'#bb33ee',append:'#ff88dd'};
+const TAGS={vocaloid:'バーチャル・シンガー',light_music_club:'Leo/need',idol:'MORE MORE JUMP!',street:'Vivid BAD SQUAD',theme_park:'ワンダーランズ×ショウタイム',school_refusal:'25時、ナイトコードで。',other:'その他'};
+const IC={search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',tag:'<path d="M3 4v7l9.5 9.5a1.5 1.5 0 0 0 2.1 0l5.9-5.9a1.5 1.5 0 0 0 0-2.1L11 3H4a1 1 0 0 0-1 1z"/><circle cx="7.5" cy="7.5" r="1.3"/>',sort:'<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>',up:'<path d="M12 19V5M5 12l7-7 7 7"/>',chev:'<path d="m6 9 6 6 6-6"/>',gear:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',music:'<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',cal:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',ext:'<path d="M14 4h6v6M20 4l-8.5 8.5M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>',check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',fit:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',reset:'<path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4.5h4.5"/>',note:'<path d="M5 9h14M5 15h14M10.5 4 8.5 20M15.5 4l-2 16"/>',alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/>'};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+document.querySelectorAll('[data-ic]').forEach(e=>{e.outerHTML=ic(e.dataset.ic,e.className)});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-close]');if(b)b.closest('dialog').close();else if(e.target.tagName==='DIALOG')e.target.close()});
+
+/* ---- 設定（localStorage に保存） ---- */
+const KEY='pjsk-chart-viewer:v2',DEF={bpc:8,ppb:28,zoom:100,slide:34,guide:12,unit:'',sort:'date',dir:'desc',diff:'master'};
+const num=(v,a,b,d)=>v==null||v===''||!isFinite(v)?d:Math.min(b,Math.max(a,+v));
+const readCfg=()=>{let o={};try{o=JSON.parse(localStorage.getItem(KEY))||{}}catch{}
+ return{bpc:num(o.bpc,1,32,DEF.bpc),ppb:num(o.ppb,12,120,DEF.ppb),zoom:num(o.zoom,10,200,DEF.zoom),slide:num(o.slide,0,100,DEF.slide),guide:num(o.guide,0,100,DEF.guide),unit:String(o.unit||''),sort:['date','title','level'].includes(o.sort)?o.sort:DEF.sort,dir:o.dir==='asc'?'asc':'desc',diff:DIFFS.includes(o.diff)?o.diff:DEF.diff}};
+let cfg=readCfg();const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch{}};
+
+/* ---- 楽曲一覧 ---- */
+let songs=[],view=[];const byId=new Map();
+const jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
+const kata=s=>String(s??'').normalize('NFKC').toLowerCase().replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+96));
+const fmt=new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Asia/Tokyo'}),dstr=t=>t?fmt.format(t):'-';
+const state=h=>{const e=$('#state');e.innerHTML=h||'';e.hidden=!h};
+async function boot(){
+ state(`<div class="sk">${'<i></i>'.repeat(12)}</div>`);$('#cnt').textContent='読み込み中…';
+ try{
+  const[m,d,t]=await Promise.all([jget('musics.json'),jget('musicDifficulties.json'),jget('musicTags.json').catch(()=>[])]);
+  byId.clear();
+  m.forEach(s=>byId.set(s.id,{...s,pub:s.publishedAt||0,df:{},tg:new Set(),h:kata([s.id,s.title,s.pronunciation,s.lyricist,s.composer,s.arranger].join('\n'))}));
+  d.forEach(x=>{const s=byId.get(x.musicId);if(s)s.df[x.musicDifficulty]=x});
+  t.forEach(x=>{const s=byId.get(x.musicId);if(s&&x.musicTag&&x.musicTag!=='all')s.tg.add(x.musicTag)});
+  const now=Date.now();songs=[...byId.values()].filter(s=>Object.keys(s.df).length&&s.pub<=now);
+  const ut=new Set(songs.flatMap(s=>[...s.tg])),uo=[...Object.keys(TAGS),...ut].filter((k,i,a)=>ut.has(k)&&a.indexOf(k)===i);
+  $('#unit').innerHTML='<option value="">すべてのユニット</option>'+uo.map(k=>`<option value="${esc(k)}">${esc(TAGS[k]||k)}</option>`).join('');
+  $('#unit').disabled=!uo.length;if(!uo.includes(cfg.unit))cfg.unit='';$('#unit').value=cfg.unit;
+  state('');refresh(true)
+ }catch(e){
+  state(`<div class="msg">${ic('alert')}<b>楽曲データを取得できませんでした</b><p>通信状況を確認して、もう一度お試しください。</p><button class="btn" id="retry" type="button">${ic('reset')}再読み込み</button></div>`);
+  $('#cnt').textContent='';$('#retry').onclick=boot
+ }
+}
+function sync(){
+ $('#sort').value=cfg.sort;$('#diff').value=cfg.diff;$('#dot').style.background=DCOL[cfg.diff];$('#rv').classList.toggle('on',cfg.sort==='level');
+ $('#ord').dataset.d=cfg.dir;$('#ol').textContent=cfg.dir==='asc'?'昇順':'降順';save()
+}
+function refresh(anim){
+ const toks=kata($('#q').value.trim()).split(/\s+/).filter(Boolean),dir=cfg.dir==='asc'?1:-1,lvl=cfg.sort==='level';
+ const K={date:s=>s.pub,title:s=>s.pronunciation||s.title,level:s=>s.df[cfg.diff].playLevel}[cfg.sort];
+ view=songs.filter(s=>(!cfg.unit||s.tg.has(cfg.unit))&&(!lvl||s.df[cfg.diff])&&toks.every(k=>s.h.includes(k)));
+ view.sort((a,b)=>{const x=K(a),y=K(b);return((typeof x==='string'?x.localeCompare(y,'ja'):x-y)*dir)||b.pub-a.pub||b.id-a.id});
+ $('#cnt').textContent=view.length.toLocaleString()+' 曲';
+ state(view.length?'':`<div class="msg">${ic('search')}<b>条件に合う曲が見つかりません</b><p>キーワードやユニットの条件を変えてみてください。</p><button class="btn" id="clr" type="button">${ic('reset')}条件をリセット</button></div>`);
+ if(!view.length)$('#clr').onclick=()=>{$('#q').value='';cfg.unit='';$('#unit').value='';sync();refresh(true)};
+ fresh=anim;const g=$('#grid');if(anim&&g.getBoundingClientRect().top<64)scrollTo({top:g.offsetTop-72,behavior:'instant'});
+ layout()
+}
+
+/* ---- 仮想スクロール ---- */
+const GAP=14,META=108,MINW=172,OVER=2;let cols=2,cw=160,rh=300,fresh=false,lk='',tick=0;
+function layout(){
+ const g=$('#grid'),W=g.clientWidth;cols=Math.max(2,Math.floor((W+GAP)/(MINW+GAP)));cw=(W-GAP*(cols-1))/cols;rh=cw+META+GAP;
+ g.style.height=Math.max(0,Math.ceil(view.length/cols)*rh-GAP)+'px';lk='';paint()
+}
+function paint(){
+ const g=$('#grid'),t0=g.getBoundingClientRect().top,rows=Math.ceil(view.length/cols);
+ if(!view.length){g.innerHTML='';return}
+ const a=Math.max(0,Math.floor(-t0/rh)-OVER),b=Math.min(rows-1,Math.floor((innerHeight-t0)/rh)+OVER),key=a+'|'+b;
+ if(key===lk)return;lk=key;
+ let h='';const ids=[];
+ for(let r=a;r<=b;r++)for(let c=0;c<cols;c++){const i=r*cols+c,s=view[i];if(!s)break;ids.push(s.id);h+=card(s,i,c*(cw+GAP),r*rh)}
+ g.innerHTML=h;fresh=false;want(ids)
+}
+const jimg=u=>`<img src="${u}" alt="" decoding="async" draggable="false" onload="this.parentNode.classList.add('ok')">`;
+const pills=s=>DIFFS.filter(d=>s.df[d]).map(d=>`<i style="--c:${DCOL[d]}"${cfg.sort==='level'?` class="${d===cfg.diff?'on':'dim'}"`:''}>${s.df[d].playLevel}</i>`).join('');
+const card=(s,i,x,y)=>`<button class="card${fresh?' fresh':''}" type="button" data-id="${s.id}" style="left:${x}px;top:${y}px;width:${cw}px;height:${cw+META}px;--i:${i%24}"><span class="jk">${jk.has(s.id)?jimg(jk.get(s.id)):''}</span><span class="mt"><b class="tt">${esc(s.title)}</b><span class="cp">${esc(s.composer||'-')}</span><span class="lv">${pills(s)}</span></span></button>`;
+$('#grid').onclick=e=>{const b=e.target.closest('.card');if(b)openSong(+b.dataset.id)};
+addEventListener('scroll',()=>{if(!tick){tick=1;requestAnimationFrame(()=>{tick=0;paint()})}},{passive:true});
+addEventListener('resize',()=>{if(!tick){tick=1;requestAnimationFrame(()=>{tick=0;layout()})}});
+
+/* ---- ジャケット：縮小して保持（ページを閉じるまで再取得しない） ---- */
+const jk=new Map(),pend=new Set(),wantS=new Set(),Q=[];let act=0;
+const jurl=s=>{const a=s.assetbundleName||'jacket_s_'+pad(s.id,3);return`https://storage.sekai.best/sekai-jp-assets/music/jacket/${a}/${a}.webp`};
+function want(ids){wantS.clear();ids.forEach(id=>{wantS.add(id);if(!jk.has(id)&&!pend.has(id)){pend.add(id);Q.push(id)}});pump()}
+function pump(){while(act<6&&Q.length){const id=Q.shift();if(!wantS.has(id)){pend.delete(id);continue}act++;small(byId.get(id)).then(u=>{jk.set(id,u);pend.delete(id);act--;put(id,u);pump()})}}
+async function small(s){
+ const u=jurl(s);
+ try{const r=await fetch(u,{credentials:'omit'});if(!r.ok)throw 0;const bm=await createImageBitmap(await r.blob()),c=document.createElement('canvas');c.width=c.height=160;
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(bm,0,0,160,160);bm.close&&bm.close();
+  const b=await new Promise(ok=>c.toBlob(ok,'image/webp',.8));if(!b)throw 0;return URL.createObjectURL(b)}
+ catch{return u}
+}
+const put=(id,u)=>document.querySelectorAll(`.card[data-id="${id}"] .jk`).forEach(j=>{j.innerHTML=jimg(u)});
+
+/* ---- 曲詳細・難易度選択 ---- */
+const vurl=(s,d)=>'?'+new URLSearchParams({chart:s.id,d,t:s.title,lv:s.df[d].playLevel,nc:s.df[d].totalNoteCount,j:s.assetbundleName||''});
+function openSong(id){
+ const s=byId.get(id),ds=DIFFS.filter(d=>s.df[d]),hi=jurl(s),L=(k,v)=>`<dt>${k}</dt><dd>${esc(v||'-')}</dd>`;
+ $('#sd').innerHTML=`<button class="x" data-close aria-label="閉じる">${ic('x')}</button>
+ <div class="sd"><div class="sjk"><img id="bigj" src="${jk.get(id)||''}" alt=""></div><div class="si"><h2>${esc(s.title)}</h2><p class="rd">${esc(s.pronunciation||'')}</p>
+ <dl>${L('作詞',s.lyricist)}${L('作曲',s.composer)}${L('編曲',s.arranger)}</dl>
+ <div class="meta"><span>${ic('cal')}${dstr(s.pub)}</span>${[...s.tg].map(t=>`<span class="tg">${esc(TAGS[t]||t)}</span>`).join('')}</div></div></div>
+ <div class="dsel"><h3>難易度を選択</h3><div class="dg">${ds.map((d,i)=>`<a class="dc" style="--c:${DCOL[d]};--i:${i}" href="${esc(vurl(s,d))}" target="_blank" rel="noopener"><span><b class="nm">${d.toUpperCase()}</b><small>${ic('note')}${(+s.df[d].totalNoteCount).toLocaleString()} ノーツ</small></span><span class="lvn">${s.df[d].playLevel}</span>${ic('ext','go')}</a>`).join('')}</div></div>`;
+ $('#sd').showModal();
+ const im=new Image();im.onload=()=>{const b=$('#bigj');if(b)b.src=hi};im.src=hi
+}
+
+/* ---- 設定画面 ---- */
+const FS=[['ppb','ノーツの間隔',12,120,1,v=>v+' px / 拍'],['zoom','表示倍率',10,200,5,v=>v+'%'],['slide','ロングノーツの透明度',0,100,1,v=>v+'%'],['guide','ガイドノーツの透明度',0,100,1,v=>v+'%']];
+let svT;const saved=()=>{save();const e=$('#saved');e.classList.add('on');clearTimeout(svT);svT=setTimeout(()=>e.classList.remove('on'),1400)};
+function preview(){
+ let h='<rect width="264" height="176" fill="#111827"/>';
+ for(let i=0;i<12;i++)h+=`<rect x="${12+i*20}" width="20" height="176" fill="${i%2?'#19263a':'#1d2c42'}"/>`;
+ for(let y=16;y<176;y+=40)h+=`<line x1="8" x2="256" y1="${y}" y2="${y}" stroke="#7b91ad" stroke-width="1.2" opacity=".5"/>`;
+ const P=(a,b,c,o)=>`<path d="M${a},150C${a},90 ${b},96 ${b},26L${b+38},26C${b+38},96 ${a+38},90 ${a+38},150Z" fill="${c}" opacity="${o}"/>`;
+ return h+P(53,93,'#55dfa7',cfg.slide/100)+P(173,153,'#f0c45c',cfg.guide/100)+body(53,150,38,'long')+body(93,26,38,'long')+gem(92,88,'long')+body(173,150,38,'crit')+body(153,26,38,'crit')
+}
+function paintSet(){
+ FS.forEach(([k,,a,b,,f])=>{const r=$('#r-'+k);r.value=cfg[k];r.style.setProperty('--p',(cfg[k]-a)/(b-a)*100+'%');$('#o-'+k).textContent=f(cfg[k])});
+ document.querySelectorAll('#seg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===cfg.bpc));$('#pv').innerHTML=preview()
+}
+function initSet(){
+ $('#ranges').innerHTML=FS.map(([k,l,a,b,s])=>`<div class="f"><div class="fh"><label for="r-${k}">${l}</label><output id="o-${k}"></output></div><input type="range" id="r-${k}" min="${a}" max="${b}" step="${s}"></div>`).join('');
+ $('#seg').innerHTML=[4,6,8,10,12,16].map(n=>`<button type="button" data-n="${n}">${n}</button>`).join('');
+ FS.forEach(([k])=>{const r=$('#r-'+k);r.oninput=()=>{cfg[k]=+r.value;paintSet();saved()}});
+ $('#seg').onclick=e=>{const b=e.target.closest('button');if(b){cfg.bpc=+b.dataset.n;paintSet();saved()}};
+ $('#reset').onclick=()=>{['bpc','ppb','zoom','slide','guide'].forEach(k=>cfg[k]=DEF[k]);paintSet();saved()};
+ $('#open-set').onclick=()=>{paintSet();$('#set').showModal()};
+ $('#diff').innerHTML=DIFFS.map(d=>`<option value="${d}">${d.toUpperCase()}</option>`).join('');
+ let qt;$('#q').oninput=()=>{clearTimeout(qt);qt=setTimeout(()=>refresh(true),140)};
+ $('#unit').onchange=e=>{cfg.unit=e.target.value;sync();refresh(true)};
+ $('#sort').onchange=e=>{cfg.sort=e.target.value;sync();refresh(true)};
+ $('#diff').onchange=e=>{cfg.diff=e.target.value;sync();refresh(true)};
+ $('#ord').onclick=()=>{cfg.dir=cfg.dir==='asc'?'desc':'asc';sync();refresh(true)};
+ sync()
+}
+
+/* ---- 譜面ビューア（新しいタブ・全画面） ---- */
+async function dec(buf){const u=new Uint8Array(buf);if(u[0]===0x1f&&u[1]===0x8b&&'DecompressionStream'in window)buf=await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();return new TextDecoder('utf-8').decode(buf).replace(/^\uFEFF/,'')}
+async function getText(u,on,sig){
+ const r=await fetch(u,{signal:sig,credentials:'omit',referrerPolicy:'no-referrer'});if(!r.ok)throw new Error('HTTP '+r.status);
+ const tot=+r.headers.get('content-length')||0,rd=r.body&&r.body.getReader();if(!rd)return dec(await r.arrayBuffer());
+ const ps=[];let g=0;for(;;){const{done,value}=await rd.read();if(done)break;ps.push(value);g+=value.length;on(g,tot)}
+ return dec(await new Blob(ps).arrayBuffer())
+}
+async function loadChart(id,d,on){
+ for(const urls of susGroups(id,d)){
+  const ac=[];
+  try{const hit=await Promise.any(urls.map(async u=>{const c=new AbortController();ac.push(c);const t=setTimeout(()=>c.abort(),15000);
+    try{const x=await getText(u,on,c.signal);if(!isSUS(x))throw new Error('format');return{t:x,u}}finally{clearTimeout(t)}}));ac.forEach(c=>c.abort());return hit}catch{}
+ }
+ return null
+}
+const svgFB=async(id,d)=>{for(const u of svgURLs(id,d)){const im=await new Promise(ok=>{const i=new Image();i.referrerPolicy='no-referrer';i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=u});if(im)return im}return null};
+const preload=u=>new Promise(ok=>{const i=new Image(),t=setTimeout(ok,8000);i.onload=i.onerror=()=>{clearTimeout(t);ok()};i.src=u});
+const tickF=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,30)));
+const WT=[.55,.1,.2,.15];
+function prog(i,r,msg){
+ const p=WT.slice(0,i).reduce((a,b)=>a+b,0)+WT[i]*Math.min(1,r);$('#pb').style.width=(p*100).toFixed(1)+'%';$('#pn').textContent=Math.round(p*100);
+ document.querySelectorAll('.stp li').forEach((li,k)=>{li.className=k<i?'done':k===i?'act':''});if(msg)$('#pm').textContent=msg
+}
+const finish=()=>{$('#pb').style.width='100%';$('#pn').textContent=100;$('#pm').textContent='完了';document.querySelectorAll('.stp li').forEach(l=>{l.className='done'});setTimeout(()=>$('#ld').classList.add('out'),500)};
+const fail=m=>{$('#ld').classList.add('bad');$('#pm').textContent=m;const a=document.querySelector('.stp li.act');if(a)a.className='fail'};
+let S=null,R=null,H=0;
+const box=()=>$('#vbox');
+const draw=()=>render(S,cfg.ppb,cfg.bpc,0,0,{slideOpacity:cfg.slide/100,guideOpacity:cfg.guide/100});
+function zoomTo(z,ns){
+ cfg.zoom=Math.max(10,Math.min(200,Math.round(z)));const e=box().firstElementChild;
+ if(e){const w=e.tagName==='svg'?+e.getAttribute('width'):e.naturalWidth;e.style.width=w*cfg.zoom/100+'px';e.style.height='auto'}
+ $('#vzoom').value=cfg.zoom;$('#vzo').textContent=cfg.zoom+'%';if(!ns)save()
+}
+const show=r=>{R=r;H=r.h;box().innerHTML=r.svg;zoomTo(cfg.zoom,1)};
+async function viewer(){
+ const q=new URLSearchParams(location.search),id=+q.get('chart'),d=DIFFS.includes(q.get('d'))?q.get('d'):'master',T=q.get('t')||'楽曲 #'+id,nc=+q.get('nc')||0,lv=q.get('lv');
+ document.title=`${T} [${d.toUpperCase()}] | 譜面ビューア`;$('#vt').textContent=$('#lt').textContent=T;
+ document.querySelectorAll('.dlv').forEach(e=>{e.textContent=d.toUpperCase()+(lv?' Lv.'+lv:'');e.style.background=DCOL[d]});
+ const ja=q.get('j')||'jacket_s_'+pad(id,3);$('#ljk').src=`https://storage.sekai.best/sekai-jp-assets/music/jacket/${ja}/${ja}.webp`;
+ const close_=()=>{window.close();setTimeout(()=>{location.href=location.pathname},200)};
+ $('#vclose').onclick=$('#lclose').onclick=close_;$('#lretry').onclick=()=>location.reload();
+ $('#vzoom').oninput=e=>zoomTo(+e.target.value);$('#vfit').onclick=()=>H&&zoomTo((box().clientHeight-28)/H*100);
+ box().addEventListener('wheel',e=>{const b=box();if(!e.shiftKey&&Math.abs(e.deltaY)>Math.abs(e.deltaX)&&b.scrollHeight<=b.clientHeight+2){b.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
+ addEventListener('storage',e=>{if(e.key!==KEY||!S)return;const o=cfg;cfg=readCfg();if(['bpc','ppb','slide','guide'].some(k=>o[k]!==cfg[k]))show(draw());else zoomTo(cfg.zoom,1)});
+ try{
+  prog(0,0,'接続しています…');let best=0;
+  const hit=await loadChart(id,d,(g,t)=>{best=Math.max(best,t?Math.min(.98,g/t):1-1/(1+g/150000));prog(0,best,`${Math.round(g/1024)} KB${t?` / ${Math.round(t/1024)} KB`:''} 受信中`)});
+  if(!hit){
+   prog(0,.6,'生成済みSVGを確認しています…');const im=await svgFB(id,d);
+   if(!im)return fail('譜面データを取得できませんでした。通信状況を確認して再試行してください。');
+   box().replaceChildren(im);H=im.naturalHeight;zoomTo(cfg.zoom,1);$('#vchip').innerHTML='<span>生成済みSVG（ノーツ解析なし）</span>';return finish()
+  }
+  prog(1,0,'譜面を解析しています…');await tickF();S=parseSUS(hit.t);
+  prog(2,0,'譜面を描画しています…');await tickF();const r=draw();
+  prog(3,0,'ノーツ画像を確認しています…');
+  const us=[...new Set([...r.svg.matchAll(/<image href="([^"]+)"/g)].map(m=>m[1]))];let n=0;
+  await Promise.all(us.map(u=>preload(u).then(()=>prog(3,++n/us.length,`画像 ${n} / ${us.length}`))));
+  show(r);const w=S.stats.warnings.length;
+  $('#vchip').innerHTML=`<span class="${nc?(r.combo===nc?'ok':'ng'):''}">ノーツ ${r.combo}${nc?` / 公式 ${nc}`:''}</span>`+(w?`<span class="ng" title="${esc(S.stats.warnings.join('\n'))}">要確認 ${w}</span>`:'');
+  finish()
+ }catch(e){console.error(e);fail('表示中にエラーが発生しました：'+e.message)}
+}
+
+if(document.documentElement.classList.contains('vm'))viewer();else{initSet();boot()}
+</script>
+</body>
+</html>
