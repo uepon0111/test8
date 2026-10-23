@@ -8,7 +8,6 @@
 :root{color-scheme:light;--ink:#27324a;--mut:#74829f;--acc:#2fbfae;--ln:#dde8f6;--bg2:#f4f8fd}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;font:14px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:linear-gradient(135deg,#eaf7ff,#fff3fa) fixed;min-height:100dvh}
-body.lock{overflow:hidden}
 .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;height:52px;padding:0 12px;background:#fff;border-bottom:3px solid var(--acc)}
 .top h1{font-size:17px;margin:0}
 button,.btn{cursor:pointer;border:0;border-radius:8px;padding:8px 14px;background:var(--acc);color:#fff;font:inherit;font-weight:700;text-decoration:none;display:inline-block}
@@ -53,11 +52,8 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
 .dbtn{display:flex;flex-direction:column;border-radius:12px;padding:12px 14px;color:#fff;text-decoration:none;background:var(--c)}
 .dbtn b{font-size:15px}.dbtn span{font-size:26px;font-weight:800;line-height:1.2}.dbtn small{color:#fffd}
 .cbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:10px 0}
-.zc{display:flex;align-items:center;gap:6px}.zc input{width:140px}.zc b{min-width:46px}
 #chart{height:calc(100dvh - 330px);min-height:380px;overflow:auto;background:#111827;border-radius:12px;color:#c4d2e4}
 .msg{padding:30px}#chart img.sv{display:block;height:auto}
-#s-chart.fs{position:fixed;inset:0;z-index:30;background:#eaf3fb;padding:10px;display:flex;flex-direction:column;overflow:auto}
-#s-chart.fs #chart{flex:1;height:auto;min-height:0}#s-chart.fs .card{margin-bottom:6px}
 .set{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:14px;align-items:start}
 @media(max-width:760px){.set{grid-template-columns:1fr}}
 .fld{margin-bottom:16px}.fld label{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:4px}
@@ -108,8 +104,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
           <div class="card"><div class="info" id="cinfo"></div>
             <div class="cbar">
               <a class="btn g" id="bk" href="#songs">‹ 難易度選択に戻る</a>
-              <span class="zc"><button class="g" id="zo" aria-label="縮小">－</button><input id="zr" type="range" min="25" max="300" step="5" aria-label="表示倍率" /><button class="g" id="zi" aria-label="拡大">＋</button><b id="zl">100%</b></span>
-              <button id="fsb">拡大表示</button><button id="dlSvg" class="g">SVGで保存</button><button id="dlPng" class="g">PNGで保存</button>
+              <button id="goR">拡大表示（別タブ）</button><button id="dlSvg" class="g">SVGで保存</button><button id="dlPng" class="g">PNGで保存</button>
             </div></div>
           <div id="chart"></div>
         </div>
@@ -672,10 +667,13 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       const DN={easy:'EASY',normal:'NORMAL',hard:'HARD',expert:'EXPERT',master:'MASTER',append:'APPEND'};
       const UNITS=[['all','すべてのユニット'],['vocaloid','VIRTUAL SINGER'],['light_music_club','Leo/need'],['idol','MORE MORE JUMP!'],['street','Vivid BAD SQUAD'],['theme_park','ワンダーランズ×ショウタイム'],['school_refusal','25時、ナイトコードで。'],['other','その他']];
       const PREF_KEY='sekaiChartViewer.settings.v1',DEF={zm:36,bpc:8,sl:34,gd:12,mirror:false},BPCS=[4,6,8,12,16,24,32];
-      let songs=[],diffs={},tags={},cur=null,curD=null,key='',rid=0,cancel=()=>{},lastR=null,sus='',dirty=false,zoom=100,listY=0,stT=0;
-      const clamp=(v,d,lo,hi)=>{v=Number(v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
+      let songs=[],diffs={},tags={},cur=null,curD=null,key='',rid=0,cancel=()=>{},lastR=null,sus='',dirty=false,listY=0,stT=0,songLabel='',songInfo=null,lastName='score';
+      const clamp=(v,d,lo,hi)=>{v=v==null?NaN:Number(v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
       let cfg=(()=>{try{const m=(JSON.parse(localStorage.getItem(PREF_KEY))||{}).main||{};return{zm:Math.round(clamp(m.zm,36,16,400)),bpc:BPCS.includes(+m.bpc)?+m.bpc:8,sl:Math.round(clamp(m.sl,34,0,100)),gd:Math.round(clamp(m.gd,12,0,100)),mirror:!!m.mirror}}catch(e){return{...DEF}}})();
       const saveCfg=()=>{try{localStorage.setItem(PREF_KEY,JSON.stringify({...(JSON.parse(localStorage.getItem(PREF_KEY))||{}),main:cfg}))}catch(e){}};
+      const loadPrefs=()=>{try{const v=JSON.parse(localStorage.getItem(PREF_KEY));return v&&typeof v==='object'?v:{}}catch(e){return{}}};
+      const savePrefs=p=>{try{localStorage.setItem(PREF_KEY,JSON.stringify({...loadPrefs(),...p}))}catch(e){}};
+      const pref=clamp;
       const vs=()=>({slideOpacity:cfg.sl/100,guideOpacity:cfg.gd/100,mirror:cfg.mirror});
       const st=t=>{const e=$('#st');e.textContent=t;e.hidden=!t;clearTimeout(stT);if(t&&!/…$/.test(t))stT=setTimeout(()=>e.hidden=true,6000)};
       const jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
@@ -723,14 +721,8 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         $('#cinfo').innerHTML=`<img class="jk" src="${jacket(cur)}" alt=""><div><h3>${esc(cur.title)}</h3><div class="mut">${credit(cur)}</div><div class="dcs"><span class="dc" style="background:${DCOL[curD]}">${DN[curD]} Lv${o.playLevel}</span><span class="dc nt">総ノーツ数 ${o.totalNoteCount.toLocaleString()}</span><span class="mut">公開日 ${fd(cur.publishedAt)}</span></div></div>`;
         $('#bk').href='#songs/'+cur.id;
       }
-      function applyZoom(){
-        $('#zl').textContent=zoom+'%';$('#zr').value=zoom;
-        const sv=$('#chart svg'),im=$('#chart img.sv');
-        if(sv){sv.style.width=(+sv.getAttribute('width')||1)*zoom/100+'px';sv.style.height='auto'}
-        if(im)im.style.width=zoom+'%';
-      }
       function drawChart(){
-        try{const S=parseSUS(sus),R=render(S,cfg.zm,cfg.bpc,0,0,vs());$('#chart').innerHTML=R.svg;lastR=R;dirty=false;applyZoom();st(`描画完了：ノーツ ${S.stats.active}、スライド経路 ${S.stats.chains}本`)}
+        try{const S=parseSUS(sus),R=render(S,cfg.zm,cfg.bpc,0,0,vs());$('#chart').innerHTML=R.svg;lastR=R;dirty=false;const o=diffs[cur.id][curD];lastName=cur.title+'_'+curD;songLabel=`${cur.title}-${curD.toUpperCase()} Lv${o.playLevel}`;songInfo={jk:jacket(cur),title:cur.title,diff:curD,level:o.playLevel};st(`描画完了：ノーツ ${S.stats.active}、スライド経路 ${S.stats.chains}本`)}
         catch(e){st('解析エラー: '+e.message);console.error(e)}
       }
       function showSVG(c){
@@ -738,7 +730,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         const next=()=>{const u=c[i++];
           if(!u){$('#chart').innerHTML='<div class="msg">譜面を取得できませんでした。通信状況を確認するか、別の難易度でお試しください。</div>';st('');key='';return}
           const im=new Image();im.className='sv';im.alt='譜面';im.referrerPolicy='no-referrer';
-          im.onload=()=>{st('生成済みの譜面画像を表示中（この表示では設定の反映・画像保存は使えません）');applyZoom()};
+          im.onload=()=>{st('生成済みの譜面画像を表示中（この表示では設定の反映・画像保存・拡大表示は使えません）')};
           im.onerror=()=>{if(im.isConnected)next()};im.src=u;$('#chart').replaceChildren(im)};
         next();
       }
@@ -750,10 +742,60 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       }
       const doSave=f=>lastR?saveChart(lastR,f,`${cur.title}_${curD}`):st('保存にはSUSの解析表示が必要です（画像表示では使えません）');
       $('#dlSvg').onclick=()=>doSave('svg');$('#dlPng').onclick=()=>doSave('png');
-      $('#zr').oninput=e=>{zoom=+e.target.value;applyZoom()};
-      $('#zo').onclick=()=>{zoom=clamp(zoom-25,100,25,300);applyZoom()};$('#zi').onclick=()=>{zoom=clamp(zoom+25,100,25,300);applyZoom()};
-      const fs=on=>{$('#s-chart').classList.toggle('fs',on);$('#fsb').textContent=on?'拡大表示を閉じる':'拡大表示';document.body.classList.toggle('lock',on)};
-      $('#fsb').onclick=()=>fs(!$('#s-chart').classList.contains('fs'));
+      $('#goR').onclick=()=>{
+       const t=sus;if(!t.trim()||!lastR){st('拡大表示にはSUSの解析が必要です（画像表示では使えません）');return}
+       const spacing=cfg.zm,columns=cfg.bpc;
+       const w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
+       try{
+        const popupScore=parseSUS(t),sp=loadPrefs().popup||{},cfg={zoom:Math.round(pref(sp.zoom,25,5,100)),spacing:Math.round(pref(sp.spacing,spacing,16,400)),slideOpacity:pref(sp.slideOpacity,cfg.sl/100,0,1),guideOpacity:pref(sp.guideOpacity,cfg.gd/100,0,1),mirror:sp.mirror==null?cfg.mirror:!!sp.mirror};
+        const first=render(popupScore,cfg.spacing,columns,0,0,cfg),tabTitle=esc(songLabel||popupScore.meta.TITLE||'譜面');
+        const si=songInfo,songHTML=`<div class="song">${si?`<img src="${esc(si.jk)}" alt="">`:''}<div><b>${esc(si?si.title:(popupScore.meta.TITLE||'譜面'))}</b>${si?`<span class="lv" style="background:${DCOL[si.diff]||'#74829f'}">${esc(si.diff.toUpperCase())}${si.level!=null?` Lv${esc(si.level)}`:''}</span>`:''}</div></div>`;
+        w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${tabTitle}</title>
+        <style>
+          *{box-sizing:border-box}body{margin:0;background:#101827;color:#e5edf7;font:13px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;height:100vh;display:flex;flex-direction:column}
+          header{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px;background:#18263a;border-bottom:1px solid #344b66}
+          .song{display:flex;align-items:center;gap:10px;flex:1 1 280px;min-width:0}.song img{width:48px;height:48px;border-radius:8px;flex:none;background:#26364d;box-shadow:0 2px 6px #0006}.song div{min-width:0}.song b{display:block;font-size:15px;line-height:1.35;word-break:break-word}.lv{display:inline-block;margin-top:3px;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;color:#fff}.tools{margin-left:auto}.btns{display:flex;flex-wrap:wrap;gap:8px}button{border:0;border-radius:7px;padding:7px 11px;background:#2fbfae;color:#102033;font-weight:700;cursor:pointer}
+          #panel{flex:none;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:10px 14px;background:#1d2c42;border-bottom:1px solid #344b66}
+          #panel[hidden]{display:none}.control{min-width:180px;display:flex;flex-direction:column;gap:3px}.control label{font-size:11px;color:#c4d2e4}.control input{width:180px;accent-color:#58d7c4}
+          .value{font-weight:700;color:#fff;margin-left:5px}#chartBox{flex:1;min-height:0;overflow:auto;padding:12px;background:#111827}
+          #chartBox svg{display:block;max-width:none;height:auto}.hint{font-size:10px;color:#91a6bf}
+        </style>
+        <header>${songHTML}<div class="tools"><button id="toggle">設定を隠す</button></div></header>
+        <section id="panel">
+          <div class="control"><label>拡大倍率 <span class="value" id="zoomValue">${cfg.zoom}%</span></label><input id="zoom" type="range" min="5" max="100" step="1" value="${cfg.zoom}"></div>
+          <div class="control"><label>ノーツ間隔（px/拍） <span class="value" id="spacingValue">${cfg.spacing}</span></label><input id="spacing" type="range" min="16" max="400" step="1" value="${cfg.spacing}"></div>
+          <div class="control"><label>スライドノーツ透明度 <span class="value" id="slideValue">${Math.round(cfg.slideOpacity*100)}%</span></label><input id="slideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.slideOpacity*100)}"></div>
+          <div class="control"><label>ガイドノーツ透明度 <span class="value" id="guideValue">${Math.round(cfg.guideOpacity*100)}%</span></label><input id="guideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.guideOpacity*100)}"></div>
+        <div class="control"><label><input id="mirror" type="checkbox" style="width:auto" ${cfg.mirror?'checked':''}> ミラー（左右反転）</label></div>
+        <div class="control"><label>画像保存</label><div class="btns"><button id="dlSvg">SVGで保存</button><button id="dlPng">PNGで保存</button></div><span class="hint" id="dlMsg"></span></div>
+        </section><main id="chartBox">${first.svg}</main>
+        <script>
+          const cfg={zoom:${cfg.zoom},spacing:${cfg.spacing},slideOpacity:${cfg.slideOpacity},guideOpacity:${cfg.guideOpacity},mirror:${!!cfg.mirror}};
+          const $=id=>document.getElementById(id);
+          function applyZoom(){const svg=$('chartBox').querySelector('svg');if(!svg)return;const base=Number(svg.getAttribute('width'))||1;svg.style.width=(base*cfg.zoom/100)+'px';svg.style.height='auto';$('zoomValue').textContent=cfg.zoom+'%'}
+          function persist(){if(typeof window.__savePrefs==='function')window.__savePrefs({...cfg})}function requestRender(){persist();if(typeof window.__renderChartFromParent==='function')window.__renderChartFromParent({...cfg})}
+          $('zoom').addEventListener('input',e=>{cfg.zoom=Math.min(100,Math.max(5,Number(e.target.value)||25));applyZoom();persist()});
+          $('spacing').addEventListener('input',e=>{cfg.spacing=Number(e.target.value);$('spacingValue').textContent=cfg.spacing;requestRender()});
+          $('slideOpacity').addEventListener('input',e=>{cfg.slideOpacity=Number(e.target.value)/100;$('slideValue').textContent=e.target.value+'%';requestRender()});
+          $('guideOpacity').addEventListener('input',e=>{cfg.guideOpacity=Number(e.target.value)/100;$('guideValue').textContent=e.target.value+'%';requestRender()});
+          $('mirror').addEventListener('change',e=>{cfg.mirror=e.target.checked;requestRender()});
+          $('toggle').addEventListener('click',()=>{const panel=$('panel');panel.hidden=!panel.hidden;$('toggle').textContent=panel.hidden?'設定を表示':'設定を隠す'});
+          ['Svg','Png'].forEach(function(k){$('dl'+k).addEventListener('click',function(){if(typeof window.__saveFromParent==='function')window.__saveFromParent(k.toLowerCase(),{...cfg})})});
+          window.__applyZoom=applyZoom;
+        <\/script></html>`);
+        w.document.close();
+        w.__renderChartFromParent=(next)=>{
+          const updated=render(popupScore,next.spacing,columns,0,0,next),box=w.document.getElementById('chartBox');
+          if(!box)return;box.innerHTML=updated.svg;
+          const spacingLabel=w.document.getElementById('spacingValue');if(spacingLabel)spacingLabel.textContent=next.spacing;
+          if(typeof w.__applyZoom==='function')w.__applyZoom();
+        };
+        if(typeof w.__applyZoom==='function')w.__applyZoom();
+       w.__savePrefs=c=>savePrefs({popup:{zoom:c.zoom,spacing:c.spacing,slideOpacity:c.slideOpacity,guideOpacity:c.guideOpacity,mirror:!!c.mirror}});
+        const popupName=lastName;
+        w.__saveFromParent=(fmt,next)=>saveChart(render(popupScore,next.spacing,columns,0,0,next),fmt,popupName,m=>{const e=w.document.getElementById('dlMsg');if(e)e.textContent=m});
+       }catch(e){w.close();st('拡大表示の生成エラー: '+e.message);console.error(e)}
+      };
 
       /* ---- Settings (live preview uses the real renderer) ---- */
       const PV=`#REQUEST "ticks_per_beat 480"
@@ -775,28 +817,28 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         $('#zv').textContent=cfg.zm;$('#slv').textContent=cfg.sl+'%';$('#gdv').textContent=cfg.gd+'%';
         $('#bpn').textContent=`例：128小節の曲は約${Math.ceil(128/cfg.bpc)}列に分けて横に並べます`;
       }
-      const changed=()=>{sync();drawPv();dirty=true;saveCfg()};
+      const changed=p=>{sync();drawPv();dirty=true;savePrefs({main:cfg,...(p?{popup:{...(loadPrefs().popup||{}),...p}}:{})})};
       $('#bpc').innerHTML=BPCS.map(n=>`<option>${n}</option>`).join('');
-      $('#zm').oninput=e=>{cfg.zm=+e.target.value;changed()};
+      $('#zm').oninput=e=>{cfg.zm=+e.target.value;changed({spacing:cfg.zm})};
       $('#bpc').onchange=e=>{cfg.bpc=+e.target.value;changed()};
-      $('#slOpacity').oninput=e=>{cfg.sl=+e.target.value;changed()};
-      $('#gdOpacity').oninput=e=>{cfg.gd=+e.target.value;changed()};
-      $('#mirror').onchange=e=>{cfg.mirror=e.target.checked;changed()};
-      $('#rst').onclick=()=>{cfg={...DEF};changed()};
+      $('#slOpacity').oninput=e=>{cfg.sl=+e.target.value;changed({slideOpacity:cfg.sl/100})};
+      $('#gdOpacity').oninput=e=>{cfg.gd=+e.target.value;changed({guideOpacity:cfg.gd/100})};
+      $('#mirror').onchange=e=>{cfg.mirror=e.target.checked;changed({mirror:cfg.mirror})};
+      $('#rst').onclick=()=>{cfg={...DEF};changed({spacing:cfg.zm,slideOpacity:cfg.sl/100,guideOpacity:cfg.gd/100,mirror:cfg.mirror})};
 
       /* ---- Side menu (all screen sizes) ---- */
       const nav=$('#nav');
       function setNav(o){nav.classList.toggle('open',o);nav.inert=!o;$('#scrim').hidden=!o;$('#menu').setAttribute('aria-expanded',o);if(o)nav.querySelector('a').focus()}
       $('#menu').onclick=()=>setNav(true);
       $('#navx').onclick=$('#scrim').onclick=()=>{setNav(false);$('#menu').focus()};
-      document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(nav.classList.contains('open')){setNav(false);$('#menu').focus()}else fs(false)});
+      document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(nav.classList.contains('open')){setNav(false);$('#menu').focus()}});
 
       /* ---- Router: #home / #songs / #songs/ID / #songs/ID/DIFF / #settings ---- */
       const TITLES={home:'ホーム',songs:'曲を探す',settings:'設定'};
       function route(){
         const[p0,id,d]=location.hash.slice(1).split('/'),p=TITLES[p0]?p0:'home';
         if(!$('#p-songs').hidden&&!$('#s-list').hidden)listY=$('#list').scrollTop;
-        fs(false);setNav(false);
+        setNav(false);
         $$('.pg').forEach(e=>e.hidden=e.id!=='p-'+p);
         $$('#nav a').forEach(a=>a.dataset.p===p?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
         $('#ttl').textContent=TITLES[p];document.title=TITLES[p]+' | プロセカ 譜面ビューア';
