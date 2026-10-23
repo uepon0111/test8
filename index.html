@@ -747,7 +747,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
        const spacing=cfg.zm,columns=cfg.bpc;
        const w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
        try{
-        const popupScore=parseSUS(t),sp=loadPrefs().popup||{},cfg={zoom:Math.round(pref(sp.zoom,25,5,100)),spacing:Math.round(pref(sp.spacing,spacing,16,400)),slideOpacity:pref(sp.slideOpacity,cfg.sl/100,0,1),guideOpacity:pref(sp.guideOpacity,cfg.gd/100,0,1),mirror:sp.mirror==null?cfg.mirror:!!sp.mirror};
+        const popupScore=parseSUS(t),sp=loadPrefs().popup||{},cfg={zoom:Math.round(pref(sp.zoom,25,5,100)),spacing:Math.round(pref(sp.spacing,spacing,16,400)),slideOpacity:pref(sp.slideOpacity,vs().slideOpacity,0,1),guideOpacity:pref(sp.guideOpacity,vs().guideOpacity,0,1),mirror:sp.mirror==null?vs().mirror:!!sp.mirror};
         const first=render(popupScore,cfg.spacing,columns,0,0,cfg),tabTitle=esc(songLabel||popupScore.meta.TITLE||'譜面');
         const si=songInfo,songHTML=`<div class="song">${si?`<img src="${esc(si.jk)}" alt="">`:''}<div><b>${esc(si?si.title:(popupScore.meta.TITLE||'譜面'))}</b>${si?`<span class="lv" style="background:${DCOL[si.diff]||'#74829f'}">${esc(si.diff.toUpperCase())}${si.level!=null?` Lv${esc(si.level)}`:''}</span>`:''}</div></div>`;
         w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${tabTitle}</title>
