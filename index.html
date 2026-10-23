@@ -5,120 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>プロセカ 譜面ビューア</title>
     <style>
-      :root{color-scheme:light;--ink:#27324a;--mut:#74829f;--acc:#2fbfae;--ln:#dde8f6}
-      *{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:linear-gradient(135deg,#eaf7ff,#fff3fa) fixed}
-      header{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#fff;border-bottom:3px solid var(--acc)}
-      h1{font-size:18px;margin:0}#st{color:var(--mut);font-size:12px}
-      main{display:grid;grid-template-columns:340px 1fr;gap:14px;padding:14px;height:calc(100vh - 58px)}
-      aside{overflow:auto;display:flex;flex-direction:column;gap:12px}
-      section.p{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:12px;box-shadow:0 2px 8px #6aa0d014}
-      h2{font-size:13px;margin:0 0 8px;color:var(--acc)}
-      input,textarea,select{width:100%;padding:7px 9px;border:1px solid var(--ln);border-radius:8px;font:inherit;background:#fbfdff}
-      textarea{height:90px;font:11px/1.3 monospace;resize:vertical}
-      button{cursor:pointer;border:0;border-radius:8px;padding:7px 12px;background:var(--acc);color:#fff;font:inherit;font-weight:700}
-      button.g{background:#e8f1fb;color:var(--ink)}.row{display:flex;gap:6px;margin:6px 0}.row input{flex:1}
-      #list{max-height:250px;overflow:auto;margin-top:6px}
-      .it{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;color:inherit;font-weight:400;padding:4px;border-radius:8px}
-      .it:hover,.it.on{background:#e9f8f5}.it img{width:38px;height:38px;border-radius:6px;background:#eef}.it span{min-width:0}
-      .it b,.it small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.it small,.mut{color:var(--mut);font-size:11px}
-      #card{display:flex;gap:10px}#card img{width:84px;height:84px;border-radius:10px;box-shadow:0 2px 8px #0002}
-      #card h3{margin:0;font-size:15px}#dif{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-      .dc{border-radius:999px;padding:3px 10px;font-size:12px;color:#fff;opacity:.55}.dc.on{opacity:1;box-shadow:0 0 0 3px #fff,0 0 0 5px currentColor}
-      #view{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
-      #chart{flex:1;overflow:auto;background:#111827}#legend{padding:8px 12px;border-bottom:1px solid var(--ln)}
-      /* ノーツ凡例：通常/クリティカルのペアは同じ行に固定、図形は同サイズ枠の中央揃え、名前は図の下 */
+:root{color-scheme:light;--ink:#27324a;--mut:#74829f;--acc:#2fbfae;--ln:#dde8f6;--bg2:#f4f8fd}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;font:14px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:linear-gradient(135deg,#eaf7ff,#fff3fa) fixed;min-height:100dvh}
+body.lock{overflow:hidden}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;height:52px;padding:0 12px;background:#fff;border-bottom:3px solid var(--acc)}
+.top h1{font-size:17px;margin:0}
+button,.btn{cursor:pointer;border:0;border-radius:8px;padding:8px 14px;background:var(--acc);color:#fff;font:inherit;font-weight:700;text-decoration:none;display:inline-block}
+button.g,.btn.g{background:#e8f1fb;color:var(--ink)}
+:focus-visible{outline:3px solid #1b8f82;outline-offset:2px}
+#menu{width:40px;height:40px;padding:0;font-size:20px}
+#nav{position:fixed;inset:0 auto 0 0;z-index:40;width:240px;max-width:84vw;padding:10px;background:#fff;box-shadow:4px 0 24px #1a2f5a33;transform:translateX(-105%);transition:transform .2s}
+#nav.open{transform:none}
+#nav header{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 10px;font-weight:700}
+#nav a{display:block;padding:12px 14px;border-radius:10px;color:var(--ink);text-decoration:none;font-weight:700}
+#nav a:hover{background:#eef6fb}#nav a[aria-current]{background:#e1f6f2;color:#13796d}
+#scrim{position:fixed;inset:0;z-index:35;background:#10203a55}
+@media(prefers-reduced-motion:reduce){#nav{transition:none}}
+main{max-width:1100px;margin:0 auto;padding:14px}
+.card{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:14px;box-shadow:0 2px 8px #6aa0d014;margin-bottom:14px}
+h2{font-size:14px;margin:0 0 10px;color:#13796d}h3{margin:0 0 4px;font-size:17px}
+.mut,small{color:var(--mut);font-size:12px}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radius:8px;font:inherit;background:#fbfdff;color:inherit}
+.hero{display:flex;gap:16px;flex-wrap:wrap}.hero>div,.info>div{min-width:0;flex:1 1 240px}
+.big{width:140px;height:140px;border-radius:14px;box-shadow:0 4px 14px #0003;flex:none;background:#eef}
+.jk{width:72px;height:72px;border-radius:10px;box-shadow:0 2px 8px #0002;flex:none;background:#eef}
+.info{display:flex;gap:12px;align-items:center}
+.dcs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;align-items:center}
+.dc{display:inline-flex;gap:6px;align-items:baseline;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:700;color:#fff;text-decoration:none}
+.dc small{color:#fffd}.dc.nt{background:#4b5b78}
+#stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+#stats div{background:var(--bg2);border-radius:10px;padding:10px;text-align:center;color:var(--mut);font-size:12px}
+#stats b{display:block;font-size:19px;color:var(--ink)}
+#recent{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.rc{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:inherit}
+.rc img{width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;background:#eef}
+.rc b{font-size:12px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#s-list{display:flex;flex-direction:column;height:calc(100dvh - 52px - 28px);min-height:440px}
+.tb{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:6px}
+#list{flex:1;min-height:0;overflow:auto;background:#fff;border:1px solid var(--ln);border-radius:12px}
+.it{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--ln);text-decoration:none;color:inherit;content-visibility:auto;contain-intrinsic-size:auto 66px}
+.it:hover{background:#e9f8f5}.it img{width:50px;height:50px;border-radius:8px;flex:none;background:#eef}
+.it span{min-width:0;flex:1}.it b,.it small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb{font-style:normal;color:#fff;font-weight:700;border-radius:999px;padding:2px 10px;font-size:12px;flex:none}
+.pad{padding:16px}
+#dlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.dbtn{display:flex;flex-direction:column;border-radius:12px;padding:12px 14px;color:#fff;text-decoration:none;background:var(--c)}
+.dbtn b{font-size:15px}.dbtn span{font-size:26px;font-weight:800;line-height:1.2}.dbtn small{color:#fffd}
+.cbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:10px 0}
+.zc{display:flex;align-items:center;gap:6px}.zc input{width:140px}.zc b{min-width:46px}
+#chart{height:calc(100dvh - 330px);min-height:380px;overflow:auto;background:#111827;border-radius:12px;color:#c4d2e4}
+.msg{padding:30px}#chart img.sv{display:block;height:auto}
+#s-chart.fs{position:fixed;inset:0;z-index:30;background:#eaf3fb;padding:10px;display:flex;flex-direction:column;overflow:auto}
+#s-chart.fs #chart{flex:1;height:auto;min-height:0}#s-chart.fs .card{margin-bottom:6px}
+.set{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:14px;align-items:start}
+@media(max-width:760px){.set{grid-template-columns:1fr}}
+.fld{margin-bottom:16px}.fld label{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:4px}
+.pvc{position:sticky;top:66px}
+#pv{overflow:auto;max-height:68vh;min-height:200px;background:#111827;border-radius:10px}
+#pv svg{display:block;margin:0 auto}
+#st{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:50;max-width:92vw;background:#27324aee;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px}
       .lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,232px),1fr));gap:8px}
       .lgp{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 6px;padding:6px 8px;background:#f4f8fd;border:1px solid var(--ln);border-radius:10px}
       .lgc{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;text-align:center}
       .lgv{display:flex;align-items:center;justify-content:center;width:64px;height:52px;flex:none}
       .lgv svg{display:block;overflow:visible}
       .lgn{font-size:10px;line-height:1.3;color:var(--ink);word-break:keep-all;overflow-wrap:anywhere}
-      #msg{padding:30px;color:var(--mut)}
-      #chart img.sv{display:block;height:auto;background:#111827}
-      @media(max-width:860px){main{grid-template-columns:1fr;height:auto}#chart{height:70vh}}
     </style>
   </head>
   <body>
-    <header>
-      <h1>♪ プロセカ 譜面ビューア <small style="font-size:11px;color:#74829f;font-weight:500">v4.0 / 速度イベント表示・透明度設定</small></h1>
-      <span id="st">楽曲データ取得中…</span>
-    </header>
+    <header class="top"><button id="menu" aria-label="メニューを開く" aria-expanded="false" aria-controls="nav">☰</button><h1 id="ttl">ホーム</h1></header>
+    <div id="scrim" hidden></div>
+    <nav id="nav" aria-label="メインメニュー" inert>
+      <header><span>♪ プロセカ 譜面ビューア</span><button id="navx" class="g" aria-label="メニューを閉じる">✕</button></header>
+      <a href="#home" data-p="home">ホーム</a><a href="#songs" data-p="songs">曲を探す</a><a href="#settings" data-p="settings">設定</a>
+    </nav>
     <main>
-      <aside>
-        <section class="p">
-          <h2>① 楽曲を選ぶ</h2>
-          <input id="q" placeholder="曲名・読み・作詞作曲編曲・ID で検索" />
-          <div id="list"></div>
-        </section>
-        <section class="p" id="sel" hidden="">
-          <div id="card">
-            <img id="jk" alt="" />
-            <div>
-              <h3 id="tt"></h3>
-              <div class="mut" id="pr"></div>
-              <div class="mut" id="cr"></div>
-            </div>
+      <section id="p-home" class="pg">
+        <div class="card"><h2>最新の曲</h2><div class="hero" id="latest"><span class="mut">楽曲データを読み込み中…</span></div></div>
+        <div class="card"><h2>ノーツの見た目</h2><div id="legend"></div></div>
+        <div class="card"><h2>新着曲</h2><div id="recent"></div></div>
+        <div class="card"><h2>データ概要</h2><div id="stats"></div><p class="mut" style="margin:0">楽曲・譜面データは公開データ（sekai-master-db-diff / sekai.best）から取得します。ノーツ間隔や透明度などは「設定」で変更できます。</p></div>
+      </section>
+      <section id="p-songs" class="pg" hidden>
+        <div id="s-list">
+          <div class="tb">
+            <input id="q" type="search" placeholder="曲名・作詞・作曲・編曲・ID で検索" aria-label="曲を検索" style="grid-column:1/-1" />
+            <select id="unit" aria-label="ユニット"></select>
+            <select id="sort" aria-label="並び替え"><option value="date">公開日時順</option><option value="level">レベル順</option></select>
+            <select id="dsel" aria-label="レベル順の難易度" hidden></select>
+            <button id="ord" class="g"></button>
           </div>
-          <div id="dif"></div>
-        </section>
-        <section class="p">
-          <h2>② 譜面データ（SUS）</h2>
-          <input id="url" type="hidden" />
-          <div class="mut">取得方法</div>
-          <select id="src">
-            <option value="auto" selected="">自動（元SUS優先→生成SVGへ切替）</option>
-            <option value="sus">SUS（txt）のみ</option>
-            <option value="svg">生成済みSVG（sekai-music-charts）</option>
-          </select>
-          <button id="tgT" class="g" style="width:100%;margin-top:8px" aria-expanded="false" aria-controls="txtBox">テキストを直接入力</button>
-          <div id="txtBox" hidden style="margin-top:8px">
-          <div class="mut">方向値1/3/4はフリック矢印、2は曲線の開始側、5/6は終了側を制御します。制御はその点から次の経路点までに適用（2/5/6は参照パーサー準拠。公開SUS資料では挙動未検証の注記あり）。</div>
-          <textarea
-            id="txt"
-            placeholder="#BPM01: 120
-#00008: 01
-#00012: 11000000 …"
-          ></textarea>
-          <div class="row">
-            <button id="goT">貼り付けから描画</button>
-            <button id="smp" class="g">サンプル</button>
-          </div>
-          </div>
-        </section>
-        <section class="p">
-          <h2>③ 表示</h2>
-          <div class="mut">
-            拡大（1拍あたり px）：
-            <b id="zv">36</b>
-          </div>
-          <input id="zm" type="range" min="16" max="400" value="36" />
-          <div class="mut" style="margin-top:6px">1列あたりの小節数</div>
-          <select id="bpc">
-            <option>4</option>
-            <option selected="">8</option>
-            <option>12</option>
-            <option>16</option>
-          </select>
-          <div class="mut" style="margin-top:10px">スライドノーツの透明度：<b id="slv">34%</b></div>
-          <input id="slOpacity" type="range" min="0" max="100" step="1" value="34" />
-          <div class="mut" style="margin-top:6px">ガイドノーツの透明度：<b id="gdv">12%</b></div>
-          <input id="gdOpacity" type="range" min="0" max="100" step="1" value="12" />
-          <label class="mut" style="display:flex;align-items:center;gap:6px;margin-top:10px"><input id="mirror" type="checkbox" style="width:auto" /> ミラー（左右反転）</label>
-          <div class="mut" style="margin-top:10px">
-            拡大表示（別タブ）：全体を、上の「1列あたりの小節数」で区切った列を横に並べ、「拡大」の倍率で表示（タブ内の倍率スライダーでも拡縮できます）
-          </div>
-          <button id="goR" style="margin-top:6px">拡大表示を別タブで開く</button>
-          <div class="mut" style="margin-top:10px">
-            譜面の保存：上の設定（拡大・1列あたりの小節数・透明度）で描画中の譜面を画像で保存します（PNGは2倍解像度。大きすぎる場合は自動で縮小）
-          </div>
-          <div class="row"><button id="dlSvg" style="flex:1">SVGで保存</button><button id="dlPng" style="flex:1">PNGで保存</button></div>
-        </section>
-      </aside>
-      <section id="view">
-        <div id="legend"></div>
-        <div id="chart"><div id="msg">左で曲と難易度を選ぶか、「テキストを直接入力」からSUSを貼り付けてください。</div></div>
+          <div class="mut" id="cnt" style="margin-bottom:4px"></div>
+          <div id="list"><p class="mut pad">楽曲データを読み込み中…</p></div>
+        </div>
+        <div id="s-diff" hidden>
+          <a class="btn g" href="#songs">‹ 曲を探すに戻る</a>
+          <div class="card" style="margin-top:12px"><div class="hero" id="dinfo"></div></div>
+          <div class="card"><h2>難易度を選ぶ</h2><div id="dlist"></div></div>
+        </div>
+        <div id="s-chart" hidden>
+          <div class="card"><div class="info" id="cinfo"></div>
+            <div class="cbar">
+              <a class="btn g" id="bk" href="#songs">‹ 難易度選択に戻る</a>
+              <span class="zc"><button class="g" id="zo" aria-label="縮小">－</button><input id="zr" type="range" min="25" max="300" step="5" aria-label="表示倍率" /><button class="g" id="zi" aria-label="拡大">＋</button><b id="zl">100%</b></span>
+              <button id="fsb">拡大表示</button><button id="dlSvg" class="g">SVGで保存</button><button id="dlPng" class="g">PNGで保存</button>
+            </div></div>
+          <div id="chart"></div>
+        </div>
+      </section>
+      <section id="p-settings" class="pg" hidden>
+        <div class="set">
+          <div class="card"><h2>表示の設定</h2>
+            <div class="fld"><label for="zm">ノーツ間隔（px/拍）<b id="zv"></b></label><input id="zm" type="range" min="16" max="400" /></div>
+            <div class="fld"><label for="bpc">1行あたりの小節数</label><select id="bpc"></select><div class="mut" id="bpn"></div></div>
+            <div class="fld"><label for="slOpacity">スライドノーツの透明度<b id="slv"></b></label><input id="slOpacity" type="range" min="0" max="100" /></div>
+            <div class="fld"><label for="gdOpacity">ガイドノーツの透明度<b id="gdv"></b></label><input id="gdOpacity" type="range" min="0" max="100" /></div>
+            <div class="fld"><label><span>ミラー（左右反転）</span><input id="mirror" type="checkbox" style="width:auto" /></label></div>
+            <button id="rst" class="g">初期設定に戻す</button>
+            <p class="mut">変更は自動で保存され、譜面の表示に反映されます。</p></div>
+          <div class="card pvc"><h2>プレビュー（スライドノーツ・ガイドノーツ）</h2><div id="pv"></div><p class="mut" style="margin:8px 0 0">実際の譜面と同じ描画です。ノーツ間隔・透明度・ミラーの変更がすぐに反映されます。</p></div>
+        </div>
       </section>
     </main>
+    <div id="st" role="status" hidden></div>
     <script>
       'use strict';
       const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -581,15 +591,6 @@
         const inner=`<clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${mr(o.p.join(''))}</g>${mr(o.n.reverse().join('')+o.a.reverse().join(''))}<text x="${PL}" y="16" font-size="11" fill="#a9bdd8">小節 ${b0}–${b1-1}</text><text x="${PL+12*LW+8}" y="16" font-size="9"><tspan fill="#d4a94e">BPM</tspan> <tspan fill="#63a9db">速度</tspan> <tspan fill="#a98bd0">演出</tspan></text>`;cs.push(inner);out+=`<g transform="translate(${ox} 0)">${inner}</g>`}
        return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total,cs,w:COLW,h:H};
       }
-      /* ---------- UI ---------- */
-      let songs=[],diffs={},cur=null,curD=null,auto='';
-      let visualSettings={slideOpacity:.34,guideOpacity:.12,mirror:false};
-      /* 設定はlocalStorageに保存（使えない環境では保存せず通常動作） */
-      const PREF_KEY='sekaiChartViewer.settings.v1';
-      const loadPrefs=()=>{try{const v=JSON.parse(localStorage.getItem(PREF_KEY));return v&&typeof v==='object'?v:{}}catch(e){return{}}};
-      const savePrefs=p=>{try{localStorage.setItem(PREF_KEY,JSON.stringify({...loadPrefs(),...p}))}catch(e){}};
-      const pref=(v,d,lo,hi)=>{v=v==null?NaN:Number(v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
-      const st=t=>$('#st').textContent=t,jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
       /* 凡例：対応する通常/クリティカルは必ず同じ行にペアで並べ(幅が足りない時だけ折返し)、
          図形は全て同じ大きさの枠(64×52)の中央に揃え、名前は図の真下に置く。 */
       const LEG=(()=>{
@@ -611,26 +612,6 @@
        ];
        return`<div class="lg">${P.map(p=>`<div class="lgp">${p.map(([n,s])=>`<div class="lgc"><span class="lgv">${s}</span><span class="lgn">${wb(n)}</span></div>`).join('')}</div>`).join('')}</div>`;
       })();
-      $('#legend').innerHTML=LEG;
-      $('#slv').textContent='34%';$('#gdv').textContent='12%';
-      function drawList(){const k=$('#q').value.trim().toLowerCase(),hit=songs.filter(s=>!k||[s.id,s.title,s.pronunciation,s.lyricist,s.composer,s.arranger].join('\n').toLowerCase().includes(k));
-       $('#list').innerHTML=hit.slice(0,120).map(s=>`<button class="it ${cur&&cur.id===s.id?'on':''}" data-id="${s.id}"><img loading="lazy" src="${jacket(s)}" alt=""><span><b>${esc(s.title)}</b><small>#${s.id} ／ ${esc(s.composer||'')}</small></span></button>`).join('')+(hit.length>120?`<p class="mut">他 ${hit.length-120} 件… 検索で絞り込んでください</p>`:'')}
-      function pick(id){cur=songs.find(s=>s.id==id);$('#sel').hidden=false;$('#jk').src=jacket(cur);$('#tt').textContent=cur.title;$('#pr').textContent=cur.pronunciation||'';
-       $('#cr').textContent=`作詞 ${cur.lyricist||'-'} ／ 作曲 ${cur.composer||'-'} ／ 編曲 ${cur.arranger||'-'}`;const ds=diffs[id]||{};
-       $('#dif').innerHTML=DIFFS.filter(d=>ds[d]).map(d=>`<span class="dc" data-d="${d}" style="background:${DCOL[d]};color:#fff"><button style="all:unset;cursor:pointer">${d.toUpperCase()} Lv${ds[d].playLevel}・${ds[d].totalNoteCount}</button></span>`).join('')||'<span class="mut">難易度情報なし</span>';
-       drawList();const first=DIFFS.filter(d=>ds[d]).pop();if(first)setDiff(first)}
-      let rid=0,view='sus',cancel=()=>{},lastR=null,lastName='score',songLabel='',songInfo=null;
-      function setDiff(d){curD=d;document.querySelectorAll('.dc').forEach(e=>e.classList.toggle('on',e.dataset.d===d));auto=$('#src').value==='svg'?svgURL(cur.id,d):susGroups(cur.id,d)[0][0];$('#url').value=auto;loadURL()}
-      const zoomSVG=()=>{const i=document.querySelector('#chart img.sv');if(i)i.style.width=+$('#zm').value/36*100+'%'};
-      function showSVG(u,note,alternates=[]){
-       view='svg';const candidates=[...new Set([u,...alternates].filter(Boolean))];let at=0;
-       const tryNext=()=>{
-        const current=candidates[at++];if(!current){st('SVGを取得できませんでした。元データURLを直接開いて確認してください');return}
-        $('#url').value=current;const img=new Image();img.className='sv';img.alt='譜面SVG';img.referrerPolicy='no-referrer';
-        img.onload=()=>{if(!img.isConnected)return;zoomSVG();st(note||'生成済みSVGを表示中（ベクター画像のためノーツ個別解析は行いません）')};
-        img.onerror=()=>{if(img.isConnected)tryNext()};img.src=current;$('#chart').replaceChildren(img);zoomSVG();
-       };st('SVGを読み込み中…');tryNext();
-      }
       async function decodeResponse(response){
        let buf=await response.arrayBuffer();
        if(buf.byteLength>2&&new Uint8Array(buf)[0]===0x1f&&new Uint8Array(buf)[1]===0x8b&&'DecompressionStream'in window){
@@ -659,29 +640,6 @@
        }
        controllers.forEach(c=>c.abort());return{hit:svgHit,fails};
       }
-      async function loadURL(){
-       const u=$('#url').value.trim();if(!u)return;
-       if(!/^https?:\/\//i.test(u)){st('URLは http:// または https:// で始めてください');return}
-       const my=++rid;cancel();const mode=$('#src').value,isAuto=u===auto&&cur&&curD;
-       if(isSVG(u)){showSVG(u,null,isAuto&&cur&&curD?svgURLs(cur.id,curD).filter(x=>x!==u):[]);return}
-       st('譜面データを取得中…');
-       const groups=isAuto?susGroups(cur.id,curD):[[u]],{hit,fails}=await fetchSUS(groups);if(my!==rid)return;
-       if(hit&&hit.kind==='sus'){$('#url').value=hit.u;$('#txt').value=hit.t;draw(hit.t,hit.u);return}
-       if(hit&&hit.kind==='svg'){showSVG(hit.u,'取得先がSVGだったため、生成済み譜面を表示しています');return}
-       if(isAuto&&mode==='auto'){const candidates=svgURLs(cur.id,curD);showSVG(candidates[0],'SUS取得に失敗したため生成済みSVGを表示しています。ノーツ解析は元データSUSを取得できた場合のみ利用できます。',candidates.slice(1));return}
-       const tl=[...fails.reduce((m,w)=>m.set(w,(m.get(w)||0)+1),new Map())].map(([w,n])=>`${w}×${n}`).join('・');
-       st(`取得できませんでした（${tl||'不明'}）。CORS・未配信・データ形式を確認してください。元データを保存して「テキストを直接入力」から描画することもできます`);
-      }
-      function draw(text,sourceURL=''){
-       view='sus';lastR=null;try{
-        const S=parseSUS(text),R=render(S,+$('#zm').value,+$('#bpc').value,0,0,visualSettings),o=cur&&curD&&diffs[cur.id]&&diffs[cur.id][curD],c=R.cnt,w=S.stats.warnings;
-        const curveStart=S.notes.filter(n=>n.k==='sl'&&n.dir&&n.dir.t===2).length;
-        const curveEnd=S.notes.filter(n=>n.k==='sl'&&n.dir&&(n.dir.t===5||n.dir.t===6)).length;
-        $('#chart').innerHTML=R.svg;lastR=R;lastName=(sourceURL&&cur&&curD)?cur.title+'_'+curD:(S.meta.TITLE||'score');if(sourceURL&&cur&&curD){songLabel=cur.title+(o?`-${curD.toUpperCase()} Lv${o.playLevel}`:'');songInfo={jk:jacket(cur),title:cur.title,diff:curD,level:o?o.playLevel:null}}
-        const srcLabel=sourceURL?` ／ ${sourceURL.includes('_01_rip')?'_01_rip元データ':'指定URL'}`:'';
-        st(`解析・描画完了：ノーツ ${S.stats.active}/${S.stats.raw}、スライド経路 ${S.stats.chains}本、曲線制御 開始側${curveStart}/終了側${curveEnd}${w.length?`、要確認 ${w.length}件`:''}${srcLabel}`);
-       }catch(e){st('解析エラー: '+e.message);console.error(e)}
-      }
       /* ---------- 譜面の保存（SVG / PNG） ---------- */
       const PNG_SCALE=2,PNG_MAX_SIDE=32767,PNG_MAX_AREA=268435456;
       const fileSafe=s=>String(s).replace(/[\\\/:*?"<>|]/g,'_').trim().slice(0,80)||'score';
@@ -709,114 +667,160 @@
         saveBlob(blob,name+'.png');say(`PNGを保存しました（${cw}×${ch}px）`);
        }catch(e){say('保存エラー: '+e.message);console.error(e)}finally{if(url)URL.revokeObjectURL(url)}
       }
-      const saveMain=fmt=>{if(view!=='sus'||!lastR){st('保存にはSUSの解析表示が必要です（SVG画像表示では使えません）');return}saveChart(lastR,fmt,lastName)};
-      $('#dlSvg').onclick=()=>saveMain('svg');$('#dlPng').onclick=()=>saveMain('png');
-      $('#list').onclick=e=>{const b=e.target.closest('.it');if(b)pick(b.dataset.id)};
-      $('#dif').onclick=e=>{const s=e.target.closest('.dc');if(s)setDiff(s.dataset.d)};
-      $('#q').oninput=drawList;$('#tgT').onclick=()=>{const b=$('#txtBox'),o=b.hidden;b.hidden=!o;$('#tgT').setAttribute('aria-expanded',o);$('#tgT').textContent=o?'テキスト入力を閉じる':'テキストを直接入力';if(o)$('#txt').focus()};$('#goT').onclick=()=>{songLabel='';songInfo=null;draw($('#txt').value)};
-      $('#zm').oninput=()=>{$('#zv').textContent=$('#zm').value;if(view==='svg')zoomSVG()};
-      $('#goR').onclick=()=>{
-       const t=$('#txt').value;if(!t.trim()||view==='svg'){st('拡大表示にはSUSの解析が必要です（SVG画像表示では使えません）');return}
-       const spacing=+$('#zm').value||36,columns=+$('#bpc').value||8;
-       const w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
-       try{
-        const popupScore=parseSUS(t),sp=loadPrefs().popup||{},cfg={zoom:Math.round(pref(sp.zoom,25,5,100)),spacing:Math.round(pref(sp.spacing,spacing,16,400)),slideOpacity:pref(sp.slideOpacity,visualSettings.slideOpacity,0,1),guideOpacity:pref(sp.guideOpacity,visualSettings.guideOpacity,0,1),mirror:sp.mirror==null?visualSettings.mirror:!!sp.mirror};
-        const first=render(popupScore,cfg.spacing,columns,0,0,cfg),tabTitle=esc(songLabel||popupScore.meta.TITLE||'譜面');
-        const si=songInfo,songHTML=`<div class="song">${si?`<img src="${esc(si.jk)}" alt="">`:''}<div><b>${esc(si?si.title:(popupScore.meta.TITLE||'譜面'))}</b>${si?`<span class="lv" style="background:${DCOL[si.diff]||'#74829f'}">${esc(si.diff.toUpperCase())}${si.level!=null?` Lv${esc(si.level)}`:''}</span>`:''}</div></div>`;
-        w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${tabTitle}</title>
-        <style>
-          *{box-sizing:border-box}body{margin:0;background:#101827;color:#e5edf7;font:13px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;height:100vh;display:flex;flex-direction:column}
-          header{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px;background:#18263a;border-bottom:1px solid #344b66}
-          .song{display:flex;align-items:center;gap:10px;flex:1 1 280px;min-width:0}.song img{width:48px;height:48px;border-radius:8px;flex:none;background:#26364d;box-shadow:0 2px 6px #0006}.song div{min-width:0}.song b{display:block;font-size:15px;line-height:1.35;word-break:break-word}.lv{display:inline-block;margin-top:3px;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;color:#fff}.tools{margin-left:auto}.btns{display:flex;flex-wrap:wrap;gap:8px}button{border:0;border-radius:7px;padding:7px 11px;background:#2fbfae;color:#102033;font-weight:700;cursor:pointer}
-          #panel{flex:none;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:10px 14px;background:#1d2c42;border-bottom:1px solid #344b66}
-          #panel[hidden]{display:none}.control{min-width:180px;display:flex;flex-direction:column;gap:3px}.control label{font-size:11px;color:#c4d2e4}.control input{width:180px;accent-color:#58d7c4}
-          .value{font-weight:700;color:#fff;margin-left:5px}#chartBox{flex:1;min-height:0;overflow:auto;padding:12px;background:#111827}
-          #chartBox svg{display:block;max-width:none;height:auto}.hint{font-size:10px;color:#91a6bf}
-        </style>
-        <header>${songHTML}<div class="tools"><button id="toggle">設定を隠す</button></div></header>
-        <section id="panel">
-          <div class="control"><label>拡大倍率 <span class="value" id="zoomValue">${cfg.zoom}%</span></label><input id="zoom" type="range" min="5" max="100" step="1" value="${cfg.zoom}"></div>
-          <div class="control"><label>ノーツ間隔（px/拍） <span class="value" id="spacingValue">${cfg.spacing}</span></label><input id="spacing" type="range" min="16" max="400" step="1" value="${cfg.spacing}"></div>
-          <div class="control"><label>スライドノーツ透明度 <span class="value" id="slideValue">${Math.round(cfg.slideOpacity*100)}%</span></label><input id="slideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.slideOpacity*100)}"></div>
-          <div class="control"><label>ガイドノーツ透明度 <span class="value" id="guideValue">${Math.round(cfg.guideOpacity*100)}%</span></label><input id="guideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.guideOpacity*100)}"></div>
-        <div class="control"><label><input id="mirror" type="checkbox" style="width:auto" ${cfg.mirror?'checked':''}> ミラー（左右反転）</label></div>
-        <div class="control"><label>画像保存</label><div class="btns"><button id="dlSvg">SVGで保存</button><button id="dlPng">PNGで保存</button></div><span class="hint" id="dlMsg"></span></div>
-        </section><main id="chartBox">${first.svg}</main>
-        <script>
-          const cfg={zoom:${cfg.zoom},spacing:${cfg.spacing},slideOpacity:${cfg.slideOpacity},guideOpacity:${cfg.guideOpacity},mirror:${!!cfg.mirror}};
-          const $=id=>document.getElementById(id);
-          function applyZoom(){const svg=$('chartBox').querySelector('svg');if(!svg)return;const base=Number(svg.getAttribute('width'))||1;svg.style.width=(base*cfg.zoom/100)+'px';svg.style.height='auto';$('zoomValue').textContent=cfg.zoom+'%'}
-          function persist(){if(typeof window.__savePrefs==='function')window.__savePrefs({...cfg})}function requestRender(){persist();if(typeof window.__renderChartFromParent==='function')window.__renderChartFromParent({...cfg})}
-          $('zoom').addEventListener('input',e=>{cfg.zoom=Math.min(100,Math.max(5,Number(e.target.value)||25));applyZoom();persist()});
-          $('spacing').addEventListener('input',e=>{cfg.spacing=Number(e.target.value);$('spacingValue').textContent=cfg.spacing;requestRender()});
-          $('slideOpacity').addEventListener('input',e=>{cfg.slideOpacity=Number(e.target.value)/100;$('slideValue').textContent=e.target.value+'%';requestRender()});
-          $('guideOpacity').addEventListener('input',e=>{cfg.guideOpacity=Number(e.target.value)/100;$('guideValue').textContent=e.target.value+'%';requestRender()});
-          $('mirror').addEventListener('change',e=>{cfg.mirror=e.target.checked;requestRender()});
-          $('toggle').addEventListener('click',()=>{const panel=$('panel');panel.hidden=!panel.hidden;$('toggle').textContent=panel.hidden?'設定を表示':'設定を隠す'});
-          ['Svg','Png'].forEach(function(k){$('dl'+k).addEventListener('click',function(){if(typeof window.__saveFromParent==='function')window.__saveFromParent(k.toLowerCase(),{...cfg})})});
-          window.__applyZoom=applyZoom;
-        <\/script></html>`);
-        w.document.close();
-        w.__renderChartFromParent=(next)=>{
-          const updated=render(popupScore,next.spacing,columns,0,0,next),box=w.document.getElementById('chartBox');
-          if(!box)return;box.innerHTML=updated.svg;
-          const spacingLabel=w.document.getElementById('spacingValue');if(spacingLabel)spacingLabel.textContent=next.spacing;
-          if(typeof w.__applyZoom==='function')w.__applyZoom();
-        };
-        if(typeof w.__applyZoom==='function')w.__applyZoom();
-       w.__savePrefs=c=>savePrefs({popup:{zoom:c.zoom,spacing:c.spacing,slideOpacity:c.slideOpacity,guideOpacity:c.guideOpacity,mirror:!!c.mirror}});
-        const popupName=lastName;
-        w.__saveFromParent=(fmt,next)=>saveChart(render(popupScore,next.spacing,columns,0,0,next),fmt,popupName,m=>{const e=w.document.getElementById('dlMsg');if(e)e.textContent=m});
-       }catch(e){w.close();st('拡大表示の生成エラー: '+e.message);console.error(e)}
-      };
-      $('#mirror').onchange=()=>{visualSettings.mirror=$('#mirror').checked;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
-      $('#zm').onchange=$('#bpc').onchange=()=>{if(view==='svg')zoomSVG();else if($('#txt').value.trim())draw($('#txt').value)};
-      const updateMainOpacityLabels=()=>{$('#slv').textContent=$('#slOpacity').value+'%';$('#gdv').textContent=$('#gdOpacity').value+'%'};
-      $('#slOpacity').oninput=$('#gdOpacity').oninput=updateMainOpacityLabels;
-      $('#slOpacity').onchange=()=>{visualSettings.slideOpacity=Number($('#slOpacity').value)/100;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
-      $('#gdOpacity').onchange=()=>{visualSettings.guideOpacity=Number($('#gdOpacity').value)/100;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
-      $('#src').onchange=()=>{if(cur&&curD)setDiff(curD)};
-      /* メイン画面の表示設定を保存・復元 */
-      const mainPrefs=()=>({zm:+$('#zm').value,bpc:+$('#bpc').value,sl:+$('#slOpacity').value,gd:+$('#gdOpacity').value,mirror:$('#mirror').checked});
-      ['#zm','#bpc','#slOpacity','#gdOpacity','#mirror'].forEach(id=>$(id).addEventListener('change',()=>savePrefs({main:mainPrefs()})));
-      (()=>{const m=loadPrefs().main;if(!m||typeof m!=='object')return;
-       $('#zm').value=Math.round(pref(m.zm,36,16,400));$('#zv').textContent=$('#zm').value;
-       const b=String(Math.round(pref(m.bpc,8,4,16)));if([...$('#bpc').options].some(o=>o.value===b))$('#bpc').value=b;
-       $('#slOpacity').value=Math.round(pref(m.sl,34,0,100));$('#gdOpacity').value=Math.round(pref(m.gd,12,0,100));$('#mirror').checked=!!m.mirror;
-       Object.assign(visualSettings,{slideOpacity:+$('#slOpacity').value/100,guideOpacity:+$('#gdOpacity').value/100,mirror:$('#mirror').checked});updateMainOpacityLabels()})();
-      $('#smp').onclick=()=>{songLabel='';songInfo=null;$('#txt').value=SAMPLE;draw(SAMPLE)};
-      const SAMPLE=`#TITLE "SAMPLE"
-      #REQUEST "ticks_per_beat 480"
-      #BPM01: 120
-      #BPM02: 150
-      #00008: 01
-      #00408: 02
-      #00602: 3
-      #00012: 11000000
-      #00014: 00120000
-      #00017: 00001100
-      #00019: 00000021
-      #00115: 12000000
-      #00155: 12000000
-      #00119: 00001200
-      #00159: 00003200
-      #0011c: 00000012
-      #0015c: 00000042
-      #002340: 12000000
-      #002350: 00003200
-      #003350: 22000000
-      #00355: 12000000
-      #00419: 22000000
-      #004390: 12000000
-      #0043a0: 00005200
-      #0053c0: 22000000
-      #00512: 00005100
-      #00513: 00006100
-      #00514: 00004100
-      #00610: 11000000
-      #00811: 11000000
-      #01011: 21000000`;
-      (async()=>{try{const[m,d]=await Promise.all([jget('musics.json'),jget('musicDifficulties.json')]);songs=m.sort((a,b)=>b.id-a.id);d.forEach(x=>(diffs[x.musicId]??={})[x.musicDifficulty]=x);st(`楽曲 ${songs.length} 件を読み込みました`);drawList()}catch(e){st('楽曲リストを取得できません（SUSの貼り付けは利用できます）')}})();
+
+      /* ================= App (3 pages: home / songs / settings) ================= */
+      const DN={easy:'EASY',normal:'NORMAL',hard:'HARD',expert:'EXPERT',master:'MASTER',append:'APPEND'};
+      const UNITS=[['all','すべてのユニット'],['vocaloid','VIRTUAL SINGER'],['light_music_club','Leo/need'],['idol','MORE MORE JUMP!'],['street','Vivid BAD SQUAD'],['theme_park','ワンダーランズ×ショウタイム'],['school_refusal','25時、ナイトコードで。'],['other','その他']];
+      const PREF_KEY='sekaiChartViewer.settings.v1',DEF={zm:36,bpc:8,sl:34,gd:12,mirror:false},BPCS=[4,6,8,12,16,24,32];
+      let songs=[],diffs={},tags={},cur=null,curD=null,key='',rid=0,cancel=()=>{},lastR=null,sus='',dirty=false,zoom=100,listY=0,stT=0;
+      const clamp=(v,d,lo,hi)=>{v=Number(v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
+      let cfg=(()=>{try{const m=(JSON.parse(localStorage.getItem(PREF_KEY))||{}).main||{};return{zm:Math.round(clamp(m.zm,36,16,400)),bpc:BPCS.includes(+m.bpc)?+m.bpc:8,sl:Math.round(clamp(m.sl,34,0,100)),gd:Math.round(clamp(m.gd,12,0,100)),mirror:!!m.mirror}}catch(e){return{...DEF}}})();
+      const saveCfg=()=>{try{localStorage.setItem(PREF_KEY,JSON.stringify({...(JSON.parse(localStorage.getItem(PREF_KEY))||{}),main:cfg}))}catch(e){}};
+      const vs=()=>({slideOpacity:cfg.sl/100,guideOpacity:cfg.gd/100,mirror:cfg.mirror});
+      const st=t=>{const e=$('#st');e.textContent=t;e.hidden=!t;clearTimeout(stT);if(t&&!/…$/.test(t))stT=setTimeout(()=>e.hidden=true,6000)};
+      const jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
+      const fd=ms=>{if(!ms)return'-';const d=new Date(ms);return`${d.getFullYear()}/${pad(d.getMonth()+1,2)}/${pad(d.getDate(),2)}`};
+      const dif=id=>DIFFS.filter(d=>(diffs[id]||{})[d]);
+      const credit=s=>`作詞 ${esc(s.lyricist||'-')} ／ 作曲 ${esc(s.composer||'-')} ／ 編曲 ${esc(s.arranger||'-')}`;
+      const chip=(s,d)=>{const o=diffs[s.id][d];return`<a class="dc" style="background:${DCOL[d]}" href="#songs/${s.id}/${d}">${DN[d]} Lv${o.playLevel}<small>${o.totalNoteCount.toLocaleString()} notes</small></a>`};
+      const pub=()=>songs.filter(s=>(s.publishedAt||0)<=Date.now()).sort((a,b)=>(b.publishedAt||0)-(a.publishedAt||0)||b.id-a.id);
+      const $$=s=>document.querySelectorAll(s);
+
+      /* ---- Home ---- */
+      function drawHome(){
+        const r=pub(),l=r[0];if(!l)return;
+        $('#latest').innerHTML=`<img class="big" src="${jacket(l)}" alt=""><div><h3>${esc(l.title)}</h3><div class="mut">${credit(l)}</div><div class="mut">公開日 ${fd(l.publishedAt)} ／ #${l.id}</div><div class="dcs">${dif(l.id).map(d=>chip(l,d)).join('')}</div><a class="btn" href="#songs/${l.id}">譜面を見る</a></div>`;
+        $('#recent').innerHTML=r.slice(1,13).map(s=>`<a class="rc" href="#songs/${s.id}"><img loading="lazy" src="${jacket(s)}" alt=""><b>${esc(s.title)}</b><small>${fd(s.publishedAt)}</small></a>`).join('');
+        $('#stats').innerHTML=`<div><b>${r.length}</b>収録曲</div><div><b>${r.reduce((n,s)=>n+dif(s.id).length,0)}</b>譜面</div><div><b>${fd(l.publishedAt)}</b>最新の公開日</div>`;
+      }
+
+      /* ---- Songs: list ---- */
+      const q={k:'',sort:'date',d:'master',unit:'all',asc:false};
+      function drawList(){
+        const k=q.k.trim().toLowerCase(),lv=q.sort==='level',val=s=>lv?diffs[s.id][q.d].playLevel:(s.publishedAt||0);
+        const h=pub().filter(s=>(!k||[s.id,s.title,s.pronunciation,s.lyricist,s.composer,s.arranger].join('\n').toLowerCase().includes(k))&&(q.unit==='all'||(tags[s.id]&&tags[s.id].has(q.unit)))&&(!lv||(diffs[s.id]||{})[q.d]));
+        h.sort((a,b)=>(val(a)-val(b)||(a.publishedAt||0)-(b.publishedAt||0)||a.id-b.id)*(q.asc?1:-1));
+        $('#cnt').textContent=songs.length?`${h.length}曲`:'';
+        $('#list').innerHTML=h.map(s=>`<a class="it" href="#songs/${s.id}"><img loading="lazy" src="${jacket(s)}" alt=""><span><b>${esc(s.title)}</b><small>#${s.id} ／ ${fd(s.publishedAt)}</small><small>${credit(s)}</small></span>${lv?`<i class="lb" style="background:${DCOL[q.d]}">Lv${diffs[s.id][q.d].playLevel}</i>`:''}</a>`).join('')||(songs.length?'<p class="mut pad">条件に合う曲がありません。検索語やユニットを変えてみてください。</p>':'<p class="mut pad">楽曲データを読み込み中…</p>');
+      }
+      const ordLabel=()=>{$('#ord').textContent=q.asc?'昇順 ↑':'降順 ↓';$('#ord').setAttribute('aria-label',q.asc?'昇順（押すと降順に切替）':'降順（押すと昇順に切替）')};
+      $('#unit').innerHTML=UNITS.map(([v,n])=>`<option value="${v}">${n}</option>`).join('');
+      $('#dsel').innerHTML=DIFFS.map(d=>`<option value="${d}"${d==='master'?' selected':''}>${DN[d]}</option>`).join('');
+      $('#q').oninput=e=>{q.k=e.target.value;drawList()};
+      $('#unit').onchange=e=>{q.unit=e.target.value;drawList()};
+      $('#sort').onchange=e=>{q.sort=e.target.value;$('#dsel').hidden=q.sort!=='level';drawList()};
+      $('#dsel').onchange=e=>{q.d=e.target.value;drawList()};
+      $('#ord').onclick=()=>{q.asc=!q.asc;ordLabel();drawList()};
+
+      /* ---- Songs: difficulty select / chart ---- */
+      function drawDiff(){
+        const s=cur;
+        $('#dinfo').innerHTML=`<img class="big" src="${jacket(s)}" alt=""><div><h3>${esc(s.title)}</h3><div class="mut">${esc(s.pronunciation||'')}</div><div class="mut">${credit(s)}</div><div class="mut">公開日 ${fd(s.publishedAt)} ／ #${s.id}</div></div>`;
+        $('#dlist').innerHTML=dif(s.id).map(d=>{const o=diffs[s.id][d];return`<a class="dbtn" style="--c:${DCOL[d]}" href="#songs/${s.id}/${d}"><b>${DN[d]}</b><span>Lv ${o.playLevel}</span><small>${o.totalNoteCount.toLocaleString()} notes</small></a>`}).join('')||'<p class="mut">この曲の難易度情報がありません。</p>';
+      }
+      function drawInfo(){
+        const o=diffs[cur.id][curD];
+        $('#cinfo').innerHTML=`<img class="jk" src="${jacket(cur)}" alt=""><div><h3>${esc(cur.title)}</h3><div class="mut">${credit(cur)}</div><div class="dcs"><span class="dc" style="background:${DCOL[curD]}">${DN[curD]} Lv${o.playLevel}</span><span class="dc nt">総ノーツ数 ${o.totalNoteCount.toLocaleString()}</span><span class="mut">公開日 ${fd(cur.publishedAt)}</span></div></div>`;
+        $('#bk').href='#songs/'+cur.id;
+      }
+      function applyZoom(){
+        $('#zl').textContent=zoom+'%';$('#zr').value=zoom;
+        const sv=$('#chart svg'),im=$('#chart img.sv');
+        if(sv){sv.style.width=(+sv.getAttribute('width')||1)*zoom/100+'px';sv.style.height='auto'}
+        if(im)im.style.width=zoom+'%';
+      }
+      function drawChart(){
+        try{const S=parseSUS(sus),R=render(S,cfg.zm,cfg.bpc,0,0,vs());$('#chart').innerHTML=R.svg;lastR=R;dirty=false;applyZoom();st(`描画完了：ノーツ ${S.stats.active}、スライド経路 ${S.stats.chains}本`)}
+        catch(e){st('解析エラー: '+e.message);console.error(e)}
+      }
+      function showSVG(c){
+        c=[...new Set(c.filter(Boolean))];let i=0;
+        const next=()=>{const u=c[i++];
+          if(!u){$('#chart').innerHTML='<div class="msg">譜面を取得できませんでした。通信状況を確認するか、別の難易度でお試しください。</div>';st('');key='';return}
+          const im=new Image();im.className='sv';im.alt='譜面';im.referrerPolicy='no-referrer';
+          im.onload=()=>{st('生成済みの譜面画像を表示中（この表示では設定の反映・画像保存は使えません）');applyZoom()};
+          im.onerror=()=>{if(im.isConnected)next()};im.src=u;$('#chart').replaceChildren(im)};
+        next();
+      }
+      async function loadChart(){
+        const my=++rid;cancel();sus='';lastR=null;$('#chart').innerHTML='<div class="msg">譜面データを取得中…</div>';st('譜面データを取得中…');
+        const{hit}=await fetchSUS(susGroups(cur.id,curD));if(my!==rid)return;
+        if(hit&&hit.kind==='sus'){sus=hit.t;drawChart();return}
+        showSVG([hit&&hit.u,...svgURLs(cur.id,curD)]);
+      }
+      const doSave=f=>lastR?saveChart(lastR,f,`${cur.title}_${curD}`):st('保存にはSUSの解析表示が必要です（画像表示では使えません）');
+      $('#dlSvg').onclick=()=>doSave('svg');$('#dlPng').onclick=()=>doSave('png');
+      $('#zr').oninput=e=>{zoom=+e.target.value;applyZoom()};
+      $('#zo').onclick=()=>{zoom=clamp(zoom-25,100,25,300);applyZoom()};$('#zi').onclick=()=>{zoom=clamp(zoom+25,100,25,300);applyZoom()};
+      const fs=on=>{$('#s-chart').classList.toggle('fs',on);$('#fsb').textContent=on?'拡大表示を閉じる':'拡大表示';document.body.classList.toggle('lock',on)};
+      $('#fsb').onclick=()=>fs(!$('#s-chart').classList.contains('fs'));
+
+      /* ---- Settings (live preview uses the real renderer) ---- */
+      const PV=`#REQUEST "ticks_per_beat 480"
+#BPM01: 120
+#00008: 01
+#000330: 13000000
+#000350: 00003300
+#001360: 23000000
+#000981: 12000000
+#000991: 00003200
+#001971: 22000000`;
+      let PVS=null;
+      function drawPv(){
+        PVS=PVS||parseSUS(PV);
+        $('#pv').innerHTML=render(PVS,cfg.zm,2,0,0,vs()).svg.replace(/\bid="([^"]+)"/g,'id="pv-$1"').replace(/url\(#([^)]+)\)/g,'url(#pv-$1)').replace(/href="#([^"]+)"/g,'href="#pv-$1"');
+      }
+      function sync(){
+        $('#zm').value=cfg.zm;$('#bpc').value=cfg.bpc;$('#slOpacity').value=cfg.sl;$('#gdOpacity').value=cfg.gd;$('#mirror').checked=cfg.mirror;
+        $('#zv').textContent=cfg.zm;$('#slv').textContent=cfg.sl+'%';$('#gdv').textContent=cfg.gd+'%';
+        $('#bpn').textContent=`例：128小節の曲は約${Math.ceil(128/cfg.bpc)}列に分けて横に並べます`;
+      }
+      const changed=()=>{sync();drawPv();dirty=true;saveCfg()};
+      $('#bpc').innerHTML=BPCS.map(n=>`<option>${n}</option>`).join('');
+      $('#zm').oninput=e=>{cfg.zm=+e.target.value;changed()};
+      $('#bpc').onchange=e=>{cfg.bpc=+e.target.value;changed()};
+      $('#slOpacity').oninput=e=>{cfg.sl=+e.target.value;changed()};
+      $('#gdOpacity').oninput=e=>{cfg.gd=+e.target.value;changed()};
+      $('#mirror').onchange=e=>{cfg.mirror=e.target.checked;changed()};
+      $('#rst').onclick=()=>{cfg={...DEF};changed()};
+
+      /* ---- Side menu (all screen sizes) ---- */
+      const nav=$('#nav');
+      function setNav(o){nav.classList.toggle('open',o);nav.inert=!o;$('#scrim').hidden=!o;$('#menu').setAttribute('aria-expanded',o);if(o)nav.querySelector('a').focus()}
+      $('#menu').onclick=()=>setNav(true);
+      $('#navx').onclick=$('#scrim').onclick=()=>{setNav(false);$('#menu').focus()};
+      document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(nav.classList.contains('open')){setNav(false);$('#menu').focus()}else fs(false)});
+
+      /* ---- Router: #home / #songs / #songs/ID / #songs/ID/DIFF / #settings ---- */
+      const TITLES={home:'ホーム',songs:'曲を探す',settings:'設定'};
+      function route(){
+        const[p0,id,d]=location.hash.slice(1).split('/'),p=TITLES[p0]?p0:'home';
+        if(!$('#p-songs').hidden&&!$('#s-list').hidden)listY=$('#list').scrollTop;
+        fs(false);setNav(false);
+        $$('.pg').forEach(e=>e.hidden=e.id!=='p-'+p);
+        $$('#nav a').forEach(a=>a.dataset.p===p?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
+        $('#ttl').textContent=TITLES[p];document.title=TITLES[p]+' | プロセカ 譜面ビューア';
+        if(p==='settings'){sync();drawPv()}
+        if(p==='songs'){
+          const s=songs.find(x=>x.id==id),dd=s&&diffs[s.id]&&diffs[s.id][d]?d:null,stg=s?(dd?'chart':'diff'):'list';
+          ['list','diff','chart'].forEach(n=>$('#s-'+n).hidden=n!==stg);
+          if(stg==='list')$('#list').scrollTop=listY;else window.scrollTo(0,0);
+          if(stg==='diff'){cur=s;drawDiff()}
+          if(stg==='chart'){cur=s;curD=dd;drawInfo();const k=s.id+'/'+dd;if(k!==key){key=k;loadChart()}else if(dirty&&sus)drawChart()}
+        }
+      }
+      addEventListener('hashchange',route);
+
+      /* ---- Init ---- */
+      $('#legend').innerHTML=LEG;ordLabel();sync();route();
+      (async()=>{
+        st('楽曲データを取得中…');
+        try{
+          const[m,d,t]=await Promise.all([jget('musics.json'),jget('musicDifficulties.json'),jget('musicTags.json').catch(()=>[])]);
+          songs=m;d.forEach(x=>(diffs[x.musicId]??={})[x.musicDifficulty]=x);t.forEach(x=>(tags[x.musicId]??=new Set()).add(x.musicTag));
+          $('#unit').disabled=!t.length;st('');drawHome();drawList();route();
+        }catch(e){st('楽曲データを取得できません。通信状況を確認して再読み込みしてください')}
+      })();
     </script>
   </body>
 </html>
