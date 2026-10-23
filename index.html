@@ -25,9 +25,14 @@
       #card h3{margin:0;font-size:15px}#dif{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
       .dc{border-radius:999px;padding:3px 10px;font-size:12px;color:#fff;opacity:.55}.dc.on{opacity:1;box-shadow:0 0 0 3px #fff,0 0 0 5px currentColor}
       #view{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
-      #bar{padding:8px 12px;border-bottom:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-      .ch{background:#eef6ff;border-radius:999px;padding:2px 10px;font-size:12px}.ok{background:#dcf7e8}.ng{background:#fff0d6}
-      #chart{flex:1;overflow:auto;background:#111827}#legend{padding:4px 12px;border-bottom:1px solid var(--ln)}
+      #chart{flex:1;overflow:auto;background:#111827}#legend{padding:8px 12px;border-bottom:1px solid var(--ln)}
+      /* ノーツ凡例：通常/クリティカルのペアは同じ行に固定、図形は同サイズ枠の中央揃え、名前は図の下 */
+      .lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,232px),1fr));gap:8px}
+      .lgp{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 6px;padding:6px 8px;background:#f4f8fd;border:1px solid var(--ln);border-radius:10px}
+      .lgc{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;text-align:center}
+      .lgv{display:flex;align-items:center;justify-content:center;width:64px;height:52px;flex:none}
+      .lgv svg{display:block;overflow:visible}
+      .lgn{font-size:10px;line-height:1.3;color:var(--ink);word-break:keep-all;overflow-wrap:anywhere}
       #msg{padding:30px;color:var(--mut)}
       #chart img.sv{display:block;height:auto;background:#111827}
       @media(max-width:860px){main{grid-template-columns:1fr;height:auto}#chart{height:70vh}}
@@ -58,18 +63,15 @@
         </section>
         <section class="p">
           <h2>② 譜面データ（SUS）</h2>
-          <div class="mut">URL（曲と難易度の選択で自動入力）</div>
-          <div class="row">
-            <input id="url" placeholder="SUS .txt/.sus または生成済み .svg のURL" />
-            <button id="goU">読込</button>
-          </div>
+          <input id="url" type="hidden" />
           <div class="mut">取得方法</div>
           <select id="src">
             <option value="auto" selected="">自動（元SUS優先→生成SVGへ切替）</option>
             <option value="sus">SUS（txt）のみ</option>
             <option value="svg">生成済みSVG（sekai-music-charts）</option>
           </select>
-          <div class="mut">またはテキストを貼り付け</div>
+          <button id="tgT" class="g" style="width:100%;margin-top:8px" aria-expanded="false" aria-controls="txtBox">テキストを直接入力</button>
+          <div id="txtBox" hidden style="margin-top:8px">
           <div class="mut">方向値1/3/4はフリック矢印、2は曲線の開始側、5/6は終了側を制御します。制御はその点から次の経路点までに適用（2/5/6は参照パーサー準拠。公開SUS資料では挙動未検証の注記あり）。</div>
           <textarea
             id="txt"
@@ -80,6 +82,7 @@
           <div class="row">
             <button id="goT">貼り付けから描画</button>
             <button id="smp" class="g">サンプル</button>
+          </div>
           </div>
         </section>
         <section class="p">
@@ -100,16 +103,20 @@
           <input id="slOpacity" type="range" min="0" max="100" step="1" value="34" />
           <div class="mut" style="margin-top:6px">ガイドノーツの透明度：<b id="gdv">12%</b></div>
           <input id="gdOpacity" type="range" min="0" max="100" step="1" value="12" />
+          <label class="mut" style="display:flex;align-items:center;gap:6px;margin-top:10px"><input id="mirror" type="checkbox" style="width:auto" /> ミラー（左右反転）</label>
           <div class="mut" style="margin-top:10px">
             拡大表示（別タブ）：全体を、上の「1列あたりの小節数」で区切った列を横に並べ、「拡大」の倍率で表示（タブ内の倍率スライダーでも拡縮できます）
           </div>
           <button id="goR" style="margin-top:6px">拡大表示を別タブで開く</button>
+          <div class="mut" style="margin-top:10px">
+            譜面の保存：上の設定（拡大・1列あたりの小節数・透明度）で描画中の譜面を画像で保存します（PNGは2倍解像度。大きすぎる場合は自動で縮小）
+          </div>
+          <div class="row"><button id="dlSvg" style="flex:1">SVGで保存</button><button id="dlPng" style="flex:1">PNGで保存</button></div>
         </section>
       </aside>
       <section id="view">
-        <div id="bar"></div>
         <div id="legend"></div>
-        <div id="chart"><div id="msg">左で曲と難易度を選ぶか、SUSを貼り付けてください。</div></div>
+        <div id="chart"><div id="msg">左で曲と難易度を選ぶか、「テキストを直接入力」からSUSを貼り付けてください。</div></div>
       </section>
     </main>
     <script>
@@ -118,7 +125,7 @@
       const MASTER='https://sekai-world.github.io/sekai-master-db-diff/',DIFFS=['easy','normal','hard','expert','master','append'];
       const DCOL={easy:'#4fc95b',normal:'#34a9ee',hard:'#f09a1a',expert:'#ec4264',master:'#a94fe0',append:'#ee6fbd'};
       const pad=(n,l)=>String(n).padStart(l,'0');
-      const jacket=m=>{const a=m.assetbundleName||'jacket_s_'+pad(m.id,3);return`https://storage.sekai.best/sekai-jp-assets/music/jacket/${a}/${a}.png`};
+      const jacket=m=>{const a=m.assetbundleName||'jacket_s_'+pad(m.id,3);return`https://storage.sekai.best/sekai-jp-assets/music/jacket/${a}/${a}.webp`};
       /* ---------- Chart source resolution ----------
          sekai-music-charts は完成SVGを配信し、元データは _01_rip/*.txt。
          _01 のasset3配信も旧ミラーとして順に試す。
@@ -225,15 +232,18 @@
         const measureLengthAt=measure=>{
           let beats=4;for(const e of ev.filter(v=>v.len).sort((a,b)=>a.bar-b.bar)){if(e.bar<=measure+1e-9)beats=e.len;else break}return beats;
         };
-        const speedEventKeys=new Set();
+        /* HS(note) と BAR(measure) は同じTILを参照することが多く、同一タイミング・同一速度の
+           イベントが2件ずつ生成されて重複表示されていた。小節位置と速度が同じものは1件に統合し、
+           HS/BAR の両方で使われている場合は speedMode='both' として「HS/BAR」と表示する。 */
+        const speedEvents=new Map(),missingTil=new Set();
         const appendSpeedEvents=(ids,mode)=>{
           for(const id of ids){
             const entries=tilDefs.get(id);
-            if(!entries){warnings.push(`TIL${id.toString(36).toUpperCase().padStart(2,'0')} の速度定義が見つかりません`);continue}
+            if(!entries){if(!missingTil.has(id)){missingTil.add(id);warnings.push(`TIL${id.toString(36).toUpperCase().padStart(2,'0')} の速度定義が見つかりません`)}continue}
             for(const entry of entries){
               const bar=entry.measure+entry.tick/(ticksPerBeat*measureLengthAt(entry.measure));
-              const key=`${mode}|${bar.toFixed(8)}|${entry.speed}`;if(speedEventKeys.has(key))continue;speedEventKeys.add(key);
-              ev.push({bar,speed:entry.speed,eventType:'speed',speedMode:mode});
+              const key=`${bar.toFixed(8)}|${entry.speed}`,prev=speedEvents.get(key);if(prev){if(prev.speedMode!==mode)prev.speedMode='both';continue}
+              const e={bar,speed:entry.speed,eventType:'speed',speedMode:mode};speedEvents.set(key,e);ev.push(e);
             }
           }
         };
@@ -316,7 +326,7 @@
         return{node,relays};
       };
       /* ---------- ノーツ描画（ゲーム内デザインを再現したSVG） ---------- */
-      const LW=20,PL=46,PR=250,COLW=PL+12*LW+PR,TOP=30;
+      const LW=20,PL=46,PR=104,COLW=PL+12*LW+PR,TOP=30;
       const C={tap:['#eaf0ff','#9c8be8','#8fa4f7'],long:['#e5fbee','#4fd9a0','#4fd9a0'],flick:['#ffeaf0','#ee7a98','#f4a3b6'],crit:['#fff7da','#f1b42e','#f6c84a'],dmg:['#efe5fa','#6f43a8','#8d63c4'],unknown:['#ffe0e0','#dc5555','#b82e2e']};
       const body=(x,y,w,k,a=1,h=14)=>{const c=C[k];return`<g opacity="${a}"><rect x="${x-2}" y="${y-h/2-2}" width="${w+4}" height="${h+4}" rx="8" fill="${c[1]}" opacity=".25"/><rect x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="6" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${k==='tap'&&h>8?`<rect x="${x+2}" y="${y+h/2-3.5}" width="${w-4}" height="3" rx="1.5" fill="#43dcf3"/>`:''}${h>8?`<rect x="${x+3}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/><rect x="${x+w-7}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/>`:''}</g>`};
       const gem=(x,y,k)=>{const f=k==='crit'?['#f8d24f','#d9981a']:k==='flick'?['#f598b1','#d85a82']:['#6fe3b8','#27b185'];return`<polygon points="${x},${y-7} ${x+6.5},${y} ${x},${y+7} ${x-6.5},${y}" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.5"/><polygon points="${x},${y-7} ${x-6.5},${y} ${x},${y}" fill="#fff" opacity=".8"/>`};
@@ -405,6 +415,7 @@
       /* ---------- レイアウト & SVG生成 ---------- */
       function render(S,ppb,BPC,R0=0,RN=0,settings={}){
        const slideOpacity=Math.max(0,Math.min(1,Number(settings.slideOpacity??.34)));
+       const mr=s=>settings.mirror?`<g transform="translate(${2*PL+12*LW} 0) scale(-1 1)">${s}</g>`:s;
        const guideOpacity=Math.max(0,Math.min(1,Number(settings.guideOpacity??.12)));
        const{notes,ev}=S;let maxBar=0;notes.forEach(n=>maxBar=Math.max(maxBar,n.bar));ev.forEach(e=>maxBar=Math.max(maxBar,e.bar));
        const total=Math.floor(maxBar+1e-9)+1,len=[],cum=[0];let cl=4,ei=0;const lens=ev.filter(e=>e.len).sort((a,b)=>a.bar-b.bar);
@@ -544,41 +555,62 @@
            so dense event clusters do not draw over one another. */
         const evInColumn=ev.filter(e=>e.bar>=b0-1e-9&&e.bar<b1+(c===nc-1?1:0)&&
           (e.bpm!==undefined||e.speed!==undefined||e.text));
-        const eventLanes=[
-          {key:'bpm',x:PL+12*LW+8,w:60,bg:'#4a3b1e',stroke:'#d4a94e',color:'#ffe09a',items:evInColumn.filter(e=>e.bpm!==undefined).map(e=>({e,y:Y(c,e.bar),label:`BPM ${(+e.bpm).toFixed(2)}`}))},
-          {key:'speed',x:PL+12*LW+74,w:82,bg:'#203b54',stroke:'#63a9db',color:'#aee0ff',items:evInColumn.filter(e=>e.speed!==undefined).map(e=>({e,y:Y(c,e.bar),label:`${e.speedMode==='measure'?'BAR':'HS'} ×${Number(e.speed.toFixed(3))}`}))},
-          {key:'info',x:PL+12*LW+162,w:80,bg:'#382b4b',stroke:'#a98bd0',color:'#e2cffc',items:evInColumn.filter(e=>!!e.text).map(e=>({e,y:Y(c,e.bar),label:e.text}))}
-        ];
+        const EVS={bpm:{bg:'#4a3b1e',stroke:'#d4a94e',color:'#ffe09a'},speed:{bg:'#203b54',stroke:'#63a9db',color:'#aee0ff'},info:{bg:'#382b4b',stroke:'#a98bd0',color:'#e2cffc'}};
+        const mk=(k,f,l)=>evInColumn.filter(f).map(e=>({e,y:Y(c,e.bar),label:l(e),s:EVS[k]}));
+        const eventLanes=[{x:PL+12*LW+8,w:86,items:[...mk('bpm',e=>e.bpm!==undefined,e=>`BPM ${(+e.bpm).toFixed(2)}`),...mk('speed',e=>e.speed!==undefined,e=>`${e.speedMode==='both'?'HS/BAR':e.speedMode==='measure'?'BAR':'HS'} ×${Number(e.speed.toFixed(3))}`),...mk('info',e=>!!e.text,e=>e.text)]}];
         eventLanes.forEach(lane=>{
           const items=lane.items.sort((a,b)=>a.y-b.y);if(!items.length)return;
+          /* 同じタイミング（同一y）に重なるラベルだけ、元の位置を中心に上下へ振り分ける */
+          for(let i=0,j;i<items.length;i=j){j=i+1;while(j<items.length&&items[j].y-items[i].y<1)j++;for(let k=i;k<j;k++)items[k].py=items[k].y+(k-i-(j-i-1)/2)*12}
           const topY=TOP+8,bottomY=Math.max(TOP+8,bot-8),gap=12;
           const effectiveGap=items.length>1?Math.min(gap,(bottomY-topY)/(items.length-1)):gap;
           let last=topY-effectiveGap;
-          items.forEach(item=>{item.labelY=Math.max(item.y,last+effectiveGap,topY);last=item.labelY});
-          if(items[items.length-1].labelY>bottomY){
-            const shift=items[items.length-1].labelY-bottomY;items.forEach(item=>item.labelY-=shift);
-          }
+          items.forEach(item=>{item.labelY=Math.max(item.py,last+effectiveGap,topY);last=item.labelY});
+          for(let i=items.length-1,lim=bottomY;i>=0;i--){items[i].labelY=Math.min(items[i].labelY,lim);lim=items[i].labelY-effectiveGap}
           if(items[0].labelY<topY){
             const step=items.length>1?(bottomY-topY)/(items.length-1):0;items.forEach((item,i)=>item.labelY=topY+i*step);
           }
           items.forEach(item=>{
             const yy=item.y,ly=item.labelY,short= Math.abs(yy-ly)>1;
-            if(short)g+=`<path d="M${lane.x-3} ${yy} L${lane.x} ${ly}" stroke="${lane.stroke}" stroke-width="1" opacity=".8"/>`;
-            g+=`<circle cx="${lane.x-3}" cy="${yy}" r="2" fill="${lane.stroke}"/>`;
-            g+=`<rect x="${lane.x}" y="${ly-5.5}" width="${lane.w}" height="11" rx="3" fill="${lane.bg}" stroke="${lane.stroke}" stroke-width=".6"/>`;
-            g+=`<text x="${lane.x+4}" y="${ly+3}" font-size="8.5" font-weight="700" fill="${lane.color}">${esc(item.label)}</text>`;
+            if(short)g+=`<path d="M${lane.x-3} ${yy} L${lane.x} ${ly}" stroke="${item.s.stroke}" stroke-width="1" opacity=".8"/>`;
+            g+=`<circle cx="${lane.x-3}" cy="${yy}" r="2" fill="${item.s.stroke}"/>`;
+            g+=`<rect x="${lane.x}" y="${ly-5.5}" width="${lane.w}" height="11" rx="3" fill="${item.s.bg}" stroke="${item.s.stroke}" stroke-width=".6"/>`;
+            g+=`<text x="${lane.x+4}" y="${ly+3}" font-size="8.5" font-weight="700" fill="${item.s.color}">${esc(item.label)}</text>`;
           });
         });
-        const inner=`<clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${o.p.join('')}</g>${o.n.reverse().join('')}${o.a.reverse().join('')}<text x="${PL}" y="16" font-size="11" fill="#a9bdd8">小節 ${b0}–${b1-1}</text><text x="${PL+12*LW+8}" y="16" font-size="9" fill="#d4a94e">BPM</text><text x="${PL+12*LW+82}" y="16" font-size="9" fill="#63a9db">速度</text><text x="${PL+12*LW+170}" y="16" font-size="9" fill="#a98bd0">演出</text>`;cs.push(inner);out+=`<g transform="translate(${ox} 0)">${inner}</g>`}
+        const inner=`<clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${mr(o.p.join(''))}</g>${mr(o.n.reverse().join('')+o.a.reverse().join(''))}<text x="${PL}" y="16" font-size="11" fill="#a9bdd8">小節 ${b0}–${b1-1}</text><text x="${PL+12*LW+8}" y="16" font-size="9"><tspan fill="#d4a94e">BPM</tspan> <tspan fill="#63a9db">速度</tspan> <tspan fill="#a98bd0">演出</tspan></text>`;cs.push(inner);out+=`<g transform="translate(${ox} 0)">${inner}</g>`}
        return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total,cs,w:COLW,h:H};
       }
       /* ---------- UI ---------- */
       let songs=[],diffs={},cur=null,curD=null,auto='';
-      let visualSettings={slideOpacity:.34,guideOpacity:.12};
+      let visualSettings={slideOpacity:.34,guideOpacity:.12,mirror:false};
+      /* 設定はlocalStorageに保存（使えない環境では保存せず通常動作） */
+      const PREF_KEY='sekaiChartViewer.settings.v1';
+      const loadPrefs=()=>{try{const v=JSON.parse(localStorage.getItem(PREF_KEY));return v&&typeof v==='object'?v:{}}catch(e){return{}}};
+      const savePrefs=p=>{try{localStorage.setItem(PREF_KEY,JSON.stringify({...loadPrefs(),...p}))}catch(e){}};
+      const pref=(v,d,lo,hi)=>{v=v==null?NaN:Number(v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
       const st=t=>$('#st').textContent=t,jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
-      const LEG=(()=>{const f=(w,k,dr)=>`<svg width="${w*LW+20}" height="34"><g transform="translate(10 0)">${body(1,24,w*LW-2,k)}${dr===undefined?'':arrow(w*LW/2,24,w,dr,k==='crit'?'crit':'flick')}</g></svg>`;
-       const traceLegend=(cr,fl)=>`<svg width="46" height="48" viewBox="0 0 46 48">${trc(4,37,38,cr,fl)}${fl?arrow(23,37,1,0,cr?'crit':'flick'):''}</svg>`;
-       return[['タップ',f(2,'tap')],['クリティカル',f(2,'crit')],['フリック',f(2,'flick',0)],['ロング',f(2,'long')],['中継点',`<svg width="30" height="34"><g>${gem(15,20,'long')}</g></svg>`],['トレース',traceLegend(0,0)],['フリックトレース',traceLegend(0,1)],['クリティカルトレース',traceLegend(1,0)],['クリティカルフリックトレース',traceLegend(1,1)],['ダメージ',f(2,'dmg')]].map(([n,s])=>`<span style="display:inline-flex;align-items:center;font-size:11px;margin-right:6px">${s}${n}</span>`).join('')})();
+      /* 凡例：対応する通常/クリティカルは必ず同じ行にペアで並べ(幅が足りない時だけ折返し)、
+         図形は全て同じ大きさの枠(64×52)の中央に揃え、名前は図の真下に置く。 */
+      const LEG=(()=>{
+       const IW=64,IH=52,ic=(g,cx,cy)=>`<svg width="${IW}" height="${IH}" viewBox="${cx-IW/2} ${cy-IH/2} ${IW} ${IH}" aria-hidden="true">${g}</svg>`;
+       const tp=k=>ic(body(1,24,38,k),20,24),
+             fk=k=>ic(body(1,24,38,k)+arrow(20,24,2,0,k==='crit'?'crit':'flick'),20,13.5),
+             tr=(cr,fl)=>ic(trc(4,37,38,cr,fl)+(fl?arrow(23,37,1,0,cr?'crit':'flick'):''),23,fl?28.7:37),
+             gm=k=>ic(gem(15,20,k),15,20),
+             gd=cr=>ic(`<path d="M7 33L11 1H23L27 33Z" fill="${cr?'#f0c45c':'#55dfa7'}" opacity=".55"/>`,17,17);
+       const wb=n=>n.replace(/(クリティカル|フリック|トレース|ロング|タップ|ガイド)(?=.)/g,'$1<wbr>');
+       const P=[
+         [['タップノーツ',tp('tap')],['クリティカルタップノーツ',tp('crit')]],
+         [['ロングノーツ',tp('long')],['クリティカルロングノーツ',tp('crit')]],
+         [['中継点',gm('long')],['クリティカル中継点',gm('crit')]],
+         [['フリックノーツ',fk('flick')],['クリティカルフリックノーツ',fk('crit')]],
+         [['トレースノーツ',tr(0,0)],['クリティカルトレースノーツ',tr(1,0)]],
+         [['トレースフリックノーツ',tr(0,1)],['クリティカルフリックトレースノーツ',tr(1,1)]],
+         [['ガイドノーツ',gd(0)],['クリティカルガイドノーツ',gd(1)]]
+       ];
+       return`<div class="lg">${P.map(p=>`<div class="lgp">${p.map(([n,s])=>`<div class="lgc"><span class="lgv">${s}</span><span class="lgn">${wb(n)}</span></div>`).join('')}</div>`).join('')}</div>`;
+      })();
       $('#legend').innerHTML=LEG;
       $('#slv').textContent='34%';$('#gdv').textContent='12%';
       function drawList(){const k=$('#q').value.trim().toLowerCase(),hit=songs.filter(s=>!k||[s.id,s.title,s.pronunciation,s.lyricist,s.composer,s.arranger].join('\n').toLowerCase().includes(k));
@@ -587,7 +619,7 @@
        $('#cr').textContent=`作詞 ${cur.lyricist||'-'} ／ 作曲 ${cur.composer||'-'} ／ 編曲 ${cur.arranger||'-'}`;const ds=diffs[id]||{};
        $('#dif').innerHTML=DIFFS.filter(d=>ds[d]).map(d=>`<span class="dc" data-d="${d}" style="background:${DCOL[d]};color:#fff"><button style="all:unset;cursor:pointer">${d.toUpperCase()} Lv${ds[d].playLevel}・${ds[d].totalNoteCount}</button></span>`).join('')||'<span class="mut">難易度情報なし</span>';
        drawList();const first=DIFFS.filter(d=>ds[d]).pop();if(first)setDiff(first)}
-      let rid=0,view='sus',cancel=()=>{};
+      let rid=0,view='sus',cancel=()=>{},lastR=null,lastName='score',songLabel='',songInfo=null;
       function setDiff(d){curD=d;document.querySelectorAll('.dc').forEach(e=>e.classList.toggle('on',e.dataset.d===d));auto=$('#src').value==='svg'?svgURL(cur.id,d):susGroups(cur.id,d)[0][0];$('#url').value=auto;loadURL()}
       const zoomSVG=()=>{const i=document.querySelector('#chart img.sv');if(i)i.style.width=+$('#zm').value/36*100+'%'};
       function showSVG(u,note,alternates=[]){
@@ -597,7 +629,6 @@
         $('#url').value=current;const img=new Image();img.className='sv';img.alt='譜面SVG';img.referrerPolicy='no-referrer';
         img.onload=()=>{if(!img.isConnected)return;zoomSVG();st(note||'生成済みSVGを表示中（ベクター画像のためノーツ個別解析は行いません）')};
         img.onerror=()=>{if(img.isConnected)tryNext()};img.src=current;$('#chart').replaceChildren(img);zoomSVG();
-        $('#bar').innerHTML=`<span class="ch">生成済みSVG</span><a class="ch" href="${esc(current)}" target="_blank" rel="noopener">元のSVGを開く</a>`;
        };st('SVGを読み込み中…');tryNext();
       }
       async function decodeResponse(response){
@@ -639,58 +670,90 @@
        if(hit&&hit.kind==='svg'){showSVG(hit.u,'取得先がSVGだったため、生成済み譜面を表示しています');return}
        if(isAuto&&mode==='auto'){const candidates=svgURLs(cur.id,curD);showSVG(candidates[0],'SUS取得に失敗したため生成済みSVGを表示しています。ノーツ解析は元データSUSを取得できた場合のみ利用できます。',candidates.slice(1));return}
        const tl=[...fails.reduce((m,w)=>m.set(w,(m.get(w)||0)+1),new Map())].map(([w,n])=>`${w}×${n}`).join('・');
-       st(`取得できませんでした（${tl||'不明'}）。CORS・未配信・データ形式を確認してください。元データを保存して「貼り付けから描画」も利用できます`);
+       st(`取得できませんでした（${tl||'不明'}）。CORS・未配信・データ形式を確認してください。元データを保存して「テキストを直接入力」から描画することもできます`);
       }
       function draw(text,sourceURL=''){
-       view='sus';try{
+       view='sus';lastR=null;try{
         const S=parseSUS(text),R=render(S,+$('#zm').value,+$('#bpc').value,0,0,visualSettings),o=cur&&curD&&diffs[cur.id]&&diffs[cur.id][curD],c=R.cnt,w=S.stats.warnings;
-        const chips=[['タップ',c.tap],['クリティカル',c.crit],['フリック',c.flick],['ロング',c.hold],['ロング8分判定',c.longTick],['中継点',c.relay],['トレース',c.trace],['ダメージ',c.dmg]];
         const curveStart=S.notes.filter(n=>n.k==='sl'&&n.dir&&n.dir.t===2).length;
         const curveEnd=S.notes.filter(n=>n.k==='sl'&&n.dir&&(n.dir.t===5||n.dir.t===6)).length;
-        $('#bar').innerHTML=chips.map(([n,v])=>`<span class="ch">${n} <b>${v}</b></span>`).join('')+`<span class="ch">曲線制御・開始側 <b>${curveStart}</b></span><span class="ch">曲線制御・終了側 <b>${curveEnd}</b></span><span class="ch">小節 <b>${R.total}</b></span><span class="ch">解析対象 <b>${S.stats.active}/${S.stats.raw}</b></span><span class="ch">BPM変化 <b>${S.ev.filter(e=>e.bpm!==undefined).length}</b></span><span class="ch">速度イベント <b>${S.ev.filter(e=>e.speed!==undefined).length}</b></span>`+(o?`<span class="ch ${o.totalNoteCount===R.combo?'ok':'ng'}">解析カウント <b>${R.combo}</b> ／ マスター情報 ${o.totalNoteCount}</span>`:`<span class="ch">解析カウント <b>${R.combo}</b></span>`)+(w.length?`<span class="ch ng" title="${esc(w.join('\n'))}">要確認 <b>${w.length}</b></span>`:'')+(cur&&curD?`<a class="ch" href="${esc(svgURL(cur.id,curD))}" target="_blank" rel="noopener">生成元SVGと照合</a>`:'');
-        $('#chart').innerHTML=R.svg;
+        $('#chart').innerHTML=R.svg;lastR=R;lastName=(sourceURL&&cur&&curD)?cur.title+'_'+curD:(S.meta.TITLE||'score');if(sourceURL&&cur&&curD){songLabel=cur.title+(o?`-${curD.toUpperCase()} Lv${o.playLevel}`:'');songInfo={jk:jacket(cur),title:cur.title,diff:curD,level:o?o.playLevel:null}}
         const srcLabel=sourceURL?` ／ ${sourceURL.includes('_01_rip')?'_01_rip元データ':'指定URL'}`:'';
         st(`解析・描画完了：ノーツ ${S.stats.active}/${S.stats.raw}、スライド経路 ${S.stats.chains}本、曲線制御 開始側${curveStart}/終了側${curveEnd}${w.length?`、要確認 ${w.length}件`:''}${srcLabel}`);
        }catch(e){st('解析エラー: '+e.message);console.error(e)}
       }
+      /* ---------- 譜面の保存（SVG / PNG） ---------- */
+      const PNG_SCALE=2,PNG_MAX_SIDE=32767,PNG_MAX_AREA=268435456;
+      const fileSafe=s=>String(s).replace(/[\\\/:*?"<>|]/g,'_').trim().slice(0,80)||'score';
+      const saveBlob=(blob,name)=>{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)};
+      /* 単体ファイル用：XML宣言・xlink名前空間（古いビューア/編集ソフト対策）・日本語フォント指定を付ける */
+      const standaloneSVG=s=>'<?xml version="1.0" encoding="UTF-8"?>\n'+s
+        .replace('<svg xmlns="http://www.w3.org/2000/svg"','<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"')
+        .replace(/<use href=/g,'<use xlink:href=')
+        .replace('font-family="system-ui,sans-serif"',`font-family="system-ui,'Hiragino Sans','Noto Sans JP',Meiryo,sans-serif"`);
+      async function saveChart(R,fmt,base,say=st){
+       const name=fileSafe(base),W=R.cs.length*R.w,H=R.h;let url='';
+       try{
+        if(fmt==='svg'){saveBlob(new Blob([standaloneSVG(R.svg)],{type:'image/svg+xml;charset=utf-8'}),name+'.svg');say('SVGを保存しました');return}
+        say('PNGを生成中…（長い譜面は数秒かかります）');
+        /* ブラウザのcanvas上限を超えないよう倍率を自動調整 */
+        const sc=Math.min(PNG_SCALE,PNG_MAX_SIDE/W,PNG_MAX_SIDE/H,Math.sqrt(PNG_MAX_AREA/(W*H))),cw=Math.max(1,Math.floor(W*sc)),ch=Math.max(1,Math.floor(H*sc));
+        const svg=standaloneSVG(R.svg).replace(/width="[\d.]+" height="[\d.]+"/,`width="${cw}" height="${ch}"`);
+        url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+        const img=new Image();await new Promise((ok,ng)=>{img.onload=ok;img.onerror=()=>ng(new Error('SVGを画像に変換できませんでした'));img.src=url});
+        const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+        const ctx=cv.getContext('2d');if(!ctx)throw new Error('canvasを作成できません（画像サイズが大きすぎる可能性があります）');
+        ctx.fillStyle='#111827';ctx.fillRect(0,0,cw,ch);ctx.drawImage(img,0,0,cw,ch);
+        const blob=await new Promise(ok=>cv.toBlob(ok,'image/png'));
+        if(!blob)throw new Error('PNGを生成できません。拡大や1列あたりの小節数を下げるか、SVGで保存してください');
+        saveBlob(blob,name+'.png');say(`PNGを保存しました（${cw}×${ch}px）`);
+       }catch(e){say('保存エラー: '+e.message);console.error(e)}finally{if(url)URL.revokeObjectURL(url)}
+      }
+      const saveMain=fmt=>{if(view!=='sus'||!lastR){st('保存にはSUSの解析表示が必要です（SVG画像表示では使えません）');return}saveChart(lastR,fmt,lastName)};
+      $('#dlSvg').onclick=()=>saveMain('svg');$('#dlPng').onclick=()=>saveMain('png');
       $('#list').onclick=e=>{const b=e.target.closest('.it');if(b)pick(b.dataset.id)};
       $('#dif').onclick=e=>{const s=e.target.closest('.dc');if(s)setDiff(s.dataset.d)};
-      $('#q').oninput=drawList;$('#goU').onclick=loadURL;$('#goT').onclick=()=>draw($('#txt').value);
+      $('#q').oninput=drawList;$('#tgT').onclick=()=>{const b=$('#txtBox'),o=b.hidden;b.hidden=!o;$('#tgT').setAttribute('aria-expanded',o);$('#tgT').textContent=o?'テキスト入力を閉じる':'テキストを直接入力';if(o)$('#txt').focus()};$('#goT').onclick=()=>{songLabel='';songInfo=null;draw($('#txt').value)};
       $('#zm').oninput=()=>{$('#zv').textContent=$('#zm').value;if(view==='svg')zoomSVG()};
       $('#goR').onclick=()=>{
        const t=$('#txt').value;if(!t.trim()||view==='svg'){st('拡大表示にはSUSの解析が必要です（SVG画像表示では使えません）');return}
        const spacing=+$('#zm').value||36,columns=+$('#bpc').value||8;
        const w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
        try{
-        const popupScore=parseSUS(t),cfg={zoom:25,spacing,slideOpacity:visualSettings.slideOpacity,guideOpacity:visualSettings.guideOpacity};
-        const first=render(popupScore,cfg.spacing,columns,0,0,cfg),title=`拡大表示（全${first.total}小節・${columns}小節/列）`;
-        w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+        const popupScore=parseSUS(t),sp=loadPrefs().popup||{},cfg={zoom:Math.round(pref(sp.zoom,25,5,100)),spacing:Math.round(pref(sp.spacing,spacing,16,400)),slideOpacity:pref(sp.slideOpacity,visualSettings.slideOpacity,0,1),guideOpacity:pref(sp.guideOpacity,visualSettings.guideOpacity,0,1),mirror:sp.mirror==null?visualSettings.mirror:!!sp.mirror};
+        const first=render(popupScore,cfg.spacing,columns,0,0,cfg),tabTitle=esc(songLabel||popupScore.meta.TITLE||'譜面');
+        const si=songInfo,songHTML=`<div class="song">${si?`<img src="${esc(si.jk)}" alt="">`:''}<div><b>${esc(si?si.title:(popupScore.meta.TITLE||'譜面'))}</b>${si?`<span class="lv" style="background:${DCOL[si.diff]||'#74829f'}">${esc(si.diff.toUpperCase())}${si.level!=null?` Lv${esc(si.level)}`:''}</span>`:''}</div></div>`;
+        w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${tabTitle}</title>
         <style>
           *{box-sizing:border-box}body{margin:0;background:#101827;color:#e5edf7;font:13px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;height:100vh;display:flex;flex-direction:column}
-          header{flex:none;display:flex;align-items:center;gap:12px;padding:8px 12px;background:#18263a;border-bottom:1px solid #344b66}
-          header strong{font-size:14px}button{border:0;border-radius:7px;padding:7px 11px;background:#2fbfae;color:#102033;font-weight:700;cursor:pointer}
+          header{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px;background:#18263a;border-bottom:1px solid #344b66}
+          .song{display:flex;align-items:center;gap:10px;flex:1 1 280px;min-width:0}.song img{width:48px;height:48px;border-radius:8px;flex:none;background:#26364d;box-shadow:0 2px 6px #0006}.song div{min-width:0}.song b{display:block;font-size:15px;line-height:1.35;word-break:break-word}.lv{display:inline-block;margin-top:3px;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;color:#fff}.tools{margin-left:auto}.btns{display:flex;flex-wrap:wrap;gap:8px}button{border:0;border-radius:7px;padding:7px 11px;background:#2fbfae;color:#102033;font-weight:700;cursor:pointer}
           #panel{flex:none;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:10px 14px;background:#1d2c42;border-bottom:1px solid #344b66}
           #panel[hidden]{display:none}.control{min-width:180px;display:flex;flex-direction:column;gap:3px}.control label{font-size:11px;color:#c4d2e4}.control input{width:180px;accent-color:#58d7c4}
           .value{font-weight:700;color:#fff;margin-left:5px}#chartBox{flex:1;min-height:0;overflow:auto;padding:12px;background:#111827}
           #chartBox svg{display:block;max-width:none;height:auto}.hint{font-size:10px;color:#91a6bf}
         </style>
-        <header><strong>${title}</strong><span class="hint">拡大倍率・ノーツ間隔・透明度はこの画面で独立して変更できます</span><button id="toggle" style="margin-left:auto">設定を隠す</button></header>
+        <header>${songHTML}<div class="tools"><button id="toggle">設定を隠す</button></div></header>
         <section id="panel">
-          <div class="control"><label>拡大倍率 <span class="value" id="zoomValue">25%</span></label><input id="zoom" type="range" min="5" max="300" step="1" value="25"></div>
+          <div class="control"><label>拡大倍率 <span class="value" id="zoomValue">${cfg.zoom}%</span></label><input id="zoom" type="range" min="5" max="100" step="1" value="${cfg.zoom}"></div>
           <div class="control"><label>ノーツ間隔（px/拍） <span class="value" id="spacingValue">${cfg.spacing}</span></label><input id="spacing" type="range" min="16" max="400" step="1" value="${cfg.spacing}"></div>
           <div class="control"><label>スライドノーツ透明度 <span class="value" id="slideValue">${Math.round(cfg.slideOpacity*100)}%</span></label><input id="slideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.slideOpacity*100)}"></div>
           <div class="control"><label>ガイドノーツ透明度 <span class="value" id="guideValue">${Math.round(cfg.guideOpacity*100)}%</span></label><input id="guideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.guideOpacity*100)}"></div>
+        <div class="control"><label><input id="mirror" type="checkbox" style="width:auto" ${cfg.mirror?'checked':''}> ミラー（左右反転）</label></div>
+        <div class="control"><label>画像保存</label><div class="btns"><button id="dlSvg">SVGで保存</button><button id="dlPng">PNGで保存</button></div><span class="hint" id="dlMsg"></span></div>
         </section><main id="chartBox">${first.svg}</main>
         <script>
-          const cfg={zoom:25,spacing:${cfg.spacing},slideOpacity:${cfg.slideOpacity},guideOpacity:${cfg.guideOpacity}};
+          const cfg={zoom:${cfg.zoom},spacing:${cfg.spacing},slideOpacity:${cfg.slideOpacity},guideOpacity:${cfg.guideOpacity},mirror:${!!cfg.mirror}};
           const $=id=>document.getElementById(id);
           function applyZoom(){const svg=$('chartBox').querySelector('svg');if(!svg)return;const base=Number(svg.getAttribute('width'))||1;svg.style.width=(base*cfg.zoom/100)+'px';svg.style.height='auto';$('zoomValue').textContent=cfg.zoom+'%'}
-          function requestRender(){if(typeof window.__renderChartFromParent==='function')window.__renderChartFromParent({...cfg})}
-          $('zoom').addEventListener('input',e=>{cfg.zoom=Number(e.target.value);applyZoom()});
+          function persist(){if(typeof window.__savePrefs==='function')window.__savePrefs({...cfg})}function requestRender(){persist();if(typeof window.__renderChartFromParent==='function')window.__renderChartFromParent({...cfg})}
+          $('zoom').addEventListener('input',e=>{cfg.zoom=Math.min(100,Math.max(5,Number(e.target.value)||25));applyZoom();persist()});
           $('spacing').addEventListener('input',e=>{cfg.spacing=Number(e.target.value);$('spacingValue').textContent=cfg.spacing;requestRender()});
           $('slideOpacity').addEventListener('input',e=>{cfg.slideOpacity=Number(e.target.value)/100;$('slideValue').textContent=e.target.value+'%';requestRender()});
           $('guideOpacity').addEventListener('input',e=>{cfg.guideOpacity=Number(e.target.value)/100;$('guideValue').textContent=e.target.value+'%';requestRender()});
+          $('mirror').addEventListener('change',e=>{cfg.mirror=e.target.checked;requestRender()});
           $('toggle').addEventListener('click',()=>{const panel=$('panel');panel.hidden=!panel.hidden;$('toggle').textContent=panel.hidden?'設定を表示':'設定を隠す'});
+          ['Svg','Png'].forEach(function(k){$('dl'+k).addEventListener('click',function(){if(typeof window.__saveFromParent==='function')window.__saveFromParent(k.toLowerCase(),{...cfg})})});
           window.__applyZoom=applyZoom;
         <\/script></html>`);
         w.document.close();
@@ -701,15 +764,27 @@
           if(typeof w.__applyZoom==='function')w.__applyZoom();
         };
         if(typeof w.__applyZoom==='function')w.__applyZoom();
+       w.__savePrefs=c=>savePrefs({popup:{zoom:c.zoom,spacing:c.spacing,slideOpacity:c.slideOpacity,guideOpacity:c.guideOpacity,mirror:!!c.mirror}});
+        const popupName=lastName;
+        w.__saveFromParent=(fmt,next)=>saveChart(render(popupScore,next.spacing,columns,0,0,next),fmt,popupName,m=>{const e=w.document.getElementById('dlMsg');if(e)e.textContent=m});
        }catch(e){w.close();st('拡大表示の生成エラー: '+e.message);console.error(e)}
       };
+      $('#mirror').onchange=()=>{visualSettings.mirror=$('#mirror').checked;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
       $('#zm').onchange=$('#bpc').onchange=()=>{if(view==='svg')zoomSVG();else if($('#txt').value.trim())draw($('#txt').value)};
       const updateMainOpacityLabels=()=>{$('#slv').textContent=$('#slOpacity').value+'%';$('#gdv').textContent=$('#gdOpacity').value+'%'};
       $('#slOpacity').oninput=$('#gdOpacity').oninput=updateMainOpacityLabels;
       $('#slOpacity').onchange=()=>{visualSettings.slideOpacity=Number($('#slOpacity').value)/100;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
       $('#gdOpacity').onchange=()=>{visualSettings.guideOpacity=Number($('#gdOpacity').value)/100;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
       $('#src').onchange=()=>{if(cur&&curD)setDiff(curD)};
-      $('#smp').onclick=()=>{$('#txt').value=SAMPLE;draw(SAMPLE)};
+      /* メイン画面の表示設定を保存・復元 */
+      const mainPrefs=()=>({zm:+$('#zm').value,bpc:+$('#bpc').value,sl:+$('#slOpacity').value,gd:+$('#gdOpacity').value,mirror:$('#mirror').checked});
+      ['#zm','#bpc','#slOpacity','#gdOpacity','#mirror'].forEach(id=>$(id).addEventListener('change',()=>savePrefs({main:mainPrefs()})));
+      (()=>{const m=loadPrefs().main;if(!m||typeof m!=='object')return;
+       $('#zm').value=Math.round(pref(m.zm,36,16,400));$('#zv').textContent=$('#zm').value;
+       const b=String(Math.round(pref(m.bpc,8,4,16)));if([...$('#bpc').options].some(o=>o.value===b))$('#bpc').value=b;
+       $('#slOpacity').value=Math.round(pref(m.sl,34,0,100));$('#gdOpacity').value=Math.round(pref(m.gd,12,0,100));$('#mirror').checked=!!m.mirror;
+       Object.assign(visualSettings,{slideOpacity:+$('#slOpacity').value/100,guideOpacity:+$('#gdOpacity').value/100,mirror:$('#mirror').checked});updateMainOpacityLabels()})();
+      $('#smp').onclick=()=>{songLabel='';songInfo=null;$('#txt').value=SAMPLE;draw(SAMPLE)};
       const SAMPLE=`#TITLE "SAMPLE"
       #REQUEST "ticks_per_beat 480"
       #BPM01: 120
