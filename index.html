@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>プロセカ 譜面ビューア</title>
+    <style>
+      :root{color-scheme:light;--ink:#27324a;--mut:#74829f;--acc:#2fbfae;--ln:#dde8f6}
+      *{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,"Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;color:var(--ink);background:linear-gradient(135deg,#eaf7ff,#fff3fa) fixed}
+      header{display:flex;gap:16px;align-items:center;padding:10px 18px;background:#fff;border-bottom:3px solid var(--acc)}
+      h1{font-size:18px;margin:0}#st{color:var(--mut);font-size:12px}
+      main{display:grid;grid-template-columns:340px 1fr;gap:14px;padding:14px;height:calc(100vh - 58px)}
+      aside{overflow:auto;display:flex;flex-direction:column;gap:12px}
+      section.p{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:12px;box-shadow:0 2px 8px #6aa0d014}
+      h2{font-size:13px;margin:0 0 8px;color:var(--acc)}
+      input,textarea,select{width:100%;padding:7px 9px;border:1px solid var(--ln);border-radius:8px;font:inherit;background:#fbfdff}
+      textarea{height:90px;font:11px/1.3 monospace;resize:vertical}
+      button{cursor:pointer;border:0;border-radius:8px;padding:7px 12px;background:var(--acc);color:#fff;font:inherit;font-weight:700}
+      button.g{background:#e8f1fb;color:var(--ink)}.row{display:flex;gap:6px;margin:6px 0}.row input{flex:1}
+      #list{max-height:250px;overflow:auto;margin-top:6px}
+      .it{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:none;color:inherit;font-weight:400;padding:4px;border-radius:8px}
+      .it:hover,.it.on{background:#e9f8f5}.it img{width:38px;height:38px;border-radius:6px;background:#eef}.it span{min-width:0}
+      .it b,.it small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.it small,.mut{color:var(--mut);font-size:11px}
+      #card{display:flex;gap:10px}#card img{width:84px;height:84px;border-radius:10px;box-shadow:0 2px 8px #0002}
+      #card h3{margin:0;font-size:15px}#dif{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+      .dc{border-radius:999px;padding:3px 10px;font-size:12px;color:#fff;opacity:.55}.dc.on{opacity:1;box-shadow:0 0 0 3px #fff,0 0 0 5px currentColor}
+      #view{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+      #bar{padding:8px 12px;border-bottom:1px solid var(--ln);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+      .ch{background:#eef6ff;border-radius:999px;padding:2px 10px;font-size:12px}.ok{background:#dcf7e8}.ng{background:#fff0d6}
+      #chart{flex:1;overflow:auto;background:#111827}#legend{padding:4px 12px;border-bottom:1px solid var(--ln)}
+      #msg{padding:30px;color:var(--mut)}
+      #chart img.sv{display:block;height:auto;background:#111827}
+      @media(max-width:860px){main{grid-template-columns:1fr;height:auto}#chart{height:70vh}}
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>♪ プロセカ 譜面ビューア <small style="font-size:11px;color:#74829f;font-weight:500">v4.0 / 速度イベント表示・透明度設定</small></h1>
+      <span id="st">楽曲データ取得中…</span>
+    </header>
+    <main>
+      <aside>
+        <section class="p">
+          <h2>① 楽曲を選ぶ</h2>
+          <input id="q" placeholder="曲名・読み・作詞作曲編曲・ID で検索" />
+          <div id="list"></div>
+        </section>
+        <section class="p" id="sel" hidden="">
+          <div id="card">
+            <img id="jk" alt="" />
+            <div>
+              <h3 id="tt"></h3>
+              <div class="mut" id="pr"></div>
+              <div class="mut" id="cr"></div>
+            </div>
+          </div>
+          <div id="dif"></div>
+        </section>
+        <section class="p">
+          <h2>② 譜面データ（SUS）</h2>
+          <div class="mut">URL（曲と難易度の選択で自動入力）</div>
+          <div class="row">
+            <input id="url" placeholder="SUS .txt/.sus または生成済み .svg のURL" />
+            <button id="goU">読込</button>
+          </div>
+          <div class="mut">取得方法</div>
+          <select id="src">
+            <option value="auto" selected="">自動（元SUS優先→生成SVGへ切替）</option>
+            <option value="sus">SUS（txt）のみ</option>
+            <option value="svg">生成済みSVG（sekai-music-charts）</option>
+          </select>
+          <div class="mut">またはテキストを貼り付け</div>
+          <div class="mut">方向値1/3/4はフリック矢印、2は曲線の開始側、5/6は終了側を制御します。制御はその点から次の経路点までに適用（2/5/6は参照パーサー準拠。公開SUS資料では挙動未検証の注記あり）。</div>
+          <textarea
+            id="txt"
+            placeholder="#BPM01: 120
+#00008: 01
+#00012: 11000000 …"
+          ></textarea>
+          <div class="row">
+            <button id="goT">貼り付けから描画</button>
+            <button id="smp" class="g">サンプル</button>
+          </div>
+        </section>
+        <section class="p">
+          <h2>③ 表示</h2>
+          <div class="mut">
+            拡大（1拍あたり px）：
+            <b id="zv">36</b>
+          </div>
+          <input id="zm" type="range" min="16" max="400" value="36" />
+          <div class="mut" style="margin-top:6px">1列あたりの小節数</div>
+          <select id="bpc">
+            <option>4</option>
+            <option selected="">8</option>
+            <option>12</option>
+            <option>16</option>
+          </select>
+          <div class="mut" style="margin-top:10px">スライドノーツの透明度：<b id="slv">34%</b></div>
+          <input id="slOpacity" type="range" min="0" max="100" step="1" value="34" />
+          <div class="mut" style="margin-top:6px">ガイドノーツの透明度：<b id="gdv">12%</b></div>
+          <input id="gdOpacity" type="range" min="0" max="100" step="1" value="12" />
+          <div class="mut" style="margin-top:10px">
+            拡大表示（別タブ）：全体を、上の「1列あたりの小節数」で区切った列を横に並べ、「拡大」の倍率で表示（タブ内の倍率スライダーでも拡縮できます）
+          </div>
+          <button id="goR" style="margin-top:6px">拡大表示を別タブで開く</button>
+        </section>
+      </aside>
+      <section id="view">
+        <div id="bar"></div>
+        <div id="legend"></div>
+        <div id="chart"><div id="msg">左で曲と難易度を選ぶか、SUSを貼り付けてください。</div></div>
+      </section>
+    </main>
+    <script>
+      'use strict';
+      const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      const MASTER='https://sekai-world.github.io/sekai-master-db-diff/',DIFFS=['easy','normal','hard','expert','master','append'];
+      const DCOL={easy:'#4fc95b',normal:'#34a9ee',hard:'#f09a1a',expert:'#ec4264',master:'#a94fe0',append:'#ee6fbd'};
+      const pad=(n,l)=>String(n).padStart(l,'0');
+      const jacket=m=>{const a=m.assetbundleName||'jacket_s_'+pad(m.id,3);return`https://storage.sekai.best/sekai-jp-assets/music/jacket/${a}/${a}.png`};
+      /* ---------- Chart source resolution ----------
+         sekai-music-charts は完成SVGを配信し、元データは _01_rip/*.txt。
+         _01 のasset3配信も旧ミラーとして順に試す。
+      */
+      const id4=i=>pad(i,4);
+      const susGroups=(id,d)=>[
+        [`https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01_rip/${d}.txt`],
+        [
+          `https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01_rip/${d}.sus`,
+          `https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01/${d}.txt`,
+          `https://storage.sekai.best/sekai-jp-assets/music/music_score/${id4(id)}_01/${d}.sus`,
+          `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}.txt`,
+          `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}.sus`,
+          `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}`
+        ]
+      ];
+      const susURLs=(id,d)=>susGroups(id,d).flat();
+      const svgURLs=(id,d)=>[
+        `https://storage.sekai.best/sekai-music-charts/jp/${id4(id)}/${d}.svg`,
+        `https://asset3.pjsekai.moe/music/music_score/${id4(id)}_01/${d}.svg`
+      ];
+      const svgURL=(id,d)=>svgURLs(id,d)[0];
+      const isSVG=u=>/\.svg(?:[?#].*)?$/i.test(u);
+      const stripBOM=t=>String(t??'').replace(/^\uFEFF/,'');
+      const isSUS=t=>{
+        const x=stripBOM(t).replace(/\r/g,'');
+        return !/^\s*</.test(x)&&/^#(?:BPM[0-9A-Z]{2}|\d{3}(?:02|08|1[0-9A-Z]|3[0-9A-Z]{2}|5[0-9A-Z]|9[0-9A-Z]{2})): /mi.test(x.replace(/:([^\n]*)/g,': $1'));
+      };
+      const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+      const b36=c=>{const n=parseInt(String(c),36);return Number.isFinite(n)?n:-1};
+      function scorePairs(data,measure,warnings,lineNo){
+        const d=String(data).toUpperCase(),L=d.length,out=[];
+        if(!L)return out;
+        if(L%2)warnings.push(`行${lineNo}: データ長が奇数のため末尾1文字を無視しました`);
+        for(let i=0;i+1<L;i+=2){
+          const v=d.slice(i,i+2);if(v==='00')continue;
+          const type=b36(v[0]),width=b36(v[1]);
+          if(type<0||width<0){warnings.push(`行${lineNo}: 不正なBase36値「${v}」`);continue}
+          /* SUSのタイミングは行データ全体の文字数を分母にした正確な有理数。 */
+          const num=measure*L+i,den=L,g=gcd(num,den)||1;
+          out.push({v,t:type,w:width,bar:num/den,bk:`${num/g}/${den/g}`});
+        }
+        return out;
+      }
+      function parseSUS(text){
+        text=stripBOM(text);
+        const bpmDef=new Map(),tilDefs=new Map(),ev=[],raw=[],meta={},warnings=[];
+        const usedHiSpeedIds=new Set(),usedMeasureSpeedIds=new Set();
+        let ticksPerBeat=480,activeHiSpeedId=null,lineNo=0,unhandled=0,seq=0;
+        const registerHiSpeedData=()=>{if(activeHiSpeedId!==null)usedHiSpeedIds.add(activeHiSpeedId)};
+        for(const l0 of text.split(/\r?\n/)){
+          lineNo++;const l=l0.trim();if(!l||l[0]!=='#')continue;
+          if(/^#NOSPEED$/i.test(l)){meta.NOSPEED='';activeHiSpeedId=null;continue}
+          let m=l.match(/^#([A-Za-z0-9_]+)\s+(.*)$/);
+          if(m){
+            const key=m[1].toUpperCase(),value=m[2].replace(/^\"|\"$/g,'').trim();meta[key]=value;
+            if(key==='REQUEST'){
+              const q=value.match(/ticks_per_beat\s+(\d+)/i);if(q&&+q[1]>0)ticksPerBeat=+q[1];
+            }else if(key==='HISPEED'){
+              const id=b36(value);if(id>=0)activeHiSpeedId=id
+            }else if(key==='MEASUREHS'){
+              const id=b36(value);if(id>=0)usedMeasureSpeedIds.add(id);
+            }
+            continue;
+          }
+          m=l.match(/^#([A-Za-z0-9_]+):\s*(.*)$/);if(!m)continue;
+          const h=m[1],d=m[2];let x,base;
+          if((x=h.match(/^(\d{3})02$/))){
+            const len=Number(d);if(Number.isFinite(len)&&len>0)ev.push({bar:+x[1],len});else warnings.push(`行${lineNo}: 小節長が不正です`);
+          }else if((x=h.match(/^BPM([0-9A-Z]{2})$/i))){
+            const bpm=Number(d),id=b36(x[1][0])*36+b36(x[1][1]);if(Number.isFinite(bpm)&&bpm>0)bpmDef.set(id,bpm);else warnings.push(`行${lineNo}: BPM定義が不正です`);
+          }else if((x=h.match(/^TIL([0-9A-Z]{2})$/i))){
+            const id=b36(x[1][0])*36+b36(x[1][1]),def=[];
+            const value=d.replace(/^\"|\"$/g,'');
+            for(const token of value.split(',')){
+              const q=token.trim().match(/^(\d+)\s*['.]\s*(\d+)\s*:\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/);
+              if(!q){if(token.trim())warnings.push(`行${lineNo}: TIL定義「${token.trim()}」を解析できません`);continue}
+              const measure=+q[1],tick=+q[2],speed=Number(q[3]);
+              if(Number.isFinite(speed))def.push({measure,tick,speed});
+            }
+            tilDefs.set(id,def);
+          }else if((x=h.match(/^(\d{3})08$/))){
+            scorePairs(d,+x[1],warnings,lineNo).forEach(p=>ev.push({bar:p.bar,bpmId:b36(p.v[0])*36+b36(p.v[1])}));
+          }else if((x=h.match(/^(\d{3})1([0-9A-Z])$/i))){
+            base={k:'tap',lane:b36(x[2]),ch:null,deco:false};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
+          }else if((x=h.match(/^(\d{3})5([0-9A-Z])$/i))){
+            base={k:'dir',lane:b36(x[2]),ch:null,deco:false};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
+          }else if((x=h.match(/^(\d{3})3([0-9A-Z])([0-9A-Z])$/i))||(x=h.match(/^(\d{3})9([0-9A-Z])([0-9A-Z])$/i))){
+            const deco=h.charAt(3)==='9';base={k:'sl',lane:b36(x[2]),ch:b36(x[3]),deco};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
+          }else if(/^ATR[0-9A-Z]{2}$/i.test(h)||/^(ATTRIBUTE|NOATTRIBUTE)$/i.test(h)){
+            /* ノーツ属性定義は現在の表示対象外。 */
+          }else if(/^\d{3}/.test(h)||/^BPM|^TIL/i.test(h)){
+            unhandled++;if(unhandled<=8)warnings.push(`行${lineNo}: 未対応の譜面行「${h}」`);
+          }
+        }
+        if(unhandled>8)warnings.push(`ほか${unhandled-8}行の未対応データがあります`);
+        ev.forEach(e=>{if(e.bpmId!==undefined){e.bpm=bpmDef.get(e.bpmId);if(e.bpm===undefined)warnings.push(`小節${e.bar.toFixed(4)}: BPM ID ${e.bpmId} の定義がありません`)}});
+        /* TIL: measure'tick:speed. A speed definition is only active when
+           referenced by HISPEED or MEASUREHS. One measure contains
+           (measure length in beats * ticksPerBeat) ticks. */
+        const measureLengthAt=measure=>{
+          let beats=4;for(const e of ev.filter(v=>v.len).sort((a,b)=>a.bar-b.bar)){if(e.bar<=measure+1e-9)beats=e.len;else break}return beats;
+        };
+        const speedEventKeys=new Set();
+        const appendSpeedEvents=(ids,mode)=>{
+          for(const id of ids){
+            const entries=tilDefs.get(id);
+            if(!entries){warnings.push(`TIL${id.toString(36).toUpperCase().padStart(2,'0')} の速度定義が見つかりません`);continue}
+            for(const entry of entries){
+              const bar=entry.measure+entry.tick/(ticksPerBeat*measureLengthAt(entry.measure));
+              const key=`${mode}|${bar.toFixed(8)}|${entry.speed}`;if(speedEventKeys.has(key))continue;speedEventKeys.add(key);
+              ev.push({bar,speed:entry.speed,eventType:'speed',speedMode:mode});
+            }
+          }
+        };
+        appendSpeedEvents(usedHiSpeedIds,'note');
+        appendSpeedEvents(usedMeasureSpeedIds,'measure');
+        raw.sort((a,b)=>a.bar-b.bar||a.seq-b.seq);
+
+        /* まず有効レーンを索引化し、同時刻・同じ幅の重なりだけを結合する。 */
+        const deleted=new Set(),byBar=new Map(),sameSlot=(a,b)=>a.bk===b.bk&&a.lane===b.lane&&a.w===b.w;
+        raw.forEach((n,i)=>{
+          if(!(n.lane>=2&&n.lane<14)){
+            deleted.add(i);ev.push({bar:n.bar,text:n.lane===0?'SKILL':n.t===1?'FEVER CHANCE!':'SUPER FEVER!!',eventType:'info'});return;
+          }
+          const a=byBar.get(n.bk)||[];a.push(i);byBar.set(n.bk,a);
+        });
+        /* 1st pass: directional -> tap */
+        raw.forEach((d,i)=>{
+          if(deleted.has(i)||d.k!=='dir')return;
+          for(const j of byBar.get(d.bk)||[]){const t=raw[j];if(!deleted.has(j)&&t.k==='tap'&&sameSlot(t,d)){deleted.add(j);d.tap=t}}
+        });
+        /* 2nd pass: every slide point may own a tap and/or directional attachment.
+           In particular, SlideType 5 (invisible relay) must not be skipped:
+           it is a valid path node and its directional attachment controls the
+           segment that starts at that node. */
+        raw.forEach((s,i)=>{
+          if(deleted.has(i)||s.k!=='sl')return;
+          s.head=s;
+          for(const j of byBar.get(s.bk)||[]){
+            const t=raw[j];
+            if(!deleted.has(j)&&t.k==='tap'&&sameSlot(t,s)){
+              deleted.add(j);s.tap=t;
+            }
+          }
+          for(const j of byBar.get(s.bk)||[]){
+            const d=raw[j];
+            if(!deleted.has(j)&&d.k==='dir'&&sameSlot(d,s)){
+              deleted.add(j);s.dir=d;
+              if(d.tap)s.tap=d.tap;
+            }
+          }
+        });
+        /* 3rd pass: same channel + same guide/slide family forms a path. */
+        const slideIndexes=raw.map((n,i)=>({n,i})).filter(({n,i})=>!deleted.has(i)&&n.k==='sl');
+        for(const {n:s,i} of slideIndexes){
+          if(!s.head)s.head=s;if(s.t===2){s.next=null;continue}
+          const next=slideIndexes.find(({n,i:j})=>j>i&&n.ch===s.ch&&n.deco===s.deco);
+          if(next){s.next=next.n;next.n.head=s.head}
+        }
+        const active=raw.filter((_,i)=>!deleted.has(i));
+        const chainStarts=active.filter(n=>n.k==='sl'&&n.t===1);
+        let orphanStarts=0,orphanEnds=0,orphanDirections=0;
+        active.filter(n=>n.k==='dir').forEach(n=>{if(!n.tap)orphanDirections++});
+        chainStarts.forEach(start=>{let p=start,seen=new Set([p]);while(p.next&&!seen.has(p.next)){p=p.next;seen.add(p)}if(p.t!==2)orphanStarts++});
+        active.filter(n=>n.k==='sl'&&n.t===2).forEach(end=>{const hasStart=chainStarts.some(start=>{let p=start,seen=new Set();while(p&&!seen.has(p)){if(p===end)return true;seen.add(p);p=p.next}return false});if(!hasStart)orphanEnds++});
+        if(orphanStarts)warnings.push(`${orphanStarts}本のスライド経路で終点を確認できません`);
+        if(orphanEnds)warnings.push(`${orphanEnds}個のスライド終点に始点がありません`);
+        if(orphanDirections)warnings.push(`${orphanDirections}個の方向指定が同位置のノーツに結合されていません`);
+        const unsupported=active.filter(n=>n.k==='tap'&&!([1,2,3,4,5,6,7,8].includes(n.t))||n.k==='sl'&&!([0,1,2,3,5].includes(n.t))||n.k==='dir'&&!([1,2,3,4,5,6].includes(n.t))).length;
+        if(unsupported)warnings.push(`${unsupported}個の未定義ノーツ種別を検出しました`);
+        return{
+          meta,ev:ev.sort((a,b)=>a.bar-b.bar),notes:active,allNotes:raw,
+          stats:{raw:raw.length,active:active.length,attached:deleted.size,chains:chainStarts.length,orphanStarts,orphanEnds,orphanDirections,unsupported,warnings}
+        };
+      }
+      const crit=n=>n.k==='tap'?[2,6,8].includes(n.t):n.k==='dir'?!!(n.tap&&crit(n.tap)):!!((n.tap&&crit(n.tap))||(n.dir&&crit(n.dir))||(n.head&&n.head!==n&&crit(n.head)));
+      const trend=n=>n.k==='tap'?[5,6].includes(n.t):n.k==='dir'?!!(n.tap&&trend(n.tap)):!!((n.tap&&trend(n.tap))||(n.dir&&trend(n.dir)));
+      const none=n=>n.k==='tap'?[7,8].includes(n.t):n.k==='sl'?!!(n.tap&&none(n.tap)):false;
+      /* Project SEKAI's path rule: type 3 relays with a tap but no
+         directional attachment are pass-through markers; a directional
+         attachment promotes that relay to an actual path control point. */
+      const isPath=s=>s.t===0?false:s.t!==3?true:!!s.dir||(!s.tap&&!s.dir);
+      const nextSlidePathNode=first=>{
+        let node=first;const relays=[],seen=new Set();
+        while(node&&!seen.has(node)){
+          seen.add(node);
+          if(node.t===3)relays.push(node);
+          if(isPath(node)||!node.next)break;
+          node=node.next;
+        }
+        return{node,relays};
+      };
+      /* ---------- ノーツ描画（ゲーム内デザインを再現したSVG） ---------- */
+      const LW=20,PL=46,PR=250,COLW=PL+12*LW+PR,TOP=30;
+      const C={tap:['#eaf0ff','#9c8be8','#8fa4f7'],long:['#e5fbee','#4fd9a0','#4fd9a0'],flick:['#ffeaf0','#ee7a98','#f4a3b6'],crit:['#fff7da','#f1b42e','#f6c84a'],dmg:['#efe5fa','#6f43a8','#8d63c4'],unknown:['#ffe0e0','#dc5555','#b82e2e']};
+      const body=(x,y,w,k,a=1,h=14)=>{const c=C[k];return`<g opacity="${a}"><rect x="${x-2}" y="${y-h/2-2}" width="${w+4}" height="${h+4}" rx="8" fill="${c[1]}" opacity=".25"/><rect x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="6" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${k==='tap'&&h>8?`<rect x="${x+2}" y="${y+h/2-3.5}" width="${w-4}" height="3" rx="1.5" fill="#43dcf3"/>`:''}${h>8?`<rect x="${x+3}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/><rect x="${x+w-7}" y="${y-3}" width="4" height="6" rx="1" fill="${c[2]}"/>`:''}</g>`};
+      const gem=(x,y,k)=>{const f=k==='crit'?['#f8d24f','#d9981a']:k==='flick'?['#f598b1','#d85a82']:['#6fe3b8','#27b185'];return`<polygon points="${x},${y-7} ${x+6.5},${y} ${x},${y+7} ${x-6.5},${y}" fill="${f[0]}" stroke="${f[1]}" stroke-width="1.5"/><polygon points="${x},${y-7} ${x-6.5},${y} ${x},${y}" fill="#fff" opacity=".8"/>`};
+       /* ---------- フリック矢印（外部画像なし・SVGで描画） ----------
+          元の notes_flick_arrow*.png を計測して再現：単色の塗り・淡色リング(太さ8)・濃い縁(4.2)・外側のぼかし影・下へ伸びる白いトレイル。
+          下の座標はすべて元PNGのピクセル座標。従来のimage要素(meet)と同じ位置・縮尺で配置するので、サイズ・向きは従来と同一。
+          FK_V=縦向き [PNG幅,PNG高,中心x,半幅,肩y,下端y,切欠きy,頂点y,トレイル不透明度(9段)]
+          FK_D=斜め(左上向き) [PNG幅,PNG高,6頂点x,y…,トレイル不透明度(9段)]。右斜めは左右反転で作る。 */
+       const FK_V=[
+         [144,158,72,44,54.3,124.5,94.6,25,[90,90,90,74,57,40,24,9,0]],
+         [188,174,94,66,69,137.7,95.1,24.5,[90,90,90,78,63,46,27,11,0]],
+         [248,194,124,98,91.1,160.8,94.9,25.3,[90,90,86,82,70,52,31,11,0]],
+         [312,216,156.5,128.5,111.7,182.2,94.4,24.9,[90,90,87,84,77,58,35,15,0]],
+         [374,236,187,159,132.7,201.2,95.3,24.7,[90,90,88,84,79,61,37,15,0]],
+         [436,258,218,190,153.8,224.6,94.1,24.9,[90,90,89,85,81,64,39,15,0]]];
+       const FK_D=[
+         [176,160,25.5,66,56.6,119.8,87.1,89.3,143,94.3,110.3,38.4,52,23.9,[90,90,90,77,63,44,25,10,0]],
+         [228,182,25.9,86.5,61.5,147.9,97.1,85.9,188.1,107.2,154.6,46.6,64.6,24.8,[90,90,86,82,72,52,31,10,0]],
+         [298,212,26.4,116.2,60.9,174.7,116.1,87.2,247.5,114.9,215.4,56.1,80.4,26.5,[90,90,88,84,78,60,36,13,0]],
+         [376,242,25.1,147.1,61.4,205.3,130.5,88.5,307.1,122.8,276.9,67.4,98.2,24.8,[90,90,89,85,80,63,39,15,0]],
+         [444,270,24.6,175.9,64.1,230.1,150.3,86.4,371.6,137.3,336.3,76.8,115.5,25,[90,90,90,87,82,67,42,16,0]],
+         [514,300,21.6,206.9,67.4,252.7,165.7,88.2,431.4,143.2,394.4,85.3,135.4,26.3,[90,90,90,87,82,70,44,17,0]]];
+       const FK_C={flick:['#ee7eb4','#ffe9f0','#b94b79','#ffecff','#ed6ab1'],crit:['#ffc834','#feffc7','#ff9f08','#ffffec','#ffc048']}; /* 塗り,リング,影,トレイル,縁 */
+       const FK_T=8,FK_O=4.2; /* リング太さ / その外側の濃い縁の太さ */
+       const FK_G={flick:[[2,0.468],[4,0.321],[6,0.189],[8,0.131],[10,0.082],[12,0.049],[14,0.023],[16,0.01]],crit:[[2,0.235],[4,0.5],[6,0.306],[8,0.185],[10,0.1],[12,0.044],[14,0.01],[16,0.005]]}; /* 影の層 [縁からの広がり,不透明度] */
+       let FK_N=0;
+       const flkArt=(w,diag,k)=>{
+         const r=(diag?FK_D:FK_V)[Math.max(1,Math.min(6,w))-1],W=r[0],H=r[1],st=r[r.length-1],c=FK_C[k]||FK_C.flick,G=FK_G[k]||FK_G.flick,hf=FK_T/2;
+         const P=diag?[0,1,2,3,4,5].map(i=>[r[2+2*i],r[3+2*i]]):[[r[2]-r[3],r[4]],[r[2]-r[3],r[5]],[r[2],r[6]],[r[2]+r[3],r[5]],[r[2]+r[3],r[4]],[r[2],r[7]]];
+         const n=v=>+v.toFixed(1),pt=p=>n(p[0])+' '+n(p[1]),id='fk'+(FK_N++),slope=diag?.5774:0;
+         /* トレイル：切欠き(V)の下から画像下端へ。左右の縁は縦、または斜め時は30°で下へ流れる */
+         const L=[P[1][0]+hf,P[1][1]],R=[P[3][0]-hf,P[3][1]],y0=P[2][1];
+         const tr=`M${pt(L)}L${pt(P[2])}L${pt(R)}L${n(R[0]+slope*(H-R[1]))} ${H}L${n(L[0]+slope*(H-L[1]))} ${H}Z`;
+         const d='M'+P.map(pt).join('L')+'Z';
+         const gr=st.map((a,i)=>`<stop offset="${i/8}" stop-color="${c[3]}" stop-opacity="${a/100}"/>`).join('');
+         const glow=G.map(([e,a])=>`<use href="#${id}p" stroke-width="${FK_T+2*(FK_O+e)}" stroke-opacity="${a}"/>`).join('')+`<use href="#${id}p" stroke="${c[4]}" stroke-width="${FK_T+2*FK_O}"/>`;
+         return{W,H,svg:`<defs><linearGradient id="${id}g" gradientUnits="userSpaceOnUse" x1="0" y1="${n(y0)}" x2="0" y2="${H}">${gr}</linearGradient><path id="${id}p" d="${d}"/></defs>`+
+          `<path d="${tr}" fill="url(#${id}g)"/><g fill="none" stroke="${c[2]}" stroke-linejoin="round">${glow}</g>`+
+          `<use href="#${id}p" fill="${c[0]}" stroke="${c[1]}" stroke-width="${FK_T}" stroke-linejoin="round"/>`};
+       };
+       const arrow=(cx,y,w,angle,k,alpha=1)=>{
+         const width=Math.max(0,Math.min(6,Math.trunc(Number(w)||0)));
+         const scale=LW/16,fh=24*scale,noteSize=16*scale;
+         const h=fh*Math.pow((width+3)/3,.75),iw=fh*1.5*Math.pow((width+.5)/3,.75);
+         const diagonal=Math.abs(Number(angle)||0)>0.1,right=(Number(angle)||0)>0;
+         const bias=diagonal?(right?1:-1)*noteSize/4:0;
+         const a=flkArt(width,diagonal,k==='crit'?'crit':'flick');
+         /* 従来のimage要素と同じ枠(ix,iy,iw,h)に、縦横比を保って中央寄せ(meet)で収める */
+         const s=Math.min(iw/a.W,h/a.H),ix=cx-iw/2+bias,iy=y+noteSize/4-h;
+         const tx=ix+(iw-a.W*s)/2,ty=iy+(h-a.H*s)/2;
+         const flip=right?`translate(${2*(cx+bias)} 0) scale(-1 1) `:'';
+         return`<g opacity="${alpha}" transform="${flip}translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${s.toFixed(4)})">${a.svg}</g>`;
+       };
+      /* Trace body only; flick-trace arrows are rendered with the same sprite
+         as ordinary flick notes so the silhouette and direction match. */
+      const trc=(x,y,w,cr,fl,d=0,alpha=1)=>{const c=cr?['#fff3c2','#e0a21a']:fl?['#ffe3ec','#ee7a98']:['#dff7ec','#27b185'];return`<g opacity="${alpha}"><rect x="${x}" y="${y-4}" width="${w}" height="8" rx="4" fill="${c[0]}" stroke="${c[1]}" stroke-width="2"/>${gem(x+w/2,y,cr?'crit':fl?'flick':'long')}</g>`};
+      /* SUS directional は「見た目のフリック」と「スライド曲線制御」を兼ねる。
+         1/3/4 は表示するフリック矢印、2/5/6 はスライド区間の曲線制御。
+         曲線制御の方向値を、画面上の矢印角度として誤表示しない。 */
+      const directionTypeOf=n=>{const d=n&&n.k==='dir'?n:n&&n.dir;return d?d.t:null};
+      const flickAngleOf=n=>{const t=directionTypeOf(n);return t===1?0:t===3?-30:t===4?30:null};
+      const cubicPoint=(curve,t)=>{const u=1-t,u2=u*u,t2=t*t;return[
+        curve[0][0]*u2*u+3*curve[1][0]*u2*t+3*curve[2][0]*u*t2+curve[3][0]*t2*t,
+        curve[0][1]*u2*u+3*curve[1][1]*u2*t+3*curve[2][1]*u*t2+curve[3][1]*t2*t
+      ]};
+      /* 時間軸が上下どちら向きでも、指定Yに対応するBezier上のXを二分探索する。 */
+      const cubicXAtY=(curve,y)=>{
+        const y0=curve[0][1],y1=curve[3][1];
+        if(Math.abs(y1-y0)<1e-9)return(curve[0][0]+curve[3][0])/2;
+        let lo=0,hi=1;
+        for(let i=0;i<36;i++){
+          const mid=(lo+hi)/2,py=cubicPoint(curve,mid)[1];
+          if((y1>y0&&py<y)||(y1<y0&&py>y))lo=mid;else hi=mid;
+        }
+        return cubicPoint(curve,(lo+hi)/2)[0];
+      };
+      const slideChainPath=edges=>{
+        if(!edges.length)return'';
+        const f=v=>Number(v.toFixed(3));
+        let d=`M${f(edges[0].left[0][0])},${f(edges[0].left[0][1])}`;
+        for(const e of edges){const p=e.left;d+=`C${f(p[1][0])},${f(p[1][1])} ${f(p[2][0])},${f(p[2][1])} ${f(p[3][0])},${f(p[3][1])}`}
+        const last=edges[edges.length-1].right;d+=`L${f(last[3][0])},${f(last[3][1])}`;
+        for(let i=edges.length-1;i>=0;i--){const p=edges[i].right;d+=`C${f(p[2][0])},${f(p[2][1])} ${f(p[1][0])},${f(p[1][1])} ${f(p[0][0])},${f(p[0][1])}`}
+        return d+'Z';
+      };
+      /* ---------- レイアウト & SVG生成 ---------- */
+      function render(S,ppb,BPC,R0=0,RN=0,settings={}){
+       const slideOpacity=Math.max(0,Math.min(1,Number(settings.slideOpacity??.34)));
+       const guideOpacity=Math.max(0,Math.min(1,Number(settings.guideOpacity??.12)));
+       const{notes,ev}=S;let maxBar=0;notes.forEach(n=>maxBar=Math.max(maxBar,n.bar));ev.forEach(e=>maxBar=Math.max(maxBar,e.bar));
+       const total=Math.floor(maxBar+1e-9)+1,len=[],cum=[0];let cl=4,ei=0;const lens=ev.filter(e=>e.len).sort((a,b)=>a.bar-b.bar);
+       for(let b=0;b<=total;b++){while(ei<lens.length&&lens[ei].bar<=b)cl=lens[ei++].len;len[b]=cl;cum[b+1]=cum[b]+cl}
+       const cb=B=>{const m=Math.min(Math.floor(B+1e-9),total);return cum[m]+(B-m)*len[m]},m0=Math.min(Math.max(0,Math.floor(R0)),total-1),m1=RN?Math.min(total,m0+Math.floor(RN)):total,nc=Math.max(1,Math.ceil((m1-m0)/BPC));
+       let colH=0;for(let c=0;c<nc;c++)colH=Math.max(colH,(cb(Math.min(m0+(c+1)*BPC,m1))-cb(m0+c*BPC))*ppb);
+       const bot=TOP+colH,H=bot+26,Y=(c,B)=>bot-(cb(B)-cb(m0+c*BPC))*ppb,X=n=>PL+(n.lane-2)*LW,col=n=>Math.max(0,Math.min(nc-1,Math.floor((n.bar-m0)/BPC+1e-9)));
+       /* Slide topology and rendering geometry are deliberately separated.
+          Directional attachments on invisible relays are valid control data:
+          they are not rendered as independent flick notes. */
+       const chains=[];
+       notes.filter(n=>n.k==='sl'&&n.t===1).forEach(start=>{
+        let current=start;const segs=[],relays=[],seen=new Set([start]);
+        while(current&&current.t!==2&&current.next&&!seen.has(current.next)){
+          const step=nextSlidePathNode(current.next);
+          if(!step.node)break;
+          segs.push([current,step.node]);
+          relays.push(...step.relays);
+          current=step.node;seen.add(current);
+        }
+        if(segs.length)chains.push({s:start,segs,relays,c0:start.bar,c1:segs[segs.length-1][1].bar});
+       });
+       const cnt={tap:0,crit:0,flick:0,hold:0,relay:0,trace:0,dmg:0,longTick:0};let combo=0;
+       const cols=Array.from({length:nc},()=>({g:[],p:[],n:[],m:[],a:[],t:[]}));
+       const drawnRelays=new Set();
+       const makeSlideEdge=(a,b,c)=>{
+        const y0=Y(c,a.bar),y1=Y(c,b.bar),midY=(y0+y1)/2;
+        const curveDir=a.dir?.t??null;
+        /* Match the reference renderer:
+           Down(2) eases in at the segment start; LowerLeft/Right(5/6)
+           ease out at the segment end. The control belongs to point a,
+           therefore it affects a -> b, not the segment arriving at a. */
+        const easeIn=curveDir===2,easeOut=curveDir===5||curveDir===6;
+        const padding=a.deco?0:-1;
+        const l0=X(a)-padding,l1=X(b)-padding;
+        const r0=X(a)+a.w*LW+padding,r1=X(b)+b.w*LW+padding;
+        return{
+          a,b,
+          left:[[l0,y0],[l0,easeIn?midY:y0],[l1,easeOut?midY:y1],[l1,y1]],
+          right:[[r0,y0],[r0,easeIn?midY:y0],[r1,easeOut?midY:y1],[r1,y1]]
+        };
+       };
+       chains.forEach(ch=>{
+        /*
+         * Project SEKAI hold-combo rule:
+         * add one invisible automatic judgment at each 1/8-measure grid
+         * strictly after the hold head and strictly before its tail.
+         * The head/tail and authored relay points are counted separately
+         * in the note pass below. Guide/deco paths never contribute combo.
+         * This mirrors the reference chart parser's Long Auto generation.
+         */
+        const chainTail=ch.segs[ch.segs.length-1]?.[1];
+        if(!ch.s.deco && chainTail?.t===2){
+          let tickIndex=Math.floor((ch.s.bar+1e-9)*8)+1;
+          while(tickIndex/8 < chainTail.bar-1e-9){
+            cnt.longTick++;
+            combo++;
+            tickIndex++;
+          }
+        }
+        const cr=crit(ch.s);
+        for(let c=Math.max(0,Math.floor((ch.c0-m0)/BPC+1e-9));c<=Math.min(nc-1,Math.floor((ch.c1-m0)/BPC+1e-9));c++){
+          const edges=ch.segs.map(([a,b])=>makeSlideEdge(a,b,c));
+          const path=slideChainPath(edges);
+          if(path)cols[c].p.push(`<path d="${path}" fill="${cr?'#f0c45c':'#55dfa7'}" opacity="${ch.s.deco?guideOpacity:slideOpacity}"/>`);
+          /* Visible relays are placed by evaluating the actual Bézier edges.
+             This also covers a relay which itself carries curve-control data. */
+          ch.relays.forEach(m=>{
+            if(none(m)||m.deco||m.bar<m0-1e-9||m.bar>m1+1e-9||col(m)!==c)return;
+            const edge=edges.find(e=>e.a.bar<=m.bar+1e-9&&m.bar<=e.b.bar+1e-9);
+            if(!edge)return;
+            const ym=Y(c,m.bar),xl=cubicXAtY(edge.left,ym),xr=cubicXAtY(edge.right,ym);
+            const xc=(xl+xr)/2,cm=crit(m);
+            drawnRelays.add(m);
+            /* A relay control point is a path marker, never a red flick body. */
+            cols[c].a.push(gem(xc,ym,cm?'crit':'long'));
+          });
+        }
+       });
+       notes.forEach(n=>{
+        if(none(n)||n.bar<m0-1e-9||n.bar>m1+1e-9)return;
+        const c=col(n),y=Y(c,n.bar),x=X(n)+1,w=Math.max(4,n.w*LW-2),cr=crit(n),tr=trend(n),k=n.k,d=flickAngleOf(n);let kind;
+        /* Guide(9xy)は透明な経路だけでなく、重ねられたTap/Directionalも描画する。 */
+        if(n.deco){
+          /* Upstream renderer draws the decoration path itself; note art exists only when a tap is attached. */
+          if(!n.tap)return;
+          const at=n.tap,atType=at.t,showDirection=d!==null,defaultFlick=atType===3&&!showDirection;
+          /* ガイド経路の薄さは上の経路パスだけに適用する。
+             ガイド点に重なっている実ノーツは通常ノーツと同じ不透明度で描画し、
+             ガイド経路の属性がノーツ本体・矢印・トレースへ伝播しないようにする。 */
+          /* Guideノーツの付属ノーツは見た目だけ。通常ノーツと同じ濃さで描くが、
+             実ノーツ数・カテゴリ数・コンボ数には加算しない。 */
+          if(tr){cols[c].a.push(trc(x,y,w,cr,showDirection,d??0));if(showDirection||defaultFlick)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,showDirection?d:0,cr?'crit':'flick'))}
+          else if(atType===4){cols[c].n.push(body(x,y,w,'dmg'));if(showDirection)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))}
+          else if(atType===3){cols[c].n.push(body(x,y,w,'flick'));if(showDirection||defaultFlick)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,showDirection?d:0,cr?'crit':'flick'))}
+          else{kind=cr?'crit':'tap';cols[c].n.push(body(x,y,w,kind));if(showDirection)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,d,cr?'crit':'flick'))}
+          return;
+        }
+        if(k==='tap'){
+          if(n.t===4){kind='dmg';cnt.dmg++}
+          else if(n.t===3){kind='flick';cnt.flick++;combo++}
+          else if(tr){kind=cr?'crit':'tap';cnt.trace++;combo++}
+          else if([1,2].includes(n.t)){kind=cr?'crit':'tap';cnt[cr?'crit':'tap']++;combo++}
+          else{kind='unknown';cols[c].n.push(body(x,y,w,kind));return}
+        }else if(k==='dir'){
+          kind=cr?'crit':'flick';if(tr)cnt.trace++;else cnt.flick++;combo++;
+        }else{
+          if(n.t===5||n.t===0||n.t===4)return;
+          if(n.t===3){
+            cnt.relay++;combo++;if(tr)cnt.trace++;
+            if(!drawnRelays.has(n))cols[c].a.push(gem(X(n)+n.w*LW/2,y,cr?'crit':'long'));
+            return;
+          }
+          if(n.t!==1&&n.t!==2)return;
+          combo++;if(n.t===1)cnt.hold++;
+          /* The reference renderer uses flick note art for a slide end
+             carrying a directional attachment. Lower directions 5/6 affect
+             the path only; they do not add an arrow glyph. */
+          const directionalEnd=n.t===2&&!!n.dir;
+          kind=cr?'crit':directionalEnd?'flick':'long';
+          if(tr)cnt.trace++;else if(directionalEnd)cnt.flick++;
+        }
+        const defaultTapFlick=k==='tap'&&n.t===3,showDirection=d!==null;
+        const directionalSlideEnd=k==='sl'&&n.t===2&&!!n.dir;
+        const fl=(k==='dir'&&showDirection)||defaultTapFlick||(directionalSlideEnd&&showDirection);
+        if(tr)cols[c].a.push(trc(x,y,w,cr,fl,fl?(showDirection?d:0):0));else cols[c].n.push(body(x,y,w,kind));
+        if(fl)cols[c].a.push(arrow(X(n)+n.w*LW/2,y,n.w,showDirection?d:0,cr?'crit':'flick'))
+       });
+       /* 列ごとに組み立て */
+       let out='';const cs=[];for(let c=0;c<nc;c++){const b0=m0+c*BPC,b1=Math.min(b0+BPC,m1),o=cols[c],ox=c*COLW;let g=`<rect x="0" y="0" width="${COLW}" height="${H}" fill="#111827"/>`;
+        for(let i=0;i<12;i++)g+=`<rect x="${PL+i*LW}" y="${TOP}" width="${LW}" height="${colH}" fill="${i%2?'#19263a':'#1d2c42'}"/>`;
+        for(let i=0;i<=12;i++)g+=`<line x1="${PL+i*LW}" x2="${PL+i*LW}" y1="${TOP}" y2="${bot}" stroke="#394b63" stroke-width="${i%12?1:1.5}"/>`;
+        for(let b=b0;b<=b1;b++){const y=Y(c,b);g+=`<line x1="${PL-4}" x2="${PL+12*LW}" y1="${y}" y2="${y}" stroke="#7b91ad" stroke-width="1.6"/>`;if(b<b1||b===m1)g+=`<text x="${PL-8}" y="${y+4}" text-anchor="end" font-size="11" font-weight="700" fill="#d0dbea">${b}</text>`;
+         if(b<b1)for(let k=1;k<len[b];k++){const yy=Y(c,b+k/len[b]);g+=`<line x1="${PL}" x2="${PL+12*LW}" y1="${yy}" y2="${yy}" stroke="#2e4058" stroke-width="1"/>`}}
+        /* Event labels are separated into fixed BPM / scroll-speed / skill-FEVER
+           lanes. Labels in the same lane are vertically packed with leader lines
+           so dense event clusters do not draw over one another. */
+        const evInColumn=ev.filter(e=>e.bar>=b0-1e-9&&e.bar<b1+(c===nc-1?1:0)&&
+          (e.bpm!==undefined||e.speed!==undefined||e.text));
+        const eventLanes=[
+          {key:'bpm',x:PL+12*LW+8,w:60,bg:'#4a3b1e',stroke:'#d4a94e',color:'#ffe09a',items:evInColumn.filter(e=>e.bpm!==undefined).map(e=>({e,y:Y(c,e.bar),label:`BPM ${(+e.bpm).toFixed(2)}`}))},
+          {key:'speed',x:PL+12*LW+74,w:82,bg:'#203b54',stroke:'#63a9db',color:'#aee0ff',items:evInColumn.filter(e=>e.speed!==undefined).map(e=>({e,y:Y(c,e.bar),label:`${e.speedMode==='measure'?'BAR':'HS'} ×${Number(e.speed.toFixed(3))}`}))},
+          {key:'info',x:PL+12*LW+162,w:80,bg:'#382b4b',stroke:'#a98bd0',color:'#e2cffc',items:evInColumn.filter(e=>!!e.text).map(e=>({e,y:Y(c,e.bar),label:e.text}))}
+        ];
+        eventLanes.forEach(lane=>{
+          const items=lane.items.sort((a,b)=>a.y-b.y);if(!items.length)return;
+          const topY=TOP+8,bottomY=Math.max(TOP+8,bot-8),gap=12;
+          const effectiveGap=items.length>1?Math.min(gap,(bottomY-topY)/(items.length-1)):gap;
+          let last=topY-effectiveGap;
+          items.forEach(item=>{item.labelY=Math.max(item.y,last+effectiveGap,topY);last=item.labelY});
+          if(items[items.length-1].labelY>bottomY){
+            const shift=items[items.length-1].labelY-bottomY;items.forEach(item=>item.labelY-=shift);
+          }
+          if(items[0].labelY<topY){
+            const step=items.length>1?(bottomY-topY)/(items.length-1):0;items.forEach((item,i)=>item.labelY=topY+i*step);
+          }
+          items.forEach(item=>{
+            const yy=item.y,ly=item.labelY,short= Math.abs(yy-ly)>1;
+            if(short)g+=`<path d="M${lane.x-3} ${yy} L${lane.x} ${ly}" stroke="${lane.stroke}" stroke-width="1" opacity=".8"/>`;
+            g+=`<circle cx="${lane.x-3}" cy="${yy}" r="2" fill="${lane.stroke}"/>`;
+            g+=`<rect x="${lane.x}" y="${ly-5.5}" width="${lane.w}" height="11" rx="3" fill="${lane.bg}" stroke="${lane.stroke}" stroke-width=".6"/>`;
+            g+=`<text x="${lane.x+4}" y="${ly+3}" font-size="8.5" font-weight="700" fill="${lane.color}">${esc(item.label)}</text>`;
+          });
+        });
+        const inner=`<clipPath id="k${c}"><rect x="0" y="${TOP}" width="${COLW}" height="${colH}"/></clipPath>${g}<g clip-path="url(#k${c})">${o.p.join('')}</g>${o.n.reverse().join('')}${o.a.reverse().join('')}<text x="${PL}" y="16" font-size="11" fill="#a9bdd8">小節 ${b0}–${b1-1}</text><text x="${PL+12*LW+8}" y="16" font-size="9" fill="#d4a94e">BPM</text><text x="${PL+12*LW+82}" y="16" font-size="9" fill="#63a9db">速度</text><text x="${PL+12*LW+170}" y="16" font-size="9" fill="#a98bd0">演出</text>`;cs.push(inner);out+=`<g transform="translate(${ox} 0)">${inner}</g>`}
+       return{svg:`<svg xmlns="http://www.w3.org/2000/svg" width="${nc*COLW}" height="${H}" viewBox="0 0 ${nc*COLW} ${H}" font-family="system-ui,sans-serif">${out}</svg>`,cnt,combo,total,cs,w:COLW,h:H};
+      }
+      /* ---------- UI ---------- */
+      let songs=[],diffs={},cur=null,curD=null,auto='';
+      let visualSettings={slideOpacity:.34,guideOpacity:.12};
+      const st=t=>$('#st').textContent=t,jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
+      const LEG=(()=>{const f=(w,k,dr)=>`<svg width="${w*LW+20}" height="34"><g transform="translate(10 0)">${body(1,24,w*LW-2,k)}${dr===undefined?'':arrow(w*LW/2,24,w,dr,k==='crit'?'crit':'flick')}</g></svg>`;
+       const traceLegend=(cr,fl)=>`<svg width="46" height="48" viewBox="0 0 46 48">${trc(4,37,38,cr,fl)}${fl?arrow(23,37,1,0,cr?'crit':'flick'):''}</svg>`;
+       return[['タップ',f(2,'tap')],['クリティカル',f(2,'crit')],['フリック',f(2,'flick',0)],['ロング',f(2,'long')],['中継点',`<svg width="30" height="34"><g>${gem(15,20,'long')}</g></svg>`],['トレース',traceLegend(0,0)],['フリックトレース',traceLegend(0,1)],['クリティカルトレース',traceLegend(1,0)],['クリティカルフリックトレース',traceLegend(1,1)],['ダメージ',f(2,'dmg')]].map(([n,s])=>`<span style="display:inline-flex;align-items:center;font-size:11px;margin-right:6px">${s}${n}</span>`).join('')})();
+      $('#legend').innerHTML=LEG;
+      $('#slv').textContent='34%';$('#gdv').textContent='12%';
+      function drawList(){const k=$('#q').value.trim().toLowerCase(),hit=songs.filter(s=>!k||[s.id,s.title,s.pronunciation,s.lyricist,s.composer,s.arranger].join('\n').toLowerCase().includes(k));
+       $('#list').innerHTML=hit.slice(0,120).map(s=>`<button class="it ${cur&&cur.id===s.id?'on':''}" data-id="${s.id}"><img loading="lazy" src="${jacket(s)}" alt=""><span><b>${esc(s.title)}</b><small>#${s.id} ／ ${esc(s.composer||'')}</small></span></button>`).join('')+(hit.length>120?`<p class="mut">他 ${hit.length-120} 件… 検索で絞り込んでください</p>`:'')}
+      function pick(id){cur=songs.find(s=>s.id==id);$('#sel').hidden=false;$('#jk').src=jacket(cur);$('#tt').textContent=cur.title;$('#pr').textContent=cur.pronunciation||'';
+       $('#cr').textContent=`作詞 ${cur.lyricist||'-'} ／ 作曲 ${cur.composer||'-'} ／ 編曲 ${cur.arranger||'-'}`;const ds=diffs[id]||{};
+       $('#dif').innerHTML=DIFFS.filter(d=>ds[d]).map(d=>`<span class="dc" data-d="${d}" style="background:${DCOL[d]};color:#fff"><button style="all:unset;cursor:pointer">${d.toUpperCase()} Lv${ds[d].playLevel}・${ds[d].totalNoteCount}</button></span>`).join('')||'<span class="mut">難易度情報なし</span>';
+       drawList();const first=DIFFS.filter(d=>ds[d]).pop();if(first)setDiff(first)}
+      let rid=0,view='sus',cancel=()=>{};
+      function setDiff(d){curD=d;document.querySelectorAll('.dc').forEach(e=>e.classList.toggle('on',e.dataset.d===d));auto=$('#src').value==='svg'?svgURL(cur.id,d):susGroups(cur.id,d)[0][0];$('#url').value=auto;loadURL()}
+      const zoomSVG=()=>{const i=document.querySelector('#chart img.sv');if(i)i.style.width=+$('#zm').value/36*100+'%'};
+      function showSVG(u,note,alternates=[]){
+       view='svg';const candidates=[...new Set([u,...alternates].filter(Boolean))];let at=0;
+       const tryNext=()=>{
+        const current=candidates[at++];if(!current){st('SVGを取得できませんでした。元データURLを直接開いて確認してください');return}
+        $('#url').value=current;const img=new Image();img.className='sv';img.alt='譜面SVG';img.referrerPolicy='no-referrer';
+        img.onload=()=>{if(!img.isConnected)return;zoomSVG();st(note||'生成済みSVGを表示中（ベクター画像のためノーツ個別解析は行いません）')};
+        img.onerror=()=>{if(img.isConnected)tryNext()};img.src=current;$('#chart').replaceChildren(img);zoomSVG();
+        $('#bar').innerHTML=`<span class="ch">生成済みSVG</span><a class="ch" href="${esc(current)}" target="_blank" rel="noopener">元のSVGを開く</a>`;
+       };st('SVGを読み込み中…');tryNext();
+      }
+      async function decodeResponse(response){
+       let buf=await response.arrayBuffer();
+       if(buf.byteLength>2&&new Uint8Array(buf)[0]===0x1f&&new Uint8Array(buf)[1]===0x8b&&'DecompressionStream'in window){
+        const stream=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));buf=await new Response(stream).arrayBuffer();
+       }
+       return new TextDecoder('utf-8').decode(buf).replace(/^\uFEFF/,'');
+      }
+      async function fetchSUS(groups){
+       const fails=[],controllers=[];let svgHit=null;cancel=()=>controllers.forEach(c=>c.abort());
+       for(const urls of groups){
+        try{
+         /* SVGは候補として保持するだけ。すべてのSUS候補より先に採用しない。 */
+         const hit=await Promise.any(urls.map(async u=>{
+          const c=new AbortController();controllers.push(c);const timer=setTimeout(()=>c.abort(),12000);
+          try{
+           let r;try{r=await fetch(u,{signal:c.signal,credentials:'omit',referrerPolicy:'no-referrer'})}catch(e){fails.push(e.name==='AbortError'?'timeout':'通信/CORS');throw e}
+           if(!r.ok){fails.push('HTTP '+r.status);throw new Error('HTTP '+r.status)}
+           const text=await decodeResponse(r),type=(r.headers.get('content-type')||'').toLowerCase();
+           if(isSUS(text))return{kind:'sus',t:text,u};
+           if(type.includes('svg')||/^\s*<svg[\s>]/i.test(text)){if(!svgHit)svgHit={kind:'svg',t:text,u};fails.push('SVG（解析用テキストではありません）');throw new Error('SVG fallback')}
+           fails.push('譜面形式不一致');throw new Error('unknown chart format');
+          }finally{clearTimeout(timer)}
+         }));
+         controllers.forEach(c=>c.abort());return{hit,fails};
+        }catch(e){/* 次の配信経路へ。優先度の高い _01_rip を先に検証する */}
+       }
+       controllers.forEach(c=>c.abort());return{hit:svgHit,fails};
+      }
+      async function loadURL(){
+       const u=$('#url').value.trim();if(!u)return;
+       if(!/^https?:\/\//i.test(u)){st('URLは http:// または https:// で始めてください');return}
+       const my=++rid;cancel();const mode=$('#src').value,isAuto=u===auto&&cur&&curD;
+       if(isSVG(u)){showSVG(u,null,isAuto&&cur&&curD?svgURLs(cur.id,curD).filter(x=>x!==u):[]);return}
+       st('譜面データを取得中…');
+       const groups=isAuto?susGroups(cur.id,curD):[[u]],{hit,fails}=await fetchSUS(groups);if(my!==rid)return;
+       if(hit&&hit.kind==='sus'){$('#url').value=hit.u;$('#txt').value=hit.t;draw(hit.t,hit.u);return}
+       if(hit&&hit.kind==='svg'){showSVG(hit.u,'取得先がSVGだったため、生成済み譜面を表示しています');return}
+       if(isAuto&&mode==='auto'){const candidates=svgURLs(cur.id,curD);showSVG(candidates[0],'SUS取得に失敗したため生成済みSVGを表示しています。ノーツ解析は元データSUSを取得できた場合のみ利用できます。',candidates.slice(1));return}
+       const tl=[...fails.reduce((m,w)=>m.set(w,(m.get(w)||0)+1),new Map())].map(([w,n])=>`${w}×${n}`).join('・');
+       st(`取得できませんでした（${tl||'不明'}）。CORS・未配信・データ形式を確認してください。元データを保存して「貼り付けから描画」も利用できます`);
+      }
+      function draw(text,sourceURL=''){
+       view='sus';try{
+        const S=parseSUS(text),R=render(S,+$('#zm').value,+$('#bpc').value,0,0,visualSettings),o=cur&&curD&&diffs[cur.id]&&diffs[cur.id][curD],c=R.cnt,w=S.stats.warnings;
+        const chips=[['タップ',c.tap],['クリティカル',c.crit],['フリック',c.flick],['ロング',c.hold],['ロング8分判定',c.longTick],['中継点',c.relay],['トレース',c.trace],['ダメージ',c.dmg]];
+        const curveStart=S.notes.filter(n=>n.k==='sl'&&n.dir&&n.dir.t===2).length;
+        const curveEnd=S.notes.filter(n=>n.k==='sl'&&n.dir&&(n.dir.t===5||n.dir.t===6)).length;
+        $('#bar').innerHTML=chips.map(([n,v])=>`<span class="ch">${n} <b>${v}</b></span>`).join('')+`<span class="ch">曲線制御・開始側 <b>${curveStart}</b></span><span class="ch">曲線制御・終了側 <b>${curveEnd}</b></span><span class="ch">小節 <b>${R.total}</b></span><span class="ch">解析対象 <b>${S.stats.active}/${S.stats.raw}</b></span><span class="ch">BPM変化 <b>${S.ev.filter(e=>e.bpm!==undefined).length}</b></span><span class="ch">速度イベント <b>${S.ev.filter(e=>e.speed!==undefined).length}</b></span>`+(o?`<span class="ch ${o.totalNoteCount===R.combo?'ok':'ng'}">解析カウント <b>${R.combo}</b> ／ マスター情報 ${o.totalNoteCount}</span>`:`<span class="ch">解析カウント <b>${R.combo}</b></span>`)+(w.length?`<span class="ch ng" title="${esc(w.join('\n'))}">要確認 <b>${w.length}</b></span>`:'')+(cur&&curD?`<a class="ch" href="${esc(svgURL(cur.id,curD))}" target="_blank" rel="noopener">生成元SVGと照合</a>`:'');
+        $('#chart').innerHTML=R.svg;
+        const srcLabel=sourceURL?` ／ ${sourceURL.includes('_01_rip')?'_01_rip元データ':'指定URL'}`:'';
+        st(`解析・描画完了：ノーツ ${S.stats.active}/${S.stats.raw}、スライド経路 ${S.stats.chains}本、曲線制御 開始側${curveStart}/終了側${curveEnd}${w.length?`、要確認 ${w.length}件`:''}${srcLabel}`);
+       }catch(e){st('解析エラー: '+e.message);console.error(e)}
+      }
+      $('#list').onclick=e=>{const b=e.target.closest('.it');if(b)pick(b.dataset.id)};
+      $('#dif').onclick=e=>{const s=e.target.closest('.dc');if(s)setDiff(s.dataset.d)};
+      $('#q').oninput=drawList;$('#goU').onclick=loadURL;$('#goT').onclick=()=>draw($('#txt').value);
+      $('#zm').oninput=()=>{$('#zv').textContent=$('#zm').value;if(view==='svg')zoomSVG()};
+      $('#goR').onclick=()=>{
+       const t=$('#txt').value;if(!t.trim()||view==='svg'){st('拡大表示にはSUSの解析が必要です（SVG画像表示では使えません）');return}
+       const spacing=+$('#zm').value||36,columns=+$('#bpc').value||8;
+       const w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
+       try{
+        const popupScore=parseSUS(t),cfg={zoom:25,spacing,slideOpacity:visualSettings.slideOpacity,guideOpacity:visualSettings.guideOpacity};
+        const first=render(popupScore,cfg.spacing,columns,0,0,cfg),title=`拡大表示（全${first.total}小節・${columns}小節/列）`;
+        w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+        <style>
+          *{box-sizing:border-box}body{margin:0;background:#101827;color:#e5edf7;font:13px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;height:100vh;display:flex;flex-direction:column}
+          header{flex:none;display:flex;align-items:center;gap:12px;padding:8px 12px;background:#18263a;border-bottom:1px solid #344b66}
+          header strong{font-size:14px}button{border:0;border-radius:7px;padding:7px 11px;background:#2fbfae;color:#102033;font-weight:700;cursor:pointer}
+          #panel{flex:none;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:10px 14px;background:#1d2c42;border-bottom:1px solid #344b66}
+          #panel[hidden]{display:none}.control{min-width:180px;display:flex;flex-direction:column;gap:3px}.control label{font-size:11px;color:#c4d2e4}.control input{width:180px;accent-color:#58d7c4}
+          .value{font-weight:700;color:#fff;margin-left:5px}#chartBox{flex:1;min-height:0;overflow:auto;padding:12px;background:#111827}
+          #chartBox svg{display:block;max-width:none;height:auto}.hint{font-size:10px;color:#91a6bf}
+        </style>
+        <header><strong>${title}</strong><span class="hint">拡大倍率・ノーツ間隔・透明度はこの画面で独立して変更できます</span><button id="toggle" style="margin-left:auto">設定を隠す</button></header>
+        <section id="panel">
+          <div class="control"><label>拡大倍率 <span class="value" id="zoomValue">25%</span></label><input id="zoom" type="range" min="5" max="300" step="1" value="25"></div>
+          <div class="control"><label>ノーツ間隔（px/拍） <span class="value" id="spacingValue">${cfg.spacing}</span></label><input id="spacing" type="range" min="16" max="400" step="1" value="${cfg.spacing}"></div>
+          <div class="control"><label>スライドノーツ透明度 <span class="value" id="slideValue">${Math.round(cfg.slideOpacity*100)}%</span></label><input id="slideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.slideOpacity*100)}"></div>
+          <div class="control"><label>ガイドノーツ透明度 <span class="value" id="guideValue">${Math.round(cfg.guideOpacity*100)}%</span></label><input id="guideOpacity" type="range" min="0" max="100" step="1" value="${Math.round(cfg.guideOpacity*100)}"></div>
+        </section><main id="chartBox">${first.svg}</main>
+        <script>
+          const cfg={zoom:25,spacing:${cfg.spacing},slideOpacity:${cfg.slideOpacity},guideOpacity:${cfg.guideOpacity}};
+          const $=id=>document.getElementById(id);
+          function applyZoom(){const svg=$('chartBox').querySelector('svg');if(!svg)return;const base=Number(svg.getAttribute('width'))||1;svg.style.width=(base*cfg.zoom/100)+'px';svg.style.height='auto';$('zoomValue').textContent=cfg.zoom+'%'}
+          function requestRender(){if(typeof window.__renderChartFromParent==='function')window.__renderChartFromParent({...cfg})}
+          $('zoom').addEventListener('input',e=>{cfg.zoom=Number(e.target.value);applyZoom()});
+          $('spacing').addEventListener('input',e=>{cfg.spacing=Number(e.target.value);$('spacingValue').textContent=cfg.spacing;requestRender()});
+          $('slideOpacity').addEventListener('input',e=>{cfg.slideOpacity=Number(e.target.value)/100;$('slideValue').textContent=e.target.value+'%';requestRender()});
+          $('guideOpacity').addEventListener('input',e=>{cfg.guideOpacity=Number(e.target.value)/100;$('guideValue').textContent=e.target.value+'%';requestRender()});
+          $('toggle').addEventListener('click',()=>{const panel=$('panel');panel.hidden=!panel.hidden;$('toggle').textContent=panel.hidden?'設定を表示':'設定を隠す'});
+          window.__applyZoom=applyZoom;
+        <\/script></html>`);
+        w.document.close();
+        w.__renderChartFromParent=(next)=>{
+          const updated=render(popupScore,next.spacing,columns,0,0,next),box=w.document.getElementById('chartBox');
+          if(!box)return;box.innerHTML=updated.svg;
+          const spacingLabel=w.document.getElementById('spacingValue');if(spacingLabel)spacingLabel.textContent=next.spacing;
+          if(typeof w.__applyZoom==='function')w.__applyZoom();
+        };
+        if(typeof w.__applyZoom==='function')w.__applyZoom();
+       }catch(e){w.close();st('拡大表示の生成エラー: '+e.message);console.error(e)}
+      };
+      $('#zm').onchange=$('#bpc').onchange=()=>{if(view==='svg')zoomSVG();else if($('#txt').value.trim())draw($('#txt').value)};
+      const updateMainOpacityLabels=()=>{$('#slv').textContent=$('#slOpacity').value+'%';$('#gdv').textContent=$('#gdOpacity').value+'%'};
+      $('#slOpacity').oninput=$('#gdOpacity').oninput=updateMainOpacityLabels;
+      $('#slOpacity').onchange=()=>{visualSettings.slideOpacity=Number($('#slOpacity').value)/100;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
+      $('#gdOpacity').onchange=()=>{visualSettings.guideOpacity=Number($('#gdOpacity').value)/100;if(view==='sus'&&$('#txt').value.trim())draw($('#txt').value)};
+      $('#src').onchange=()=>{if(cur&&curD)setDiff(curD)};
+      $('#smp').onclick=()=>{$('#txt').value=SAMPLE;draw(SAMPLE)};
+      const SAMPLE=`#TITLE "SAMPLE"
+      #REQUEST "ticks_per_beat 480"
+      #BPM01: 120
+      #BPM02: 150
+      #00008: 01
+      #00408: 02
+      #00602: 3
+      #00012: 11000000
+      #00014: 00120000
+      #00017: 00001100
+      #00019: 00000021
+      #00115: 12000000
+      #00155: 12000000
+      #00119: 00001200
+      #00159: 00003200
+      #0011c: 00000012
+      #0015c: 00000042
+      #002340: 12000000
+      #002350: 00003200
+      #003350: 22000000
+      #00355: 12000000
+      #00419: 22000000
+      #004390: 12000000
+      #0043a0: 00005200
+      #0053c0: 22000000
+      #00512: 00005100
+      #00513: 00006100
+      #00514: 00004100
+      #00610: 11000000
+      #00811: 11000000
+      #01011: 21000000`;
+      (async()=>{try{const[m,d]=await Promise.all([jget('musics.json'),jget('musicDifficulties.json')]);songs=m.sort((a,b)=>b.id-a.id);d.forEach(x=>(diffs[x.musicId]??={})[x.musicDifficulty]=x);st(`楽曲 ${songs.length} 件を読み込みました`);drawList()}catch(e){st('楽曲リストを取得できません（SUSの貼り付けは利用できます）')}})();
+    </script>
+  </body>
+</html>
