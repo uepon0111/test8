@@ -54,12 +54,29 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
 .cbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:10px 0}
 #s-chart{display:flex;flex-direction:column;height:calc(100dvh - 80px);min-height:560px}#s-chart>.card{flex:none}#chart{flex:1;min-height:260px;overflow:auto;background:#111827;border-radius:12px;color:#c4d2e4}
 .msg{padding:30px}#chart img.sv{display:block;height:auto}
-.set{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:14px;align-items:start}
-@media(max-width:760px){.set{grid-template-columns:1fr}}
-.fld{margin-bottom:16px}.fld label{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:4px}
-.pvc{position:sticky;top:66px}
-#pv{overflow:auto;max-height:68vh;min-height:200px;background:#111827;border-radius:10px}
-#pv svg{display:block;margin:0 auto}
+#p-settings h2{font-size:16px;margin:0 0 14px}
+#p-settings h3{font-size:13px;margin:20px 0 14px;padding-bottom:6px;border-bottom:1px solid var(--ln)}
+#p-settings h2+h3,#p-settings .psg h3{margin-top:0}
+#p-settings p.mut{margin:8px 0 0}
+.fld{margin-bottom:18px}.fld label{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:700;margin-bottom:6px}
+.fld label b{flex:none;min-width:3.6em;padding:1px 10px;border-radius:999px;background:var(--bg2);color:#13796d;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fld input[type=range]{-webkit-appearance:none;appearance:none;padding:0;height:26px;border:0;background:transparent;--p:50%}
+.fld input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,var(--acc) var(--p),var(--ln) var(--p))}
+.fld input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--ln)}
+.fld input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:var(--acc)}
+.fld input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:var(--acc);border:2px solid #fff;box-shadow:0 1px 4px #0004}
+.fld input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--acc);border:2px solid #fff;box-shadow:0 1px 4px #0004}
+.fld .mut{margin-top:4px}
+.tag{margin-left:8px;padding:1px 8px;border-radius:999px;background:#e1f6f2;color:#13796d;font-size:11px;font-style:normal;font-weight:700;white-space:nowrap}
+.fld.sw{padding:10px 12px;background:var(--bg2);border-radius:10px}.fld.sw label{margin:0;cursor:pointer}
+.fld input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;position:relative;width:44px;height:26px;margin:0;padding:0;border:0;border-radius:999px;background:#c3d0e4;cursor:pointer;transition:background .15s}
+.fld input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .15s}
+.fld input[type=checkbox]:checked{background:var(--acc)}.fld input[type=checkbox]:checked::after{transform:translateX(18px)}
+@media(prefers-reduced-motion:reduce){.fld input[type=checkbox],.fld input[type=checkbox]::after{transition:none}}
+#pv{overflow:auto;max-height:68vh;background:#111827;border-radius:10px}
+#pv svg{display:block;margin:0 auto;max-width:100%;height:auto}
+.psg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:0 32px}
+.psg>div{min-width:0}
 #st{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:50;max-width:92vw;background:#27324aee;color:#fff;border-radius:10px;padding:8px 14px;font-size:12px}
       .lg{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,232px),1fr));gap:8px}
       .lgp{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 6px;padding:6px 8px;background:#f4f8fd;border:1px solid var(--ln);border-radius:10px}
@@ -81,7 +98,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         <div class="card"><h2>最新の曲</h2><div class="hero" id="latest"><span class="mut">楽曲データを読み込み中…</span></div></div>
         <div class="card"><h2>新着曲</h2><div id="recent"></div></div>
         <div class="card"><h2>ノーツの見た目</h2><div id="legend"></div></div>
-        <div class="card"><h2>データ概要</h2><div id="stats"></div><p class="mut" style="margin:0">楽曲・譜面データは公開データ（sekai-master-db-diff / sekai.best）から取得します。ノーツ間隔や透明度などは「設定」で変更できます。</p></div>
+        <div class="card"><h2>データ概要</h2><div id="stats"></div><p class="mut" style="margin:0">楽曲・譜面データは公開データ（sekai-master-db-diff / sekai.best）から取得します。ノーツ間隔や透明度、譜面再生の速度や音量などは「設定」で変更できます。</p></div>
       </section>
       <section id="p-songs" class="pg" hidden>
         <div id="s-list">
@@ -104,23 +121,45 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
           <div class="card"><div class="info" id="cinfo"></div>
             <div class="cbar">
               <a class="btn g" id="bk" href="#songs">‹ 難易度選択に戻る</a>
-              <button id="goR">拡大表示（別タブ）</button><button id="dlSvg" class="g">SVGで保存</button><button id="dlPng" class="g">PNGで保存</button>
+              <button id="goR">拡大表示（別タブ）</button><button id="goP">譜面再生（別タブ）</button><button id="dlSvg" class="g">SVGで保存</button><button id="dlPng" class="g">PNGで保存</button>
             </div></div>
           <div id="chart"></div>
         </div>
       </section>
       <section id="p-settings" class="pg" hidden>
-        <div class="set">
-          <div class="card"><h2>表示の設定</h2>
-            <div class="fld"><label for="zm">ノーツ間隔（px/拍）<b id="zv"></b></label><input id="zm" type="range" min="16" max="400" /></div>
-            <div class="fld"><label for="bpc">1行あたりの小節数</label><select id="bpc"></select><div class="mut" id="bpn"></div></div>
-            <div class="fld"><label for="slOpacity">スライドノーツの透明度<b id="slv"></b></label><input id="slOpacity" type="range" min="0" max="100" /></div>
-            <div class="fld"><label for="gdOpacity">ガイドノーツの透明度<b id="gdv"></b></label><input id="gdOpacity" type="range" min="0" max="100" /></div>
-            <div class="fld"><label><span>ミラー（左右反転）</span><input id="mirror" type="checkbox" style="width:auto" /></label></div>
-            <button id="rst" class="g">初期設定に戻す</button>
-            <p class="mut">変更は自動で保存され、譜面の表示に反映されます。</p></div>
-          <div class="card pvc"><h2>プレビュー（スライドノーツ・ガイドノーツ）</h2><div id="pv"></div><p class="mut" style="margin:8px 0 0">実際の譜面と同じ描画です。ノーツ間隔・透明度・ミラーの変更がすぐに反映されます。</p></div>
-        </div>
+        <div class="card"><h2>表示の設定</h2>
+          <div class="psg">
+            <div><h3>譜面の並べ方</h3>
+              <div class="fld"><label for="zm"><span>ノーツ間隔（px/拍）</span><b id="zv"></b></label><input id="zm" type="range" min="16" max="400" /></div>
+              <div class="fld"><label for="bpc"><span>1行あたりの小節数</span></label><select id="bpc"></select><div class="mut" id="bpn"></div></div>
+            </div>
+            <div><h3>ノーツの見た目</h3>
+              <div class="fld"><label for="slOpacity"><span>スライドノーツの透明度<em class="tag">再生にも反映</em></span><b id="slv"></b></label><input id="slOpacity" type="range" min="0" max="100" /></div>
+              <div class="fld"><label for="gdOpacity"><span>ガイドノーツの透明度<em class="tag">再生にも反映</em></span><b id="gdv"></b></label><input id="gdOpacity" type="range" min="0" max="100" /></div>
+              <div class="fld sw"><label><span>ミラー（左右反転）<em class="tag">再生にも反映</em></span><input id="mirror" type="checkbox" /></label></div>
+            </div>
+          </div>
+          <button id="rst" class="g">初期設定に戻す</button>
+          <p class="mut">変更は自動で保存され、譜面の表示に反映されます。</p></div>
+        <div class="card"><h2>プレビュー（スライドノーツ・ガイドノーツ）</h2><div id="pv"></div><p class="mut">実際の譜面と同じ描画です。ノーツ間隔や小節数の設定にかかわらず、最小のノーツ間隔で1小節だけ表示します。透明度・ミラーの変更はすぐに反映されます。</p></div>
+        <div class="card pset"><h2>譜面再生の設定</h2>
+          <div class="psg">
+            <div><h3>再生と音声</h3>
+              <div class="fld"><label for="plRate"><span>再生速度</span><b id="plRateV"></b></label><input id="plRate" type="range" min="0.25" max="1" step="0.05" /></div>
+              <div class="fld"><label for="plRk"><span>再生速度を変えたとき</span></label><select id="plRk"><option value="all">全体が変化（ノーツ速度も変わる）</option><option value="keep">ノーツ速度はそのまま</option></select></div>
+              <div class="fld"><label for="plVol"><span>音量</span><b id="plVolV"></b></label><input id="plVol" type="range" min="0" max="100" /></div>
+              <div class="fld"><label for="plAo"><span>音源のタイミング補正</span><b id="plAoV"></b></label><input id="plAo" type="range" min="-3" max="3" step="0.01" /><div class="mut">＋で音が早く、−で遅くなります</div></div>
+            </div>
+            <div><h3>ノーツの見え方</h3>
+              <div class="fld"><label for="plSpd"><span>ノーツ速度</span><b id="plSpdV"></b></label><input id="plSpd" type="range" min="1" max="16" step="0.5" /></div>
+              <div class="fld"><label for="plAp"><span>ノーツ表示開始位置（手前⇔奥）</span><b id="plApV"></b></label><input id="plAp" type="range" min="20" max="100" step="5" /></div>
+              <div class="fld sw"><label><span>ソフランなし（速度変化を無効にする）</span><input id="plSf" type="checkbox" /></label></div>
+            </div>
+          </div>
+          <button id="plRst" class="g">再生設定を初期設定に戻す</button>
+          <p class="mut">変更は自動で保存され、次に開く譜面再生から反映されます（再生画面の「表示設定」と共通）。</p>
+          <p class="mut">スライド／ガイドノーツの透明度とミラーは、上の「表示の設定」で変更します。</p>
+          <p class="mut">ボーカルは曲ごとに選択肢が違うため、再生画面で選びます。</p></div>
       </section>
     </main>
     <div id="st" role="status" hidden></div>
@@ -179,7 +218,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         text=stripBOM(text);
         const bpmDef=new Map(),tilDefs=new Map(),ev=[],raw=[],meta={},warnings=[];
         const usedHiSpeedIds=new Set(),usedMeasureSpeedIds=new Set();
-        let ticksPerBeat=480,activeHiSpeedId=null,lineNo=0,unhandled=0,seq=0;
+        let ticksPerBeat=480,activeHiSpeedId=null,measureHs=null,lineNo=0,unhandled=0,seq=0;
         const registerHiSpeedData=()=>{if(activeHiSpeedId!==null)usedHiSpeedIds.add(activeHiSpeedId)};
         for(const l0 of text.split(/\r?\n/)){
           lineNo++;const l=l0.trim();if(!l||l[0]!=='#')continue;
@@ -192,7 +231,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
             }else if(key==='HISPEED'){
               const id=b36(value);if(id>=0)activeHiSpeedId=id
             }else if(key==='MEASUREHS'){
-              const id=b36(value);if(id>=0)usedMeasureSpeedIds.add(id);
+              const id=b36(value);if(id>=0){usedMeasureSpeedIds.add(id);if(measureHs===null)measureHs=id}
             }
             continue;
           }
@@ -215,13 +254,13 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
           }else if((x=h.match(/^(\d{3})08$/))){
             scorePairs(d,+x[1],warnings,lineNo).forEach(p=>ev.push({bar:p.bar,bpmId:b36(p.v[0])*36+b36(p.v[1])}));
           }else if((x=h.match(/^(\d{3})1([0-9A-Z])$/i))){
-            base={k:'tap',lane:b36(x[2]),ch:null,deco:false};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            base={k:'tap',lane:b36(x[2]),ch:null,deco:false,hs:activeHiSpeedId};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
             pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
           }else if((x=h.match(/^(\d{3})5([0-9A-Z])$/i))){
-            base={k:'dir',lane:b36(x[2]),ch:null,deco:false};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            base={k:'dir',lane:b36(x[2]),ch:null,deco:false,hs:activeHiSpeedId};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
             pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
           }else if((x=h.match(/^(\d{3})3([0-9A-Z])([0-9A-Z])$/i))||(x=h.match(/^(\d{3})9([0-9A-Z])([0-9A-Z])$/i))){
-            const deco=h.charAt(3)==='9';base={k:'sl',lane:b36(x[2]),ch:b36(x[3]),deco};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
+            const deco=h.charAt(3)==='9';base={k:'sl',lane:b36(x[2]),ch:b36(x[3]),deco,hs:activeHiSpeedId};const pairs=scorePairs(d,+x[1],warnings,lineNo);if(pairs.length)registerHiSpeedData();
             pairs.forEach(p=>raw.push({...base,bar:p.bar,bk:p.bk,w:p.w,t:p.t,seq:seq++,lineNo}));
           }else if(/^ATR[0-9A-Z]{2}$/i.test(h)||/^(ATTRIBUTE|NOATTRIBUTE)$/i.test(h)){
             /* ノーツ属性定義は現在の表示対象外。 */
@@ -308,8 +347,10 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         if(orphanDirections)warnings.push(`${orphanDirections}個の方向指定が同位置のノーツに結合されていません`);
         const unsupported=active.filter(n=>n.k==='tap'&&!([1,2,3,4,5,6,7,8].includes(n.t))||n.k==='sl'&&!([0,1,2,3,5].includes(n.t))||n.k==='dir'&&!([1,2,3,4,5,6].includes(n.t))).length;
         if(unsupported)warnings.push(`${unsupported}個の未定義ノーツ種別を検出しました`);
+        /* 譜面再生用：使われているTIL(ソフラン)を [小節位置, 速度] の配列にして渡す */
+        const til={};for(const id of new Set([...usedHiSpeedIds,...usedMeasureSpeedIds])){const d=tilDefs.get(id);if(d)til[id]=d.map(e=>[e.measure+e.tick/(ticksPerBeat*measureLengthAt(e.measure)),e.speed]).sort((a,b)=>a[0]-b[0])}
         return{
-          meta,ev:ev.sort((a,b)=>a.bar-b.bar),notes:active,allNotes:raw,
+          meta,ev:ev.sort((a,b)=>a.bar-b.bar),notes:active,allNotes:raw,til,mhs:measureHs,
           stats:{raw:raw.length,active:active.length,attached:deleted.size,chains:chainStarts.length,orphanStarts,orphanEnds,orphanDirections,unsupported,warnings}
         };
       }
@@ -685,6 +726,8 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       const savePrefs=p=>{try{localStorage.setItem(PREF_KEY,JSON.stringify({...loadPrefs(),...p}))}catch(e){}};
       const pref=clamp;
       const vs=()=>({slideOpacity:cfg.sl/100,guideOpacity:cfg.gd/100,mirror:cfg.mirror});
+      /* 譜面再生の設定。再生画面（openPlayer）と設定画面の両方がこれを読む（未設定の透明度・ミラーは表示の設定を引き継ぐ） */
+      const playPrefs=()=>{const pp=loadPrefs().player||{};return{spd:pref(pp.spd,8,1,16),rate:Math.round(pref(pp.rate,1,.25,1)*20)/20,ap:Math.round(pref(pp.ap,100,20,100)),sf:pp.sf==null?true:!!pp.sf,rk:pp.rk==='keep'?'keep':'all',sl:pref(pp.sl,vs().slideOpacity,0,1),gd:pref(pp.gd,vs().guideOpacity,0,1),mirror:pp.mirror==null?vs().mirror:!!pp.mirror,ao:pref(pp.aoff,0,-3,3),vol:pref(pp.vol,.8,0,1)}};
       const st=t=>{const e=$('#st');e.textContent=t;e.hidden=!t;clearTimeout(stT);if(t&&!/…$/.test(t))stT=setTimeout(()=>e.hidden=true,6000)};
       const jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
       const fd=ms=>{if(!ms)return'-';const d=new Date(ms);return`${d.getFullYear()}/${pad(d.getMonth()+1,2)}/${pad(d.getDate(),2)}`};
@@ -807,7 +850,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         go();requestAnimationFrame(go);[120,350,900].forEach(t=>setTimeout(go,t));
       };
       function drawChart(){
-        try{const S=parseSUS(sus),R=render(S,cfg.zm,cfg.bpc,0,0,vs());$('#chart').innerHTML=R.svg;lastR=R;dirty=false;toFirst();const o=diffs[cur.id][curD];lastName=cur.title+'_'+curD;songLabel=`${cur.title}-${curD.toUpperCase()} Lv${o.playLevel}`;const sj=cur;songInfo={get jk(){return(IMG.done.get(jacket(sj))||{}).src||jacket(sj)},title:cur.title,diff:curD,level:o.playLevel};st('')}
+        try{const S=parseSUS(sus),R=render(S,cfg.zm,cfg.bpc,0,0,vs());$('#chart').innerHTML=R.svg;lastR=R;dirty=false;toFirst();const o=diffs[cur.id][curD];lastName=cur.title+'_'+curD;songLabel=`${cur.title}-${curD.toUpperCase()} Lv${o.playLevel}`;const sj=cur;songInfo={get jk(){return(IMG.done.get(jacket(sj))||{}).src||jacket(sj)},id:cur.id,fs:cur.fillerSec||0,title:cur.title,diff:curD,level:o.playLevel};st('')}
         catch(e){st('解析エラー: '+e.message);console.error(e)}
       }
       function showSVG(c){
@@ -827,6 +870,316 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       }
       const doSave=f=>lastR?saveChart(lastR,f,`${cur.title}_${curD}`):st('保存にはSUSの解析表示が必要です（画像表示では使えません）');
       $('#dlSvg').onclick=()=>doSave('svg');$('#dlPng').onclick=()=>doSave('png');
+
+      /* ================= 譜面再生（別タブ） =================
+         ・タイミング：小節→拍→秒（拍子変更・BPM変更を反映）
+         ・ソフラン：TIL(HISPEED)の速度を実時間で積分した「スクロール位置」で配置する（ゲーム内と同じ考え方）。
+           ノーツはレイヤー(HISPEED ID)ごとに別のスクロール位置を持ち、小節線は MEASUREHS のレイヤーに従う。
+         ・ノーツ見た目は既存の body/arrow/trc/gem をスプライト化して再利用（譜面表示と同一）。 */
+      function buildPlay(S){
+       const{notes,ev}=S,nodes=[],chains=[],relayDrawn=new Set(),SPR=new Map();let defs='';
+       const sp=(key,make)=>{let i=SPR.get(key);if(!i){i='p'+SPR.size;SPR.set(key,i);defs+=`<g id="${i}">${make()}</g>`}return i};
+       const gm=k=>sp('g'+k,()=>gem(0,0,k));
+       /* スライド経路（render() と同じ分解）。中継点の宝石は経路上の位置に描く。 */
+       notes.filter(n=>n.k==='sl'&&n.t===1).forEach(start=>{
+        let cur=start;const segs=[],relays=[],seen=new Set([start]);
+        while(cur&&cur.t!==2&&cur.next&&!seen.has(cur.next)){
+         const r=nextSlidePathNode(cur.next);if(!r.node)break;
+         segs.push([cur,r.node]);relays.push(...r.relays);cur=r.node;seen.add(cur);
+        }
+        if(!segs.length)return;
+        const r=[];
+        relays.forEach(m=>{
+         if(none(m)||m.deco)return;
+         const e=segs.findIndex(([a,b])=>a.bar<=m.bar+1e-9&&m.bar<=b.bar+1e-9);
+         if(e>=0){relayDrawn.add(m);r.push([m.bar,e,gm(crit(m)?'crit':'long'),m.hs??null])}
+        });
+        chains.push({h:start.hs??null,cr:crit(start),deco:!!start.deco,p:[start,...segs.map(s=>s[1])].map(q=>[q.bar,q.lane-2,q.w,q.hs??null]),e:segs.map(s=>s[0].dir?s[0].dir.t:null),r});
+       });
+       /* 単体ノーツ（render() の notes.forEach と同じ分類）。s=本体スプライト, a=その上に重ねるスプライト */
+       notes.forEach(n=>{
+        if(none(n))return;
+        const w=Math.max(4,n.w*LW-2),cr=crit(n),tr=trend(n),k=n.k,d=flickAngleOf(n),ck=cr?'crit':'flick',sd=d!==null;
+        const B=kind=>sp('b'+kind+w,()=>body(0,0,w,kind)),T=f=>sp('t'+(+cr)+(+f)+w,()=>trc(-w/2,0,w,cr,f)),A=ang=>sp(`a${n.w}|${ang}|${ck}`,()=>arrow(0,0,n.w,ang,ck));
+        const add=(s,a)=>nodes.push({b:n.bar,x:(n.lane-2)*LW,w:n.w,h:n.hs??null,s,a});
+        let kind;
+        if(n.deco){
+         if(!n.tap)return;
+         const at=n.tap.t,df=at===3&&!sd;
+         if(tr)add(null,[T(sd),...(sd||df?[A(sd?d:0)]:[])]);
+         else if(at===4)add(B('dmg'),sd?[A(d)]:[]);
+         else if(at===3)add(B('flick'),sd||df?[A(sd?d:0)]:[]);
+         else add(B(cr?'crit':'tap'),sd?[A(d)]:[]);
+         return;
+        }
+        if(k==='tap'){
+         if(n.t===4)kind='dmg';else if(n.t===3)kind='flick';else if(tr||n.t===1||n.t===2)kind=cr?'crit':'tap';
+         else{add(B('unknown'),[]);return}
+        }else if(k==='dir')kind=cr?'crit':'flick';
+        else{
+         if(n.t===5||n.t===0||n.t===4)return;
+         if(n.t===3){if(!relayDrawn.has(n))add(null,[gm(cr?'crit':'long')]);return}
+         if(n.t!==1&&n.t!==2)return;
+         kind=cr?'crit':n.t===2&&n.dir?'flick':'long';
+        }
+        const fl=(k==='dir'&&sd)||(k==='tap'&&n.t===3)||(k==='sl'&&n.t===2&&!!n.dir&&sd);
+        add(tr?null:B(kind),[...(tr?[T(fl)]:[]),...(fl?[A(sd?d:0)]:[])]);
+       });
+       nodes.sort((a,b)=>a.b-b.b);
+       let mb=0;notes.forEach(n=>mb=Math.max(mb,n.bar));ev.forEach(e=>mb=Math.max(mb,e.bar));
+       return{nodes,chains,sprites:defs,total:Math.floor(mb+1e-9)+1,mhs:S.mhs,til:S.til,
+        lens:ev.filter(e=>e.len).map(e=>[e.bar,e.len]),bpm:ev.filter(e=>e.bpm!==undefined).map(e=>[e.bar,e.bpm])};
+      }
+      /* 再生画面本体。toString() で別タブへ丸ごと渡すため、親ページの変数は参照しない
+         （cubicPoint / cubicXAtY だけは別タブ側に同名で注入する）。 */
+      function playerMain(D){
+       'use strict';
+       const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',LW=20,ML=40,SW=12*LW,VW=ML+SW+16,VH=560,JY=480,LEAD=1.6,SK=2.5;
+       const el=(tag,at,p)=>{const e=document.createElementNS(NS,tag);for(const k in at)e.setAttribute(k,at[k]);if(p)p.appendChild(e);return e};
+       const setT=(e,s)=>{if(e._s!==s){e._s=s;e.textContent=s}};
+       /* ---- 小節→拍→秒 ---- */
+       const total=D.total,len=[],cum=[0];
+       {const l=D.lens.slice().sort((a,b)=>a[0]-b[0]);let i=0,c=4;for(let b=0;b<=total+1;b++){while(i<l.length&&l[i][0]<=b)c=l[i++][1];len[b]=c;cum[b+1]=cum[b]+c}}
+       const cb=B=>{const m=Math.min(Math.max(Math.floor(B+1e-9),0),total+1);return cum[m]+(B-m)*len[m]};
+       const bp=D.bpm.slice().sort((a,b)=>a[0]-b[0]);if(!bp.length)bp.push([0,120]);else if(cb(bp[0][0])>1e-9)bp.unshift([0,bp[0][1]]);
+       const bx=bp.map(e=>cb(e[0])),bs=[0];for(let i=1;i<bp.length;i++)bs[i]=bs[i-1]+(bx[i]-bx[i-1])*60/bp[i-1][1];
+       const tm=B=>{const x=cb(B);let i=0;while(i+1<bx.length&&bx[i+1]<=x+1e-9)i++;return bs[i]+(x-bx[i])*60/bp[i][1]};
+       const atT=t=>{t=Math.max(0,t);let i=0;while(i+1<bs.length&&bs[i+1]<=t)i++;const x=bx[i]+(t-bs[i])*bp[i][1]/60;let m=0;while(m<total+1&&cum[m+1]<=x)m++;return{bar:m+(x-cum[m])/len[m],bpm:bp[i][1]}};
+       /* ---- ソフラン：レイヤーごとの「スクロール位置」S(t)=∫speed dt。f(t,1) は現在の速度 ---- */
+       const mkS=l=>{const T=[],V=[],P=[];let p=0,pt=0,v=1;l.slice().sort((a,b)=>a[0]-b[0]).forEach(([b,s])=>{const t=tm(b);p+=v*(t-pt);pt=t;v=s;T.push(t);V.push(s);P.push(p)});
+        return(t,g)=>{let lo=0,hi=T.length-1,i=-1;while(lo<=hi){const m=(lo+hi)>>1;if(T[m]<=t){i=m;lo=m+1}else hi=m-1}return g?(i<0?1:V[i]):i<0?t:P[i]+V[i]*(t-T[i])}};
+       let sf=D.pf.sf;const SL={},ident=(t,g)=>g?1:t,lay=h=>!sf||h==null?ident:SL[h]||ident;
+       for(const k in D.til)SL[k]=mkS(D.til[k]);
+       const N=D.nodes,C=D.chains,LN=[];
+       N.forEach(n=>n.t=tm(n.b));const prep=()=>{N.forEach(n=>n.q=lay(n.h)(n.t));
+       C.forEach(c=>{c.Q=c.p.map(p=>lay(p[3])(tm(p[0])));c.R=c.r.map(r=>({q:lay(r[3])(tm(r[0])),e:r[1],s:r[2],h:r[3]}))});LN.length=0;for(let m=0;m<=total;m++)for(let k=0;k<len[m];k++)LN.push({q:lay(D.mhs)(tm(m+k/len[m])),m,maj:!k})};prep();
+       let dur=0;N.forEach(n=>dur=Math.max(dur,n.t));C.forEach(c=>dur=Math.max(dur,tm(c.p[c.p.length-1][0])));dur+=1.5;
+       
+       const cnt=new Map();N.forEach(n=>cnt.set(n.h,(cnt.get(n.h)||0)+1));
+       const mainH=[...cnt].sort((a,b)=>b[1]-a[1]).map(e=>e[0])[0]??null;
+       /* ---- ステージ ---- */
+       const stage=$('stage'),defs=stage.querySelector('defs');stage.setAttribute('viewBox',`0 0 ${VW} ${VH}`);
+       const clp=el('rect',{x:-6,y:0,width:SW+12,height:JY+2},el('clipPath',{id:'clipH'},defs));
+       const root=el('g',{transform:`translate(${ML} 0)`},stage),bg=el('g',{},root);
+       for(let i=0;i<12;i++)el('rect',{x:i*LW,y:0,width:LW,height:JY,fill:i%2?'#19263a':'#1d2c42'},bg);
+       for(let i=0;i<=12;i++)el('line',{x1:i*LW,x2:i*LW,y1:0,y2:JY,stroke:'#394b63','stroke-width':i%12?1:1.5},bg);
+       el('rect',{x:-6,y:JY,width:SW+12,height:VH-JY,fill:'#0d1524'},bg);
+       const gL=el('g',{},root),gX=el('g',{},el('g',{'clip-path':'url(#clipH)'},root)),gP=el('g',{},gX),gN=el('g',{},gX),gA=el('g',{},gX);
+       /* 表示開始位置より奥は背景色で隠し、境界に線を引く（100%のときは非表示） */
+       const cov=el('rect',{x:-ML,y:0,width:VW,height:0,fill:'#111827'},root),bl=el('rect',{x:-4,y:0,width:SW+8,height:2,rx:1,fill:'#ffa94d'},root);
+       el('rect',{x:-6,y:JY-6,width:SW+12,height:12,fill:'#8ef0e2',opacity:.14},root);
+       el('rect',{x:-4,y:JY-1.5,width:SW+8,height:3,rx:1.5,fill:'#e8fffb',opacity:.92},root);
+       const mkPool=(g,tag,at,fn)=>{const els=[];let used=0;return list=>{for(let i=0;i<list.length;i++){let e=els[i];if(!e){e=el(tag,at,g);els.push(e)}else if(i>=used)e.removeAttribute('display');fn(e,list[i])}for(let i=list.length;i<used;i++)els[i].setAttribute('display','none');used=list.length}};
+       const useFn=(e,a)=>{if(e._h!==a[0]){e._h=a[0];e.setAttribute('href','#'+a[0])}e.setAttribute('x',a[1].toFixed(1));e.setAttribute('y',a[2].toFixed(1))};
+       const pMin=mkPool(gL,'rect',{x:0,width:SW,height:1,fill:'#2e4058'},(e,y)=>e.setAttribute('y',(y-.5).toFixed(1)));
+       const pMaj=mkPool(gL,'rect',{x:-4,width:SW+4,height:1.6,fill:'#7b91ad'},(e,y)=>e.setAttribute('y',(y-.8).toFixed(1)));
+       const pLab=mkPool(gL,'text',{x:-8,'text-anchor':'end','font-size':11,'font-weight':700,fill:'#d0dbea'},(e,a)=>{e.setAttribute('y',(a[0]+4).toFixed(1));setT(e,String(a[1]))});
+       const pPath=mkPool(gP,'path',{},(e,a)=>{e.setAttribute('d',a[0]);e.setAttribute('fill',a[1]);e.setAttribute('opacity',a[2])});
+       const pN=mkPool(gN,'use',{},useFn),pA=mkPool(gA,'use',{},useFn);
+       /* スライド経路：左右の縁を3次ベジェでつなぐ（譜面表示の slideChainPath と同じ形） */
+       const lx=(c,i)=>c.p[i][1]*LW+(c.deco?0:1),rx=(c,i)=>(c.p[i][1]+c.p[i][2])*LW-(c.deco?0:1);
+       const curves=(c,ys,i)=>{const y0=ys[i],y1=ys[i+1],m=(y0+y1)/2,ein=c.e[i]===2,eout=c.e[i]===5||c.e[i]===6;
+        return[[[lx(c,i),y0],[lx(c,i),ein?m:y0],[lx(c,i+1),eout?m:y1],[lx(c,i+1),y1]],[[rx(c,i),y0],[rx(c,i),ein?m:y0],[rx(c,i+1),eout?m:y1],[rx(c,i+1),y1]]]};
+       const pathD=(c,ys)=>{const f=v=>+v.toFixed(2),n=c.p.length-1,cv=[];for(let i=0;i<n;i++)cv.push(curves(c,ys,i));
+        let d=`M${f(cv[0][0][0][0])},${f(cv[0][0][0][1])}`;
+        for(const[l]of cv)d+=`C${f(l[1][0])},${f(l[1][1])} ${f(l[2][0])},${f(l[2][1])} ${f(l[3][0])},${f(l[3][1])}`;
+        const lr=cv[n-1][1];d+=`L${f(lr[3][0])},${f(lr[3][1])}`;
+        for(let i=n-1;i>=0;i--){const r=cv[i][1];d+=`C${f(r[2][0])},${f(r[2][1])} ${f(r[1][0])},${f(r[1][1])} ${f(r[0][0])},${f(r[0][1])}`}
+        return d+'Z'};
+       /* ---- 状態 ---- */
+       const pf=D.pf;let spd=pf.spd,rate=pf.rate,sl=pf.sl,gd=pf.gd,mir=pf.mirror,pps=40*spd*SK,ap=pf.ap,tp=0,rk=pf.rk,cur=-LEAD,playing=false,last=0,need=true,drag=false;
+       const KEY='sekaiChartViewer.settings.v1';
+       const FS=D.fs||0;let vt=pf.vt,ao=pf.ao,vl=pf.vol,VL=[],vi=0,ctx,gn,src=null,ab=null,B=0,T0=0,AR=1,gen=0,rtm;
+       const save=()=>{try{const v=JSON.parse(localStorage.getItem(KEY))||{};v.player={spd,rate,sl,gd,mirror:mir,ap,sf,rk,vt,aoff:ao,vol:vl};localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}};
+       /* ---- 音源：ボーカル取得／速度に合わせた音声変換(WSOLA・音程維持)／再生。譜面時刻は音声クロックに同期 ---- */
+       const MD='https://sekai-world.github.io/sekai-master-db-diff/',SC=new Map();
+       const getCtx=()=>{if(!ctx){ctx=new(window.AudioContext||window.webkitAudioContext)();gn=ctx.createGain();gn.gain.value=vl;gn.connect(ctx.destination)}return ctx};
+       const aT=()=>B+(ctx.currentTime-(ctx.outputLatency||0)-T0)*AR;
+       const kill=()=>{const s=src;src=null;if(s){try{s.stop()}catch(e){}s.disconnect()}};
+       const aStop=()=>{if(src)cur=Math.min(dur,aT());kill()};
+       const aStart=()=>{
+        kill();if(!ab||!playing)return;
+        const c=getCtx(),o=cur+ao,r=ab.r,off=(FS+Math.max(0,o))/r;if(off>=ab.buf.duration)return;
+        const s=c.createBufferSource();s.buffer=ab.buf;s.connect(gn);B=cur;T0=c.currentTime;AR=r;s.start(T0+(o<0?-o/r:0),off);src=s;
+       };
+       const yd=()=>new Promise(r=>{const c=new MessageChannel();c.port1.onmessage=()=>{c.port1.close();r()};c.port2.postMessage(0)});
+       async function stretch(b,r,tick){
+        const n=b.length,C=b.numberOfChannels,N=2048,H=N>>1,X=[],mo=new Float32Array(n);
+        for(let c=0;c<C;c++){const x=b.getChannelData(c);X.push(x);for(let i=0;i<n;i++)mo[i]+=x[i]/C}
+        const dn=n>>2,dm=new Float32Array(dn),w=new Float32Array(N),L=Math.ceil(n/r),Y=X.map(()=>new Float32Array(L+N));
+        for(let j=0;j<dn;j++)dm[j]=(mo[4*j]+mo[4*j+1]+mo[4*j+2]+mo[4*j+3])/4;
+        for(let i=0;i<N;i++)w[i]=.5-.5*Math.cos(2*Math.PI*i/N);
+        const ssd=(a,p,q,len,st)=>{let s=0;for(let i=0;i<len;i+=st){const d=a[p+i]-a[q+i];s+=d*d}return s};
+        let prev=0,t=performance.now();
+        for(let k=0;;k++){
+         const o=k*H,ideal=Math.round(o*r);if(ideal>=n)break;
+         let s=Math.max(0,Math.min(ideal,n-N));const tg=prev+H;
+         if(k&&tg+H<n){
+          const tD=tg>>2,c1=Math.min((n-N)>>2,(ideal+512)>>2);let e0=1/0,bi=Math.max(0,Math.min(ideal>>2,c1));
+          for(let j=Math.max(0,(ideal-512)>>2);j<=c1;j++){const e=ssd(dm,j,tD,H>>2,2);if(e<e0){e0=e;bi=j}}
+          e0=1/0;for(let q=Math.max(0,bi*4-4);q<=Math.min(n-N,bi*4+4);q++){const e=ssd(mo,q,tg,H,4);if(e<e0){e0=e;s=q}}
+         }
+         for(let c=0;c<C;c++){const x=X[c],y=Y[c];for(let i=0;i<N;i++)y[o+i]+=x[s+i]*w[i]}
+         prev=s;if(performance.now()-t>12){await tick(ideal/n);t=performance.now()}
+        }
+        const out=new AudioBuffer({length:L,numberOfChannels:C,sampleRate:b.sampleRate});
+        Y.forEach((y,c)=>out.copyToChannel(y.subarray(0,L),c));return out;
+       }
+       const load=async()=>{
+        const g=++gen,v=VL[vi],st=m=>{if(g===gen)$('astat').textContent=m};aStop();ab=null;if(!v)return;
+        try{
+         let o=SC.get(v.a);
+         if(!o){st('音源を読み込み中…');const r=await fetch(`https://storage.sekai.best/sekai-jp-assets/music/long/${v.a}/${v.a}.mp3`,{credentials:'omit',referrerPolicy:'no-referrer'});if(!r.ok)throw new Error('HTTP '+r.status);o=await getCtx().decodeAudioData(await r.arrayBuffer());SC.set(v.a,o);if(SC.size>2)SC.delete(SC.keys().next().value)}
+         if(g!==gen)return;
+         const rt=rate;let b=o;
+         if(rt<1)b=await stretch(o,rt,async p=>{if(g!==gen)throw 0;st(`速度 ${rt.toFixed(2)}× 用に音声を変換中… ${Math.round(p*100)}%`);await yd()});
+         if(g!==gen)return;
+         ab={buf:b,r:rt};st('');aStart();
+        }catch(e){st('音源を取得できません（'+(e&&e.message||'通信/CORS')+'）')}
+       };
+       const initA=async()=>{
+        const sel=$('vocal');if(D.mid==null){sel.options[0].text='（曲未選択のため音源なし）';return}
+        try{
+         const[mv,gc,oc]=await Promise.all(['musicVocals','gameCharacters','outsideCharacters'].map(f=>fetch(MD+f+'.json').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})));
+         const G=new Map(gc.map(c=>[c.id,(c.firstName||'')+(c.givenName||'')])),O=new Map(oc.map(c=>[c.id,c.name]));
+         VL=mv.filter(v=>v.musicId===D.mid).sort((a,b)=>a.seq-b.seq).map(v=>({a:v.assetbundleName,t:v.musicVocalType,l:(v.caption||v.musicVocalType)+(v.characters&&v.characters.length?'：'+v.characters.slice().sort((a,b)=>a.seq-b.seq).map(c=>(c.characterType==='game_character'?G:O).get(c.characterId)||'?').join('、'):'')}));
+         if(!VL.length)throw new Error('この曲のボーカル情報がありません');
+         sel.length=0;VL.forEach((v,i)=>sel.add(new Option(v.l,i)));vi=Math.max(0,VL.findIndex(v=>v.t===vt));sel.value=vi;sel.disabled=false;load();
+        }catch(e){sel.options[0].text='取得失敗';$('astat').textContent='ボーカル情報を取得できません（'+(e&&e.message||'通信/CORS')+'）'}
+       };
+       const fmt=t=>{t=Math.max(0,t);const m=Math.floor(t/60),s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(1)};
+       /* ---- 1フレームの描画：現在時刻 t から全要素の位置を計算（状態を持たないのでシーク・巻き戻しも同じ処理） ---- */
+       const draw=()=>{
+        const t=cur,cq=new Map(),Q=h=>{let v=cq.get(h);if(v===undefined){v=lay(h)(t);cq.set(h,v)}return v};
+        const qm=Q(D.mhs),mj=[],mn=[],lb=[];
+        for(const l of LN){const y=JY-(l.q-qm)*pps;if(y<tp-4||y>JY+1)continue;if(l.maj){mj.push(y);lb.push([y,l.m])}else mn.push(y)}
+        pMin(mn);pMaj(mj);pLab(lb);
+        const pp=[],ga=[];
+        for(const c of C){
+         const ys=c.Q.map((q,i)=>JY-(q-Q(c.p[i][3]))*pps);let lo=1e9,hi=-1e9;for(const y of ys){if(y<lo)lo=y;if(y>hi)hi=y}
+         if(hi<tp-30||lo>JY+4)continue;
+         pp.push([pathD(c,ys),c.cr?'#f0c45c':'#55dfa7',c.deco?gd:sl]);
+         for(const r of c.R){const ym=JY-(r.q-Q(r.h))*pps;if(ym<tp-20||ym>JY+8)continue;const cv=curves(c,ys,r.e);ga.push([r.s,(cubicXAtY(cv[0],ym)+cubicXAtY(cv[1],ym))/2,ym])}
+        }
+        pPath(pp);
+        const vn=[],va=[];
+        for(let i=N.length-1;i>=0;i--){const n=N[i],y=JY-(n.q-Q(n.h))*pps;if(y<tp-110||y>JY+12)continue;
+         if(n.s)vn.push([n.s,n.x+1,y]);for(const a of n.a)va.push([a,n.x+n.w*LW/2,y])}
+        pN(vn);pA(ga.concat(va));
+       };
+       const ui=()=>{
+        const a=atT(cur);setT($('hB'),'小節 '+Math.floor(a.bar+1e-9));setT($('hBpm'),'BPM '+(+a.bpm.toFixed(2)));setT($('hHs'),'速度 ×'+(+lay(mainH)(cur,1).toFixed(2)));
+        setT($('tcur'),fmt(cur));if(!drag)$('seek').value=Math.round(cur*100);
+       };
+       const setPlay=on=>{playing=on;$('bPlay').textContent=on?'❚❚ 一時停止':'▶ 再生';$('bPlay').setAttribute('aria-pressed',on);if(on){if(cur>=dur-.01)cur=-LEAD;last=performance.now();getCtx().resume();aStart()}else aStop();need=true};
+       const seek=t=>{cur=Math.min(dur,Math.max(-LEAD,t));need=true;if(playing){if(drag)kill();else aStart()}};
+       const bar=()=>atT(cur).bar,toBar=b=>seek(tm(Math.max(0,Math.min(total,b))));
+       const prevBar=()=>{if(cur<=0)return seek(-LEAD);const b=bar(),f=Math.floor(b+1e-9);toBar(b-f>.02?f:f-1)},nextBar=()=>toBar(Math.floor(bar()+1e-9)+1);
+       const loop=ts=>{
+        if(playing){cur=src&&ctx.state==='running'?Math.min(dur,aT()):cur+Math.min(.1,Math.max(0,(ts-last)/1000))*rate;last=ts;need=true;if(cur>=dur){cur=dur;setPlay(false)}}
+        if(need){need=false;draw();ui()}
+        requestAnimationFrame(loop);
+       };
+       /* ---- 操作 ---- */
+       const seekEl=$('seek');seekEl.min=Math.round(-LEAD*100);seekEl.max=Math.round(dur*100);seekEl.step=1;$('tend').textContent=fmt(dur);
+       seekEl.oninput=()=>seek(+seekEl.value/100);
+       const endDrag=()=>{if(drag){drag=false;if(playing)aStart()}};seekEl.addEventListener('pointerdown',()=>drag=true);addEventListener('pointerup',endDrag);seekEl.addEventListener('change',endDrag);
+       $('bPlay').onclick=()=>setPlay(!playing);
+       $('bStop').onclick=()=>{setPlay(false);seek(-LEAD)};
+       $('bStart').onclick=()=>seek(-LEAD);
+       $('bBack').onclick=()=>seek(cur-5);$('bFwd').onclick=()=>seek(cur+5);
+              const setPps=()=>{pps=40*spd*SK/(rk==='keep'?rate:1);need=true};
+       $('rate').oninput=e=>{const r=Math.round(+e.target.value*20)/20;$('ratev').textContent=r.toFixed(2)+'×';if(r===rate)return;rate=r;setPps();save();aStop();ab=null;clearTimeout(rtm);rtm=setTimeout(load,300)};
+       $('rk').onchange=e=>{rk=e.target.value==='keep'?'keep':'all';setPps();save()};
+       $('sf').onchange=e=>{sf=!e.target.checked;prep();need=true;save()};
+       const applyAp=()=>{tp=JY*(1-ap/100);clp.setAttribute('y',tp);clp.setAttribute('height',JY+2-tp);cov.setAttribute('height',tp);bl.setAttribute('y',tp-1);bl.setAttribute('display',tp>0?'inline':'none');$('apv').textContent=ap+'%';need=true};
+       $('ap').oninput=e=>{ap=Math.round(Math.min(100,Math.max(20,+e.target.value||100)));applyAp();save()};
+       const setSpd=v=>{spd=Math.min(16,Math.max(1,+v||8));setPps();$('spd').value=spd;$('spdv').textContent=spd.toFixed(1);need=true;save()};
+       $('spd').oninput=e=>setSpd(e.target.value);
+       const setOp=()=>{$('slv').textContent=Math.round(sl*100)+'%';$('gdv').textContent=Math.round(gd*100)+'%';need=true};
+       $('slO').value=Math.round(sl*100);$('gdO').value=Math.round(gd*100);setOp();
+       $('slO').oninput=e=>{sl=e.target.value/100;setOp();save()};$('gdO').oninput=e=>{gd=e.target.value/100;setOp();save()};
+       const setMir=()=>{gX.setAttribute('transform',mir?`translate(${SW} 0) scale(-1 1)`:'');$('mir').checked=mir;need=true};
+       $('mir').onchange=e=>{mir=e.target.checked;setMir();save()};setMir();
+       $('tg').onclick=()=>{const p=$('panel');p.hidden=!p.hidden;$('tg').setAttribute('aria-expanded',!p.hidden);$('tg').textContent=p.hidden?'表示設定':'表示設定を隠す'};
+       addEventListener('keydown',e=>{
+        if(e.ctrlKey||e.metaKey||e.altKey)return;
+        const t=e.target,tag=t&&t.tagName;if(tag==='SELECT'||(tag==='INPUT'&&t.type==='range'&&/^Arrow|^Home|^End/.test(e.key)))return;
+        const k=e.key,d=e.shiftKey?5:1;
+        if(k===' '){if(tag==='BUTTON')return;setPlay(!playing)}
+        else if(k==='ArrowLeft')seek(cur-d);else if(k==='ArrowRight')seek(cur+d);
+        else if(k==='ArrowUp')nextBar();else if(k==='ArrowDown')prevBar();
+        else if(k==='Home')seek(-LEAD);else if(k==='End')seek(dur);else return;
+        e.preventDefault();
+       });
+       $('vocal').onchange=e=>{vi=+e.target.value;vt=VL[vi].t;save();load()};
+       const setVol=()=>{$('volv').textContent=Math.round(vl*100)+'%'};$('vol').value=Math.round(vl*100);setVol();$('vol').oninput=e=>{vl=e.target.value/100;if(gn)gn.gain.value=vl;setVol();save()};
+       const setAo=()=>{$('aov').textContent=(ao>=0?'+':'')+ao.toFixed(2)+'秒'};$('ao').value=ao;setAo();$('ao').oninput=e=>{ao=+e.target.value;setAo();save();if(playing){aStop();aStart()}};
+       initA();setSpd(spd);$('rate').value=rate;$('ratev').textContent=rate.toFixed(2)+'×';$('rk').value=rk;$('sf').checked=!sf;$('ap').value=ap;applyAp();draw();ui();requestAnimationFrame(loop);
+       window.__pl={seek,draw,ui,tm,atT,lay,setSpd,setPlay,prevBar,nextBar,N,C,LN,dur,get t(){return cur},get playing(){return playing},get pps(){return pps},JY};
+      }
+      const openPlayer=w=>{
+       const S=parseSUS(sus),D=buildPlay(S);
+       if(!D.nodes.length&&!D.chains.length)throw new Error('再生できるノーツがありません');
+       const pp=loadPrefs().player||{};
+       D.pf={...playPrefs(),vt:typeof pp.vt==='string'?pp.vt:''};
+       const{sprites,...data}=D,si=songInfo,tabTitle=esc(songLabel||S.meta.TITLE||'譜面');
+       data.mid=si&&si.id!=null?si.id:null;data.fs=si&&+si.fs>0?+si.fs:0;const json=JSON.stringify(data).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+       const songHTML=`<div class="song">${si?`<img src="${esc(si.jk)}" alt="" referrerpolicy="no-referrer">`:''}<div><b>${esc(si?si.title:(S.meta.TITLE||'譜面'))}</b>${si?`<span class="lv" style="background:${DCOL[si.diff]||'#74829f'}">${esc(si.diff.toUpperCase())}${si.level!=null?` Lv${esc(si.level)}`:''}</span>`:''}</div></div>`;
+       w.document.write(`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>▶ ${tabTitle}</title>
+       <style>
+        *{box-sizing:border-box}body{margin:0;background:#101827;color:#e5edf7;font:13px system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+        header{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 12px;background:#18263a;border-bottom:1px solid #344b66}
+        .song{display:flex;align-items:center;gap:10px;flex:1 1 280px;min-width:0}.song img{width:44px;height:44px;border-radius:8px;flex:none;background:#26364d;box-shadow:0 2px 6px #0006}.song div{min-width:0}.song b{display:block;font-size:15px;line-height:1.35;word-break:break-word}.lv{display:inline-block;margin-top:2px;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700;color:#fff}.tools{margin-left:auto}
+        button{border:0;border-radius:7px;padding:8px 12px;background:#2fbfae;color:#102033;font:inherit;font-weight:700;cursor:pointer}button.g{background:#2a3d57;color:#e5edf7}button:hover{filter:brightness(1.1)}
+        button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8ef0e2;outline-offset:2px}
+        #panel{flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,360px));justify-content:center;gap:12px 24px;padding:10px 14px 12px;background:#1d2c42;border-bottom:1px solid #344b66;max-height:50vh;max-height:50dvh;overflow-y:auto}#panel[hidden]{display:none}
+        .control{min-width:0;display:flex;flex-direction:column;gap:5px}.control.wide{grid-column:1/-1}.control>:last-child{margin:auto 0 0}
+        .cap{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;line-height:1.35;color:#c4d2e4}.cap b{color:#8ef0e2;font-variant-numeric:tabular-nums;white-space:nowrap}
+        .control input[type=range]{display:block;width:100%;height:30px;accent-color:#58d7c4}
+        .chk{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid #344b66;border-radius:6px;background:#0f1a2b;font-size:13px;color:#e5edf7;cursor:pointer;user-select:none}.chk:has(input:checked){border-color:#58d7c4}.chk input{width:16px;height:16px;margin:0;accent-color:#58d7c4}
+        #wrap{flex:1;min-height:0;position:relative;background:#111827}#stage{display:block;width:100%;height:100%}
+        .hud{position:absolute;left:10px;top:8px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}.hud span{background:#0b1220cc;border:1px solid #344b66;border-radius:8px;padding:2px 10px;font-weight:700;font-variant-numeric:tabular-nums}
+        footer{flex:none;display:flex;flex-direction:column;gap:8px;padding:8px 12px 10px;background:#18263a;border-top:1px solid #344b66}
+        .tl{display:flex;align-items:center;gap:10px}.tl input{flex:1;min-width:0;accent-color:#58d7c4}.tl span{min-width:4.4em;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
+        .ctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}.ctl label{display:flex;align-items:center;gap:6px;color:#c4d2e4;font-size:12px}.ctl input[type=range]{width:120px;accent-color:#58d7c4}.ctl select,.control select{background:#0f1a2b;color:#e5edf7;border:1px solid #344b66;border-radius:6px;padding:5px 6px;font:inherit}.control select{width:100%;height:30px;padding-top:0;padding-bottom:0;text-overflow:ellipsis}
+        #bPlay{min-width:7.5em}.sp{flex:1}.hint{font-size:11px;color:#91a6bf}
+       </style>
+       <header>${songHTML}<div class="tools"><button id="tg" class="g" aria-expanded="false" aria-controls="panel">表示設定</button></div></header>
+       <section id="panel" aria-label="表示設定" hidden>
+        <div class="control wide"><label class="cap" for="rate">再生速度 <b id="ratev"></b></label><input id="rate" type="range" min="0.25" max="1" step="0.05"></div>
+        <div class="control wide"><label class="cap" for="vocal">ボーカル</label><select id="vocal" disabled><option>読み込み中…</option></select></div>
+        <div class="control"><label class="cap" for="vol">音量 <b id="volv"></b></label><input id="vol" type="range" min="0" max="100"></div>
+        <div class="control"><label class="cap" for="ao">音源のタイミング補正（＋で音が早く／−で遅く） <b id="aov"></b></label><input id="ao" type="range" min="-3" max="3" step="0.01"></div>
+        <div class="control"><label class="cap" for="spd">ノーツ速度 <b id="spdv"></b></label><input id="spd" type="range" min="1" max="16" step=".5"></div>
+        <div class="control"><label class="cap" for="rk">再生速度を変えたとき</label><select id="rk"><option value="all">全体が変化（ノーツ速度も変わる）</option><option value="keep">ノーツ速度はそのまま</option></select></div>
+        <div class="control wide"><label class="cap" for="ap">ノーツ表示開始位置（手前⇔奥） <b id="apv"></b></label><input id="ap" type="range" min="20" max="100" step="5"></div>
+        <div class="control"><span class="cap">ミラー</span><label class="chk"><input id="mir" type="checkbox"> 左右反転</label></div>
+        <div class="control"><span class="cap">ソフラン（速度変化）</span><label class="chk"><input id="sf" type="checkbox"> ソフランなし</label></div>
+        <div class="control"><label class="cap" for="slO">スライドノーツ透明度 <b id="slv"></b></label><input id="slO" type="range" min="0" max="100"></div>
+        <div class="control"><label class="cap" for="gdO">ガイドノーツ透明度 <b id="gdv"></b></label><input id="gdO" type="range" min="0" max="100"></div>
+       </section>
+       <main id="wrap"><svg id="stage" role="img" aria-label="ノーツが流れる譜面再生画面" preserveAspectRatio="xMidYMid meet"><defs>${sprites}</defs></svg>
+        <div class="hud"><span id="hB">小節 0</span><span id="hBpm">BPM</span><span id="hHs">速度 ×1</span></div></main>
+       <footer>
+        <div class="tl"><span id="tcur">0:00.0</span><input id="seek" type="range" aria-label="再生位置"><span id="tend"></span></div>
+        <div class="ctl">
+         <button id="bStart" class="g">先頭へ</button><button id="bBack" class="g">◀◀ 5秒戻る</button>
+         <button id="bPlay" aria-pressed="false">▶ 再生</button><button id="bStop" class="g">■ 停止</button>
+         <button id="bFwd" class="g">5秒進む ▶▶</button>
+         <span id="astat" class="hint" role="status"></span>
+         
+        </div>
+        <div class="hint">Space：再生/一時停止　←→：1秒（Shift で5秒）　↑↓：小節移動　Home：先頭　End：末尾</div>
+       </footer>
+       <script>const cubicPoint=${cubicPoint},cubicXAtY=${cubicXAtY};(${playerMain})(${json});<\/script></html>`);
+       w.document.close();
+      };
+      $('#goP').onclick=()=>{
+       if(!sus.trim()||!lastR){st('譜面再生にはSUSの解析が必要です（画像表示では使えません）');return}
+       const w=window.open('','_blank');if(!w){st('ポップアップがブロックされました。許可してください');return}
+       try{openPlayer(w)}catch(e){w.close();st('譜面再生の生成エラー: '+e.message);console.error(e)}
+      };
       $('#goR').onclick=()=>{
        const t=sus;if(!t.trim()||!lastR){st('拡大表示にはSUSの解析が必要です（画像表示では使えません）');return}
        const spacing=cfg.zm,columns=cfg.bpc;
@@ -898,16 +1251,22 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       let PVS=null;
       function drawPv(){
         PVS=PVS||parseSUS(PV);
-        const R=render(PVS,cfg.zm,2,0,0,{...vs(),noMargin:true}),pb=$('#pv');
+        /* プレビューは設定に関係なく、最小のノーツ間隔で先頭の1小節だけ表示する */
+        const R=render(PVS,+$('#zm').min,1,0,1,{...vs(),noMargin:true}),pb=$('#pv');
         pb.innerHTML=R.svg.replace(/\bid="([^"]+)"/g,'id="pv-$1"').replace(/url\(#([^)]+)\)/g,'url(#pv-$1)').replace(/href="#([^"]+)"/g,'href="#pv-$1"');
         toStart(pb,R); /* プレビューも実譜面と同じく0小節目（左下）から表示 */
       }
+      const fillRanges=()=>document.querySelectorAll('#p-settings input[type=range]').forEach(r=>r.style.setProperty('--p',(r.value-r.min)/(r.max-r.min)*100+'%')); /* スライダーの塗り幅 */
       function sync(){
+        syncPlay();
         $('#zm').value=cfg.zm;$('#bpc').value=cfg.bpc;$('#slOpacity').value=cfg.sl;$('#gdOpacity').value=cfg.gd;$('#mirror').checked=cfg.mirror;
         $('#zv').textContent=cfg.zm;$('#slv').textContent=cfg.sl+'%';$('#gdv').textContent=cfg.gd+'%';
-        $('#bpn').textContent=`例：128小節の曲は約${Math.ceil(128/cfg.bpc)}列に分けて横に並べます`;
+        $('#bpn').textContent=`例：128小節の曲は約${Math.ceil(128/cfg.bpc)}列に分けて横に並べます`;fillRanges();
       }
-      const changed=p=>{sync();drawPv();dirty=true;savePrefs({main:cfg,...(p?{popup:{...(loadPrefs().popup||{}),...p}}:{})})};
+      /* 透明度・ミラーは譜面再生と共通。拡大表示（popup）と同様に、設定画面での変更を再生側の保存値にも書き込む */
+      const PLK={slideOpacity:'sl',guideOpacity:'gd',mirror:'mirror'};
+      const changed=p=>{sync();drawPv();dirty=true;const pl={};if(p)for(const k in PLK)if(k in p)pl[PLK[k]]=p[k];
+        savePrefs({main:cfg,...(p?{popup:{...(loadPrefs().popup||{}),...p}}:{}),...(Object.keys(pl).length?{player:{...(loadPrefs().player||{}),...pl}}:{})})};
       $('#bpc').innerHTML=BPCS.map(n=>`<option>${n}</option>`).join('');
       $('#zm').oninput=e=>{cfg.zm=+e.target.value;changed({spacing:cfg.zm})};
       $('#bpc').onchange=e=>{cfg.bpc=+e.target.value;changed()};
@@ -915,6 +1274,21 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       $('#gdOpacity').oninput=e=>{cfg.gd=+e.target.value;changed({guideOpacity:cfg.gd/100})};
       $('#mirror').onchange=e=>{cfg.mirror=e.target.checked;changed({mirror:cfg.mirror})};
       $('#rst').onclick=()=>{cfg={...DEF};changed({spacing:cfg.zm,slideOpacity:cfg.sl/100,guideOpacity:cfg.gd/100,mirror:cfg.mirror})};
+
+      /* ---- 譜面再生の設定（再生画面の「表示設定」と同じ保存先 player を共有） ---- */
+      const setP=patch=>savePrefs({player:{...(loadPrefs().player||{}),...patch}});
+      function syncPlay(){
+        const p=playPrefs(),pc=v=>Math.round(v*100)+'%',set=(id,v,t)=>{$('#'+id).value=v;if(t!=null)$('#'+id+'V').textContent=t};
+        set('plRate',p.rate,p.rate.toFixed(2)+'×');set('plVol',Math.round(p.vol*100),pc(p.vol));set('plAo',p.ao,(p.ao>=0?'+':'')+p.ao.toFixed(2)+'秒');
+        set('plSpd',p.spd,p.spd.toFixed(1));set('plAp',p.ap,p.ap+'%');
+        $('#plRk').value=p.rk;$('#plSf').checked=!p.sf;fillRanges();
+      }
+      const onP=(id,fn,ev='oninput')=>{$('#'+id)[ev]=e=>{setP(fn(e.target));syncPlay()}};
+      onP('plRate',t=>({rate:Math.round(+t.value*20)/20}));onP('plVol',t=>({vol:t.value/100}));onP('plAo',t=>({aoff:+t.value}));
+      onP('plSpd',t=>({spd:+t.value}));onP('plAp',t=>({ap:+t.value}));
+      onP('plRk',t=>({rk:t.value}),'onchange');onP('plSf',t=>({sf:!t.checked}),'onchange');
+      $('#plRst').onclick=()=>{const vt=(loadPrefs().player||{}).vt;savePrefs({player:typeof vt==='string'?{vt}:{}});syncPlay()}; /* ボーカルの選択だけは残す */
+      addEventListener('storage',e=>{if(e.key===PREF_KEY&&!$('#p-settings').hidden)syncPlay()}); /* 再生タブで変えた値を設定画面にも反映 */
 
       /* ---- Side menu (all screen sizes) ---- */
       const nav=$('#nav');
