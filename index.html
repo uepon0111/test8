@@ -147,6 +147,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
             <div><h3>再生と音声</h3>
               <div class="fld"><label for="plRate"><span>再生速度</span><b id="plRateV"></b></label><input id="plRate" type="range" min="0.25" max="1" step="0.05" /></div>
               <div class="fld"><label for="plRk"><span>再生速度を変えたとき</span></label><select id="plRk"><option value="all">全体が変化（ノーツ速度も変わる）</option><option value="keep">ノーツ速度はそのまま</option></select></div>
+              <div class="fld"><label for="plDv"><span>デフォルトボーカル</span></label><select id="plDv"><option value="sekai">セカイバージョン</option><option value="virtual_singer">バーチャルシンガーバージョン</option></select><div class="mut">譜面再生を開いたときに選ばれるボーカルです。選んだバージョンがない曲では、もう一方のバージョンを使います。</div></div>
               <div class="fld"><label for="plVol"><span>音量</span><b id="plVolV"></b></label><input id="plVol" type="range" min="0" max="100" /></div>
               <div class="fld"><label for="plAo"><span>音源のタイミング補正</span><b id="plAoV"></b></label><input id="plAo" type="range" min="-3" max="3" step="0.01" /><div class="mut">＋で音が早く、−で遅くなります</div></div>
             </div>
@@ -159,7 +160,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
           <button id="plRst" class="g">再生設定を初期設定に戻す</button>
           <p class="mut">変更は自動で保存され、次に開く譜面再生から反映されます（再生画面の「表示設定」と共通）。</p>
           <p class="mut">スライド／ガイドノーツの透明度とミラーは、上の「表示の設定」で変更します。</p>
-          <p class="mut">ボーカルは曲ごとに選択肢が違うため、再生画面で選びます。</p></div>
+          <p class="mut">再生画面でボーカルを切り替えても、その譜面を開いている間だけの変更です（デフォルトボーカルは変わりません）。</p></div>
       </section>
     </main>
     <div id="st" role="status" hidden></div>
@@ -727,7 +728,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       const pref=clamp;
       const vs=()=>({slideOpacity:cfg.sl/100,guideOpacity:cfg.gd/100,mirror:cfg.mirror});
       /* 譜面再生の設定。再生画面（openPlayer）と設定画面の両方がこれを読む（未設定の透明度・ミラーは表示の設定を引き継ぐ） */
-      const playPrefs=()=>{const pp=loadPrefs().player||{};return{spd:pref(pp.spd,8,1,16),rate:Math.round(pref(pp.rate,1,.25,1)*20)/20,ap:Math.round(pref(pp.ap,100,20,100)),sf:pp.sf==null?true:!!pp.sf,rk:pp.rk==='keep'?'keep':'all',sl:pref(pp.sl,vs().slideOpacity,0,1),gd:pref(pp.gd,vs().guideOpacity,0,1),mirror:pp.mirror==null?vs().mirror:!!pp.mirror,ao:pref(pp.aoff,0,-3,3),vol:pref(pp.vol,.8,0,1)}};
+      const playPrefs=()=>{const pp=loadPrefs().player||{};return{spd:pref(pp.spd,8,1,16),rate:Math.round(pref(pp.rate,1,.25,1)*20)/20,ap:Math.round(pref(pp.ap,100,20,100)),sf:pp.sf==null?true:!!pp.sf,rk:pp.rk==='keep'?'keep':'all',sl:pref(pp.sl,vs().slideOpacity,0,1),gd:pref(pp.gd,vs().guideOpacity,0,1),mirror:pp.mirror==null?vs().mirror:!!pp.mirror,ao:pref(pp.aoff,0,-3,3),vol:pref(pp.vol,.8,0,1),dv:pp.dv==='virtual_singer'?'virtual_singer':'sekai'}};
       const st=t=>{const e=$('#st');e.textContent=t;e.hidden=!t;clearTimeout(stT);if(t&&!/…$/.test(t))stT=setTimeout(()=>e.hidden=true,6000)};
       const jget=u=>fetch(MASTER+u).then(r=>{if(!r.ok)throw 0;return r.json()});
       const fd=ms=>{if(!ms)return'-';const d=new Date(ms);return`${d.getFullYear()}/${pad(d.getMonth()+1,2)}/${pad(d.getDate(),2)}`};
@@ -989,8 +990,8 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
        /* ---- 状態 ---- */
        const pf=D.pf;let spd=pf.spd,rate=pf.rate,sl=pf.sl,gd=pf.gd,mir=pf.mirror,pps=40*spd*SK,ap=pf.ap,tp=0,rk=pf.rk,cur=-LEAD,playing=false,last=0,need=true,drag=false;
        const KEY='sekaiChartViewer.settings.v1';
-       const FS=D.fs||0;let vt=pf.vt,ao=pf.ao,vl=pf.vol,VL=[],vi=0,ctx,gn,src=null,ab=null,B=0,T0=0,AR=1,gen=0,rtm;
-       const save=()=>{try{const v=JSON.parse(localStorage.getItem(KEY))||{};v.player={spd,rate,sl,gd,mirror:mir,ap,sf,rk,vt,aoff:ao,vol:vl};localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}};
+       const FS=D.fs||0;let ao=pf.ao,vl=pf.vol,VL=[],vi=0,ctx,gn,src=null,ab=null,B=0,T0=0,AR=1,gen=0,rtm;
+       const save=()=>{try{const v=JSON.parse(localStorage.getItem(KEY))||{},p={...(v.player||{}),spd,rate,sl,gd,mirror:mir,ap,sf,rk,aoff:ao,vol:vl};delete p.vt;v.player=p;localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}};
        /* ---- 音源：ボーカル取得／速度に合わせた音声変換(WSOLA・音程維持)／再生。譜面時刻は音声クロックに同期 ---- */
        const MD='https://sekai-world.github.io/sekai-master-db-diff/',SC=new Map();
        const getCtx=()=>{if(!ctx){ctx=new(window.AudioContext||window.webkitAudioContext)();gn=ctx.createGain();gn.gain.value=vl;gn.connect(ctx.destination)}return ctx};
@@ -1037,6 +1038,8 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
          ab={buf:b,r:rt};st('');aStart();
         }catch(e){st('音源を取得できません（'+(e&&e.message||'通信/CORS')+'）')}
        };
+       /* 設定のデフォルトボーカルで初期選択（その種別がなければもう一方、どちらもなければ先頭） */
+       const defVocal=()=>{for(const t of pf.dv==='virtual_singer'?['virtual_singer','sekai']:['sekai','virtual_singer']){const i=VL.findIndex(v=>v.t===t);if(i>=0)return i}return 0};
        const initA=async()=>{
         const sel=$('vocal');if(D.mid==null){sel.options[0].text='（曲未選択のため音源なし）';return}
         try{
@@ -1044,7 +1047,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
          const G=new Map(gc.map(c=>[c.id,(c.firstName||'')+(c.givenName||'')])),O=new Map(oc.map(c=>[c.id,c.name]));
          VL=mv.filter(v=>v.musicId===D.mid).sort((a,b)=>a.seq-b.seq).map(v=>({a:v.assetbundleName,t:v.musicVocalType,l:(v.caption||v.musicVocalType)+(v.characters&&v.characters.length?'：'+v.characters.slice().sort((a,b)=>a.seq-b.seq).map(c=>(c.characterType==='game_character'?G:O).get(c.characterId)||'?').join('、'):'')}));
          if(!VL.length)throw new Error('この曲のボーカル情報がありません');
-         sel.length=0;VL.forEach((v,i)=>sel.add(new Option(v.l,i)));vi=Math.max(0,VL.findIndex(v=>v.t===vt));sel.value=vi;sel.disabled=false;load();
+         sel.length=0;VL.forEach((v,i)=>sel.add(new Option(v.l,i)));vi=defVocal();sel.value=vi;sel.disabled=false;load();
         }catch(e){sel.options[0].text='取得失敗';$('astat').textContent='ボーカル情報を取得できません（'+(e&&e.message||'通信/CORS')+'）'}
        };
        const fmt=t=>{t=Math.max(0,t);const m=Math.floor(t/60),s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(1)};
@@ -1112,7 +1115,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         else if(k==='Home')seek(-LEAD);else if(k==='End')seek(dur);else return;
         e.preventDefault();
        });
-       $('vocal').onchange=e=>{vi=+e.target.value;vt=VL[vi].t;save();load()};
+       $('vocal').onchange=e=>{vi=+e.target.value;load()}; /* この譜面を開いている間だけの切り替え */
        const setVol=()=>{$('volv').textContent=Math.round(vl*100)+'%'};$('vol').value=Math.round(vl*100);setVol();$('vol').oninput=e=>{vl=e.target.value/100;if(gn)gn.gain.value=vl;setVol();save()};
        const setAo=()=>{$('aov').textContent=(ao>=0?'+':'')+ao.toFixed(2)+'秒'};$('ao').value=ao;setAo();$('ao').oninput=e=>{ao=+e.target.value;setAo();save();if(playing){aStop();aStart()}};
        initA();setSpd(spd);$('rate').value=rate;$('ratev').textContent=rate.toFixed(2)+'×';$('rk').value=rk;$('sf').checked=!sf;$('ap').value=ap;applyAp();draw();ui();requestAnimationFrame(loop);
@@ -1121,8 +1124,7 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
       const openPlayer=w=>{
        const S=parseSUS(sus),D=buildPlay(S);
        if(!D.nodes.length&&!D.chains.length)throw new Error('再生できるノーツがありません');
-       const pp=loadPrefs().player||{};
-       D.pf={...playPrefs(),vt:typeof pp.vt==='string'?pp.vt:''};
+       D.pf=playPrefs();
        const{sprites,...data}=D,si=songInfo,tabTitle=esc(songLabel||S.meta.TITLE||'譜面');
        data.mid=si&&si.id!=null?si.id:null;data.fs=si&&+si.fs>0?+si.fs:0;const json=JSON.stringify(data).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
        const songHTML=`<div class="song">${si?`<img src="${esc(si.jk)}" alt="" referrerpolicy="no-referrer">`:''}<div><b>${esc(si?si.title:(S.meta.TITLE||'譜面'))}</b>${si?`<span class="lv" style="background:${DCOL[si.diff]||'#74829f'}">${esc(si.diff.toUpperCase())}${si.level!=null?` Lv${esc(si.level)}`:''}</span>`:''}</div></div>`;
@@ -1281,13 +1283,13 @@ input,select{width:100%;padding:8px 10px;border:1px solid var(--ln);border-radiu
         const p=playPrefs(),pc=v=>Math.round(v*100)+'%',set=(id,v,t)=>{$('#'+id).value=v;if(t!=null)$('#'+id+'V').textContent=t};
         set('plRate',p.rate,p.rate.toFixed(2)+'×');set('plVol',Math.round(p.vol*100),pc(p.vol));set('plAo',p.ao,(p.ao>=0?'+':'')+p.ao.toFixed(2)+'秒');
         set('plSpd',p.spd,p.spd.toFixed(1));set('plAp',p.ap,p.ap+'%');
-        $('#plRk').value=p.rk;$('#plSf').checked=!p.sf;fillRanges();
+        $('#plRk').value=p.rk;$('#plDv').value=p.dv;$('#plSf').checked=!p.sf;fillRanges();
       }
       const onP=(id,fn,ev='oninput')=>{$('#'+id)[ev]=e=>{setP(fn(e.target));syncPlay()}};
       onP('plRate',t=>({rate:Math.round(+t.value*20)/20}));onP('plVol',t=>({vol:t.value/100}));onP('plAo',t=>({aoff:+t.value}));
       onP('plSpd',t=>({spd:+t.value}));onP('plAp',t=>({ap:+t.value}));
-      onP('plRk',t=>({rk:t.value}),'onchange');onP('plSf',t=>({sf:!t.checked}),'onchange');
-      $('#plRst').onclick=()=>{const vt=(loadPrefs().player||{}).vt;savePrefs({player:typeof vt==='string'?{vt}:{}});syncPlay()}; /* ボーカルの選択だけは残す */
+      onP('plRk',t=>({rk:t.value}),'onchange');onP('plDv',t=>({dv:t.value}),'onchange');onP('plSf',t=>({sf:!t.checked}),'onchange');
+      $('#plRst').onclick=()=>{savePrefs({player:{}});syncPlay()}; /* デフォルトボーカルもセカイバージョンに戻る */
       addEventListener('storage',e=>{if(e.key===PREF_KEY&&!$('#p-settings').hidden)syncPlay()}); /* 再生タブで変えた値を設定画面にも反映 */
 
       /* ---- Side menu (all screen sizes) ---- */
